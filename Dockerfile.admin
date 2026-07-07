@@ -1,24 +1,26 @@
-# Dockerfile for Next.js Admin Panel
 FROM node:18-alpine
 
+# 1. Konteyner ichida ishchi papka ochamiz
 WORKDIR /app
 
-# Copy package files
-COPY admin/package*.json ./
+# 2. Rootdan turib, admin papkasidagi package fayllarini konteynerning admin papkasiga nusxalaymiz
+COPY admin/package*.json ./admin/
 
-# Install dependencies
-RUN npm ci --omit=dev
+# 3. Konteyner ichidagi admin papkasiga kirib, modullarni o'rnatamiz
+WORKDIR /app/admin
+RUN npm install
 
-# Copy app code
-COPY admin/ .
+# 4. Yana orqaga qaytib, rootdagi butun admin kodlarini konteyner ichiga ko'chiramiz
+WORKDIR /app
+COPY admin/ ./admin/
 
-# Build Next.js
+# 5. Admin papkasiga kiramiz (shunda barcha Tailwind va konfiguratsiyalar o'z joyida bo'ladi)
+WORKDIR /app/admin
+
+# 6. Next.js loyihasini build qilamiz
 RUN npm run build
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:${PORT:-3000}', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+EXPOSE 3000
 
-# Run Next.js
-ENV NODE_ENV=production
+# 7. Loyihani ishga tushirish buyrug'i
 CMD ["npm", "start"]
