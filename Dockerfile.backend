@@ -1,19 +1,34 @@
+# Dockerfile for FastAPI Backend Service
 FROM python:3.11-slim
 
-WORKDIR /app
-
-# 1. Backend ichidagi talablar faylini ko'chiramiz va o'rnatamiz
-COPY telegram_bot/backend/requirements.txt ./telegram_bot/backend/
-RUN pip install --no-cache-dir -r telegram_bot/backend/requirements.txt
-
-# 2. Butun backend kodini konteynerga nusxalaymiz
-COPY telegram_bot/backend/ ./telegram_bot/backend/
-
-# 3. Python moduli to'g'ri import bo'lishi uchun muhit yo'lini ko'rsatamiz
-ENV PYTHONPATH=/app/telegram_bot/backend
+# Set working directory to telegram_bot/backend
 WORKDIR /app/telegram_bot/backend
 
-EXPOSE 8000
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# 4. FastAPI dasturini ishga tushiramiz (Endi u app.main-ni aniq topadi)
+# Copy requirements and install
+COPY telegram_bot/backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the entire telegram_bot directory so imports work correctly
+COPY telegram_bot/ /app/telegram_bot/
+
+# Copy migrations if needed
+COPY migrations/ /app/migrations/
+
+# Copy env files to app root
+COPY .env* /app/
+
+# Set Python path to include the monorepo root so all imports resolve
+ENV PYTHONPATH=/app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+# Run FastAPI from the backend directory but with correct imports
 CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
