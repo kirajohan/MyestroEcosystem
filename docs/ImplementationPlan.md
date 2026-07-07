@@ -14,14 +14,14 @@
 | **1** | Slash Commands implementation | 10 | HIGH | ✅ DONE |
 | **2** | Channel Check + Bot Settings | 6 | HIGH | ✅ DONE |
 | **3** | Broadcast (HTML, Queue, Private Channel) | 12 | HIGH | ✅ DONE |
-| **4** | Inbox System (Admin Panel) | 14 | HIGH | ⏳ In Progress |
-| **5** | Settings & Global Toggles (BOT on/off, AI on/off) | 6 | MEDIUM | ⏳ Pending |
+| **4** | Inbox System (Admin Panel) | 14 | HIGH | ✅ DONE |
+| **5** | Settings & Global Toggles (BOT on/off, AI on/off) | 6 | MEDIUM | ⏳ In Progress |
 | **6** | Logs Dashboard (Structured, Searchable) | 8 | MEDIUM | ⏳ Pending |
 | **7** | AI Chat Activation | 6 | MEDIUM | ⏳ Pending |
 | **8** | UI Polish (Tailwind CSS) | 8 | LOW | ⏳ Pending |
 | **9** | Railway Deployment + Testing | 8 | CRITICAL | ⏳ Pending |
 
-**Total: 82 hours | Completed: 32 hours (39%)**
+**Total: 82 hours | Completed: 46 hours (56%)**
 
 ---
 

@@ -26,6 +26,7 @@ from bot.handlers.broadcast import broadcast_listener
 from bot.middlewares.registration import RegistrationMiddleware
 from bot.middlewares.ai_guard import AIGuardMiddleware
 from bot.middlewares.channel_check import ChannelCheckMiddleware
+from bot.middlewares.bot_guard import BotGuardMiddleware
 from bot.utils.ai_client import shutdown_ai_client
 from bot.services.ai_service import ai_service
 from bot.services.broadcast_worker import BroadcastWorker
@@ -84,7 +85,9 @@ async def main():
     dp.include_router(video.router)
     # fallback.router removed — user requested no catch-all
 
-    # Register middlewares (order matters — channel check first, then AI, then registration)
+    # Register middlewares (order matters — bot guard FIRST to check if bot is enabled globally)
+    dp.message.middleware(BotGuardMiddleware())
+    dp.callback_query.middleware(BotGuardMiddleware())
     dp.message.middleware(ChannelCheckMiddleware())
     dp.callback_query.middleware(ChannelCheckMiddleware())
     dp.message.middleware(AIGuardMiddleware())
