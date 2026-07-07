@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     CHANNEL_USERNAME: str = os.getenv("CHANNEL_USERNAME", "")
     CHANNEL_URL: str = os.getenv("CHANNEL_URL", "")  # e.g., https://t.me/testmyestro
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
-    REDIS_URL: str = os.getenv("REDIS_URL", "")
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     OPENROUTER_BASE_URL: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
     BACKEND_URL: str = os.getenv("BACKEND_URL", "http://localhost:8002")
