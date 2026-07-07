@@ -105,17 +105,8 @@ async def main():
     logger.info("Bot started polling...")
     broadcast_task = None
     try:
-        broadcast_task = asyncio.create_task(broadcast_listener(bot))
-        
-        def broadcast_task_exception_handler(task):
-            try:
-                task.result()
-            except asyncio.CancelledError:
-                pass
-            except Exception as e:
-                logger.error(f"[BROADCAST TASK EXCEPTION] {e}", exc_info=True)
-        
-        broadcast_task.add_done_callback(broadcast_task_exception_handler)
+        # Broadcast listener disabled for now
+        # broadcast_task = asyncio.create_task(broadcast_listener(bot))
         
         await dp.start_polling(bot)
     finally:
