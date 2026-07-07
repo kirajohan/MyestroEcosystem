@@ -16,7 +16,7 @@ from bot.handlers import academy, admin, ai_agent, ai_chat, contact, document, e
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.fsm.storage.memory import MemoryStorage
 
 from bot.config import settings
 from bot.handlers import (
@@ -47,8 +47,8 @@ async def main():
     
     logger.info(f"OK: BOT_TOKEN loaded (length: {len(settings.BOT_TOKEN)})")
 
-    # Redis storage for FSM
-    redis_storage = RedisStorage.from_url(settings.REDIS_URL)
+    # FSM Storage (Memory — no Redis)
+    storage = MemoryStorage()
 
     # Bot instance
     bot = Bot(
@@ -59,7 +59,7 @@ async def main():
     # Set admin IDs (from env or hardcoded for testing)
     bot.admin_ids = []
 
-    dp = Dispatcher(storage=redis_storage)
+    dp = Dispatcher(storage=storage)
 
     dp.include_router(errors.router)
     dp.include_router(start.router)
