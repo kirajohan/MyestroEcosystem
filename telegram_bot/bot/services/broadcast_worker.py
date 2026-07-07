@@ -146,19 +146,38 @@ class BroadcastWorker:
             return None
     
     async def _send_message(self, user_id: int, content: dict, media_file_id: Optional[str]):
-        """Foydalanuvchiga xabar yuborish"""
-        text = content.get("text")
-        media_type = content.get("media_type")
+        """Send message to user with HTML parse mode support."""
+        text = content.get("content", content.get("text", ""))  # Support both "content" and "text"
+        message_type = content.get("message_type", content.get("media_type", "text"))
         
-        if media_type == "text" or not media_file_id:
-            # Faqat matn
-            await self.bot.send_message(user_id, text)
+        if message_type == "text" or not media_file_id:
+            # Text only
+            await self.bot.send_message(
+                user_id, 
+                text,
+                parse_mode="HTML"  # Support HTML formatting
+            )
             
-        elif media_type == "photo":
-            await self.bot.send_photo(user_id, photo=media_file_id, caption=text)
+        elif message_type == "photo":
+            await self.bot.send_photo(
+                user_id, 
+                photo=media_file_id, 
+                caption=text,
+                parse_mode="HTML"
+            )
             
-        elif media_type == "video":
-            await self.bot.send_video(user_id, video=media_file_id, caption=text)
+        elif message_type == "video":
+            await self.bot.send_video(
+                user_id, 
+                video=media_file_id, 
+                caption=text,
+                parse_mode="HTML"
+            )
             
-        elif media_type == "document":
-            await self.bot.send_document(user_id, document=media_file_id, caption=text)
+        elif message_type == "document":
+            await self.bot.send_document(
+                user_id, 
+                document=media_file_id, 
+                caption=text,
+                parse_mode="HTML"
+            )

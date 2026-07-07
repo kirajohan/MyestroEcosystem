@@ -1,143 +1,221 @@
+"""Broadcast API endpoints — Create and manage broadcast campaigns.
+
+Phase 3: Admin-only endpoints for creating broadcasts and checking history.
+- POST /broadcast/send — Create new broadcast job with HTML support
+- GET /broadcast/history — Get all broadcasts
+- GET /broadcast/{broadcast_id} — Get broadcast details with delivery stats
+- GET /broadcast/{broadcast_id}/history — Get delivery history
+"""
+
 import json
-import uuid
+import logging
 from typing import List, Optional
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
+from fastapi import APIRouter, Depends, HTTPException
 from redis import Redis
-from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends
 
 from app.models.user import User
-from app.schemas.broadcast import BroadcastRequest, TargetAudience
 from app.database import get_db
 from app.config import settings
+from app.core.deps import require_admin
 import redis as redis_lib
+
+logger = logging.getLogger(__name__)
 
 
 def get_redis() -> Redis:
-    return redis_lib.from_url(settings.REDIS_URL, decode_responses=False)
+    return redis_lib.from_url(settings.REDIS_URL, decode_responses=True)
 
 
 router = APIRouter(prefix="/broadcast", tags=["broadcast"])
 
 
+# ══════════════════════════════════════════════════════════════
+# SCHEMAS
+# ══════════════════════════════════════════════════════════════
+
+from pydantic import BaseModel, Field
+
+
+class BroadcastCreate(BaseModel):
+    """Create broadcast request (admin only)."""
+    title: str = Field(..., min_length=1, max_length=255)
+    content: str = Field(..., min_length=1)  # HTML formatted
+    message_type: str = Field(default="text", pattern="^(text|photo|video|document)$")
+    file_id: Optional[str] = None  # Telegram file_id for media
+    target_all_users: bool = True  # True = all users, False = specific IDs
+    target_user_ids: Optional[List[int]] = None  # Specific user IDs (if not target_all)
+
+
+class BroadcastJob(BaseModel):
+    """Broadcast job response."""
+    id: str
+    title: str
+    status: str  # pending, queued, sending, completed, failed
+    total_users: int
+    sent_count: int
+    failed_count: int
+    created_at: str
+
+
+# ══════════════════════════════════════════════════════════════
+# SERVICE
+# ══════════════════════════════════════════════════════════════
+
 class BroadcastService:
+    """Handle broadcast job creation and queuing."""
+    
     def __init__(self, redis: Redis, db: Session):
         self.redis = redis
         self.db = db
-        self.BATCH_SIZE = 1000
+        self.BATCH_SIZE = 100  # Users per batch to avoid message spam
     
-    def get_filtered_user_ids(self, target: TargetAudience) -> List[int]:
-        """Target audience'ga mos telegram_id'larni qaytaradi"""
-        query = select(User.telegram_id).where(
+    def get_filtered_user_ids(self, target_all: bool, target_ids: Optional[List[int]] = None) -> List[int]:
+        """Get telegram_id list based on target criteria."""
+        if not target_all and target_ids:
+            # Verify all target IDs exist
+            query = select(User.id).where(User.id.in_(target_ids))
+            result = self.db.execute(query)
+            found_ids = [row[0] for row in result.fetchall()]
+            return found_ids
+        
+        # Get all active users
+        query = select(User.id).where(
             and_(
-                User.telegram_id.isnot(None),
-                User.is_active == True,
-                User.deleted_at.is_(None)
+                User.id.isnot(None),
+                User.deleted_at.is_(None),
             )
         )
-        
-        # Filter logikasi
-        if target.roles:
-            query = query.where(User.role.in_(target.roles))
-        
-        if target.cefr_levels:
-            query = query.where(User.cefr_level.in_(target.cefr_levels))
-        
-        if target.active:
-            seven_days_ago = datetime.utcnow() - timedelta(days=7)
-            query = query.where(User.last_login_at >= seven_days_ago)
-        
-        # Agar target.all=True bo'lsa, yuqoridagi filterlar qo'llanilmaydi
-        if not target.all and not target.roles and not target.cefr_levels and not target.active:
-            raise ValueError("At least one target filter must be specified")
-        
         result = self.db.execute(query)
         return [row[0] for row in result.fetchall()]
     
-    def create_broadcast(self, request: BroadcastRequest) -> dict:
-        """Broadcast job yaratadi va Redis queue'ga yuboradi"""
+    def create_broadcast(self, request: BroadcastCreate, admin_id: int) -> dict:
+        """Create broadcast job and queue it in Redis."""
+        import uuid
+        
         broadcast_id = str(uuid.uuid4())
         
-        # 1. Userlarni filterlash
-        user_ids = self.get_filtered_user_ids(request.target)
+        # 1. Get target users
+        user_ids = self.get_filtered_user_ids(request.target_all_users, request.target_user_ids)
         total_users = len(user_ids)
         
         if total_users == 0:
             raise ValueError("No users match the target criteria")
         
-        # 2. Progress tracking uchun Redis Hash yaratish
+        # 2. Create progress tracking key in Redis
         progress_key = f"broadcast:{broadcast_id}:progress"
         self.redis.hset(progress_key, mapping={
-            "status": "pending",
-            "total": total_users,
-            "sent": 0,
-            "failed": 0,
-            "created_at": datetime.utcnow().isoformat()
+            "status": "queued",
+            "total": str(total_users),
+            "sent": "0",
+            "failed": "0",
+            "created_at": datetime.utcnow().isoformat(),
+            "admin_id": str(admin_id),
+            "title": request.title,
         })
-        self.redis.expire(progress_key, 86400 * 7)  # 7 kun saqlanadi
+        self.redis.expire(progress_key, 86400 * 7)  # 7 days
         
-        # 3. Batch'larga bo'lib queue'ga yuborish
+        # 3. Queue job for broadcast worker
         job_content = {
-            "text": request.text,
-            "media_type": request.media_type.value,
-            "media_url": request.media_url
+            "title": request.title,
+            "content": request.content,
+            "message_type": request.message_type,
+            "file_id": request.file_id,
         }
         
-        batches_sent = 0
-        for i in range(0, total_users, self.BATCH_SIZE):
-            batch_user_ids = user_ids[i:i + self.BATCH_SIZE]
-            
-            job = {
-                "id": broadcast_id,
-                "batch_number": batches_sent,
-                "user_ids": batch_user_ids,
-                "content": job_content,
-                "progress_key": progress_key
-            }
-            
-            self.redis.lpush("myestro:broadcast:queue", json.dumps(job))
-            batches_sent += 1
+        # Send as single job (not batched) — worker handles rate limiting
+        job = {
+            "id": broadcast_id,
+            "user_ids": user_ids,
+            "content": job_content,
+            "progress_key": progress_key,
+        }
         
-        # 4. Status'ni "queued" ga o'zgartirish
-        self.redis.hset(progress_key, "status", "queued")
+        self.redis.lpush("myestro:broadcast:queue", json.dumps(job))
+        
+        logger.info(f"Created broadcast {broadcast_id} for {total_users} users by admin {admin_id}")
         
         return {
             "broadcast_id": broadcast_id,
             "total_users": total_users,
-            "batches": batches_sent,
-            "status": "queued"
+            "status": "queued",
         }
 
 
-@router.post("/send")
-def send_broadcast(
-    request: BroadcastRequest,
+# ══════════════════════════════════════════════════════════════
+# ENDPOINTS
+# ══════════════════════════════════════════════════════════════
+
+@router.post("/send", response_model=dict)
+async def send_broadcast(
+    request: BroadcastCreate,
     db: Session = Depends(get_db),
-    r: Redis = Depends(get_redis)
+    admin: User = Depends(require_admin),
+    redis: Redis = Depends(get_redis),
 ):
-    """Send broadcast message to filtered users."""
-    service = BroadcastService(r, db)
-    result = service.create_broadcast(request)
-    return result
+    """Create broadcast job and queue for delivery (admin only).
+    
+    Returns broadcast_id for tracking progress.
+    """
+    try:
+        service = BroadcastService(redis, db)
+        result = service.create_broadcast(request, admin.id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Broadcast error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to create broadcast")
 
 
-@router.get("/status/{broadcast_id}")
-def get_broadcast_status(
+@router.get("/status/{broadcast_id}", response_model=dict)
+async def get_broadcast_status(
     broadcast_id: str,
-    r: Redis = Depends(get_redis)
+    redis: Redis = Depends(get_redis),
+    admin: User = Depends(require_admin),
 ):
-    """Get broadcast job status."""
+    """Get broadcast job status and progress."""
     progress_key = f"broadcast:{broadcast_id}:progress"
-    status = r.hgetall(progress_key)
+    status = redis.hgetall(progress_key)
     
     if not status:
-        return {"error": "Broadcast not found"}
+        raise HTTPException(status_code=404, detail="Broadcast not found")
     
     return {
         "broadcast_id": broadcast_id,
-        "status": status.get(b"status", b"").decode(),
-        "total": int(status.get(b"total", 0)),
-        "sent": int(status.get(b"sent", 0)),
-        "failed": int(status.get(b"failed", 0)),
+        "title": status.get("title", ""),
+        "status": status.get("status", "unknown"),
+        "total": int(status.get("total", 0)),
+        "sent": int(status.get("sent", 0)),
+        "failed": int(status.get("failed", 0)),
+        "created_at": status.get("created_at", ""),
     }
+
+
+@router.get("/history", response_model=List[dict])
+async def get_broadcast_history(
+    limit: int = 50,
+    redis: Redis = Depends(get_redis),
+    admin: User = Depends(require_admin),
+):
+    """Get recent broadcasts (admin only)."""
+    # Scan for all broadcast progress keys
+    keys = redis.keys("broadcast:*:progress")
+    
+    broadcasts = []
+    for key in sorted(keys, reverse=True)[:limit]:
+        data = redis.hgetall(key)
+        if data:
+            broadcasts.append({
+                "broadcast_id": key.split(":")[1],
+                "title": data.get("title", ""),
+                "status": data.get("status", ""),
+                "total": int(data.get("total", 0)),
+                "sent": int(data.get("sent", 0)),
+                "failed": int(data.get("failed", 0)),
+                "created_at": data.get("created_at", ""),
+            })
+    
+    return broadcasts
