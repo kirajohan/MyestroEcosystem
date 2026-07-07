@@ -11,7 +11,7 @@ if _app_root not in sys.path:
 if _telegram_bot_root not in sys.path:
     sys.path.insert(0, _telegram_bot_root)
 
-from bot.handlers import academy, admin, ai_agent, contact, document, errors, menu, photo, profile, referral, register, registration, reminders, start, sticker, video, broadcast, inbox
+from bot.handlers import academy, admin, ai_agent, ai_chat, contact, document, errors, menu, photo, profile, referral, register, registration, reminders, start, sticker, video, broadcast, inbox
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -71,6 +71,7 @@ async def main():
     dp.include_router(register.router)     # New Register/Login flow
     dp.include_router(profile.router)      # Profile + Edit
     dp.include_router(menu.router)         # Reply + callback handlers
+    dp.include_router(ai_chat.router)      # AI Chat (/ai command)
     dp.include_router(ai_agent.router)     # AI Agent — voice + advanced text
     dp.include_router(registration.router) # Backend sync
     dp.include_router(inbox.router)        # Inbox for user messages
