@@ -43,7 +43,7 @@
   
   [services.variables]
     # Bot configuration
-    BOT_TOKEN = "${{ secret('BOT_TOKEN') }}"
+    BOT_TOKEN = "${{ variables.BOT_TOKEN }}"
     API_BASE_URL = "${{ services.myestro-backend.public.url }}"
     REDIS_URL = "${{ Railway.Redis.URL }}"
     DATABASE_URL = "${{ Railway.PostgreSQL.URL }}"
