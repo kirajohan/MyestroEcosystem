@@ -445,6 +445,14 @@ async def _do_login(message: types.Message, state: FSMContext, user_info: dict, 
         get_text("registered.welcome_new", lang, name=user_info.get("full_name", "")),
         reply_markup=registered_menu_keyboard(lang),
     )
+    
+    # Phase 2: Show channel join message
+    if settings.CHANNEL_ID and settings.CHANNEL_USERNAME:
+        await message.answer(
+            f"📢 <b>Yangiliklarga a'zo bo'lish</b>\n\n"
+            f"Barcha darslik yangiliklarini, taklif va eksklyuziv ta'limlarga faqat kanalda chiqadi!\n\n"
+            f"🔗 <a href='https://t.me/{settings.CHANNEL_USERNAME}'>Kanalga a'zo bo'lish</a>"
+        )
 
 
 def _get_lang(data: dict) -> str:

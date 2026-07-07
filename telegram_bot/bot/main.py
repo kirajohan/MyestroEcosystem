@@ -84,6 +84,12 @@ async def main():
     # fallback.router removed — user requested no catch-all
 
     # Register middlewares (order matters — channel check first, then AI, then registration)
+    dp.message.middleware(ChannelCheckMiddleware())
+    dp.callback_query.middleware(ChannelCheckMiddleware())
+    dp.message.middleware(AIGuardMiddleware())
+    dp.callback_query.middleware(AIGuardMiddleware())
+    dp.message.middleware(RegistrationMiddleware())
+    dp.callback_query.middleware(RegistrationMiddleware())
 
     # AI Health Check on startup
     logger.info("Running AI health check...")
