@@ -7,7 +7,7 @@ Covers:
 """
 
 from aiogram import Router, types, F
-from aiogram.filters import StateFilter, Command
+from aiogram.filters import StateFilter, Command, or_f
 from aiogram.fsm.context import FSMContext
 from bot.states.registration import (
     StartSection, RegistrationFSM, MenuSection, RegisteredSection,
@@ -153,9 +153,12 @@ async def send_content_list(target, content_type: str, page: int, lang: str, edi
 
 
 # --- About Us ---
-@router.message((F.text.in_([
-    "ℹ️ Biz haqimizda", "ℹ️ О нас", "ℹ️ About us",
-])) | Command("about"))
+# FIX: F.text.in_([...]) | Command(...) TypeError ni oldini olish uchun
+#      or_f() ishlatiladi — bu ikki xil filter turini xavfsiz birlashtiradi
+@router.message(or_f(
+    F.text.in_(["ℹ️ Biz haqimizda", "ℹ️ О нас", "ℹ️ About us"]),
+    Command("about"),
+))
 async def cmd_about(message: types.Message, state: FSMContext):
     """Handle About Us — show info + inline sub-menu."""
     user_data = await state.get_data()
@@ -169,9 +172,10 @@ async def cmd_about(message: types.Message, state: FSMContext):
 
 
 # --- Guide ---
-@router.message((F.text.in_([
-    "📖 Qo'llanma", "📖 Руководство", "📖 Guide",
-])) | Command("guide"))
+@router.message(or_f(
+    F.text.in_(["📖 Qo'llanma", "📖 Руководство", "📖 Guide"]),
+    Command("guide"),
+))
 async def cmd_guide(message: types.Message, state: FSMContext):
     """Handle Guide — show info + inline sub-menu."""
     user_data = await state.get_data()
@@ -185,9 +189,10 @@ async def cmd_guide(message: types.Message, state: FSMContext):
 
 
 # --- Language ---
-@router.message((F.text.in_([
-    "🌐 Til/Language", "🌐 Язык", "🌐 Language",
-])) | Command("language"))
+@router.message(or_f(
+    F.text.in_(["🌐 Til/Language", "🌐 Язык", "🌐 Language"]),
+    Command("language"),
+))
 async def cmd_language(message: types.Message, state: FSMContext):
     """Handle Language selection — show inline language picker."""
     user_data = await state.get_data()
@@ -201,9 +206,10 @@ async def cmd_language(message: types.Message, state: FSMContext):
 
 
 # --- Admin Message ---
-@router.message((F.text.in_([
-    "📨 Admin ga xabar", "📨 Написать админу", "📨 Message admin",
-])) | Command("admin"))
+@router.message(or_f(
+    F.text.in_(["📨 Admin ga xabar", "📨 Написать админу", "📨 Message admin"]),
+    Command("admin"),
+))
 async def cmd_admin_message(message: types.Message, state: FSMContext):
     """Handle Admin Message — show instructions + inline keyboard."""
     user_data = await state.get_data()
@@ -220,14 +226,20 @@ async def cmd_admin_message(message: types.Message, state: FSMContext):
 # REGISTERED USER — REPLY KEYBOARD HANDLERS (message, not callback)
 # ══════════════════════════════════════════════════════════════
 
-@router.message((F.text.in_(["👤 Profil", "👤 Профиль", "👤 Profile"])) | Command("profile"))
+@router.message(or_f(
+    F.text.in_(["👤 Profil", "👤 Профиль", "👤 Profile"]),
+    Command("profile"),
+))
 async def msg_profile(message: types.Message, state: FSMContext):
     """Reply keyboard → Profile."""
     from bot.handlers.profile import show_profile
     await show_profile(message, state, from_callback=False)
 
 
-@router.message((F.text.in_(["⚙️ Sozlamalar", "⚙️ Настройки", "⚙️ Settings"])) | Command("settings"))
+@router.message(or_f(
+    F.text.in_(["⚙️ Sozlamalar", "⚙️ Настройки", "⚙️ Settings"]),
+    Command("settings"),
+))
 async def msg_settings(message: types.Message, state: FSMContext):
     """Reply keyboard → Settings."""
     user_data = await state.get_data()
@@ -240,17 +252,26 @@ async def msg_settings(message: types.Message, state: FSMContext):
     )
 
 
-@router.message((F.text.in_(["📖 Qo'llanma", "📖 Руководство", "📖 Guide"])) | Command("guide"))
+# NOTE: Guide handler qo'sh dekorator emas — cmd_guide bilan bir xil filter,
+# shuning uchun registered user uchun alohida state-ga bog'liq bo'lmasa
+# cmd_guide handler ishlaydi. Agar kerak bo'lsa — StateFilter qo'shing.
+@router.message(or_f(
+    F.text.in_(["📖 Qo'llanma", "📖 Руководство", "📖 Guide"]),
+    Command("guide"),
+))
 async def msg_guide(message: types.Message, state: FSMContext):
-    """Reply keyboard → Guide."""
+    """Reply keyboard → Guide (registered users)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await message.answer(get_text("guide.text", lang))
 
 
-@router.message((F.text.in_(["📨 Admin ga xabar", "📨 Написать админу", "📨 Message admin"])) | Command("admin"))
+@router.message(or_f(
+    F.text.in_(["📨 Admin ga xabar", "📨 Написать админу", "📨 Message admin"]),
+    Command("admin"),
+))
 async def msg_admin(message: types.Message, state: FSMContext):
-    """Reply keyboard → Admin contact."""
+    """Reply keyboard → Admin contact (registered users)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(MenuSection.contact_admin)
@@ -260,7 +281,10 @@ async def msg_admin(message: types.Message, state: FSMContext):
     )
 
 
-@router.message((F.text.in_(["🎬 Video Darslik", "🎬 Видеоурок", "🎬 Video Lesson"])) | Command("video"))
+@router.message(or_f(
+    F.text.in_(["🎬 Video Darslik", "🎬 Видеоурок", "🎬 Video Lesson"]),
+    Command("video"),
+))
 async def msg_video(message: types.Message, state: FSMContext):
     """Reply keyboard → Video lessons (paginated)."""
     user_data = await state.get_data()
@@ -268,7 +292,10 @@ async def msg_video(message: types.Message, state: FSMContext):
     await send_content_list(message, "video", 1, lang, edit=False)
 
 
-@router.message((F.text.in_(["📁 File Darsliklar", "📁 Файлы уроков", "📁 File Lessons"])) | Command("file"))
+@router.message(or_f(
+    F.text.in_(["📁 File Darsliklar", "📁 Файлы уроков", "📁 File Lessons"]),
+    Command("file"),
+))
 async def msg_file(message: types.Message, state: FSMContext):
     """Reply keyboard → File lessons (paginated)."""
     user_data = await state.get_data()

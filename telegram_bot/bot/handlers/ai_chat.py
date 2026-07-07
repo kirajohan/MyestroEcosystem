@@ -32,11 +32,11 @@ async def cmd_start_ai(message: types.Message):
     )
 
 
-@router.message(F.text, Command("ai"))
+@router.message(Command("ai"))
 async def ai_handler(message: types.Message):
-    """Handle AI chat messages (if text follows /ai command)."""
+    """Handle AI chat messages."""
     lang = "uz"
-    text = message.text.replace("/ai", "").strip()
+    text = message.text.replace("/ai", "").strip() if message.text else ""
     
     if not text:
         await message.answer("Iltimos, savol yoki matnni yozing.")

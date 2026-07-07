@@ -8,6 +8,7 @@ Flow:
 """
 
 from aiogram import Router, types, F
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from typing import Optional
 from bot.states.registration import AuthFSM, RegisteredSection, StartSection
@@ -88,7 +89,7 @@ async def _do_login(message: types.Message, state: FSMContext, user_info: dict, 
     )
 
 
-@router.message(F.contact, AuthFSM.requesting_contact)
+@router.message(F.contact, StateFilter(AuthFSM.requesting_contact))
 async def handle_contact(message: types.Message, state: FSMContext):
     """Handle contact share — check DB, login or register."""
     phone = message.contact.phone_number
@@ -123,4 +124,3 @@ async def handle_contact(message: types.Message, state: FSMContext):
             get_text("register.ask_name", lang),
             reply_markup=remove_keyboard,
         )
-
