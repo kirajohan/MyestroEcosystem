@@ -36,12 +36,16 @@ logging.basicConfig(level=settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
 
-
-
-
 async def main():
     """Initialize and start the bot."""
     logger.info("Starting Myestro Bot...")
+
+    # Debug: Check BOT_TOKEN
+    if not settings.BOT_TOKEN or settings.BOT_TOKEN.strip() == "":
+        logger.error("ERROR: BOT_TOKEN is empty! Set it in Railway environment variables.")
+        raise ValueError("BOT_TOKEN environment variable is required")
+    
+    logger.info(f"OK: BOT_TOKEN loaded (length: {len(settings.BOT_TOKEN)})")
 
     # Redis storage for FSM
     redis_storage = RedisStorage.from_url(settings.REDIS_URL)
@@ -57,24 +61,16 @@ async def main():
 
     dp = Dispatcher(storage=redis_storage)
 
-    # Debug handler to log incoming text messages
-  #  try:
-  #     from bot.handlers import debug
-   #     dp.include_router(debug.router)
-   # except Exception:
-    #    logger.warning("Debug router not available")
-
-    dp.include_router(errors.router)       # Error handler first (catch all)
+    dp.include_router(errors.router)
     dp.include_router(start.router)
-    dp.include_router(contact.router)      # Phone contact handler
-    # AI Agent early so general text messages are handled before reply-keyboard routers
-    dp.include_router(register.router)     # New Register/Login flow
-    dp.include_router(profile.router)      # Profile + Edit
-    dp.include_router(menu.router)         # Reply + callback handlers
-    dp.include_router(ai_chat.router)      # AI Chat (/ai command)
-    dp.include_router(ai_agent.router)     # AI Agent — voice + advanced text
-    dp.include_router(registration.router) # Backend sync
-    dp.include_router(inbox.router)        # Inbox for user messages
+    dp.include_router(contact.router)
+    dp.include_router(register.router)
+    dp.include_router(profile.router)
+    dp.include_router(menu.router)
+    dp.include_router(ai_chat.router)
+    dp.include_router(ai_agent.router)
+    dp.include_router(registration.router)
+    dp.include_router(inbox.router)
     dp.include_router(voice.router)
     dp.include_router(reminders.router)
     dp.include_router(referral.router)
@@ -84,9 +80,8 @@ async def main():
     dp.include_router(document.router)
     dp.include_router(sticker.router)
     dp.include_router(video.router)
-    # fallback.router removed — user requested no catch-all
 
-    # Register middlewares (order matters — bot guard FIRST to check if bot is enabled globally)
+    # Register middlewares
     dp.message.middleware(BotGuardMiddleware())
     dp.callback_query.middleware(BotGuardMiddleware())
     dp.message.middleware(ChannelCheckMiddleware())
@@ -101,20 +96,17 @@ async def main():
     try:
         ai_status = await ai_service.health_check()
         if ai_status:
-            logger.info("✅ AI health check PASSED — models available")
+            logger.info("OK: AI health check PASSED — models available")
         else:
-            logger.warning("⚠️ AI health check FAILED — check OPENROUTER_API_KEY")
+            logger.warning("WARN: AI health check FAILED — check OPENROUTER_API_KEY")
     except Exception as e:
-        logger.warning(f"⚠️ AI health check ERROR: {e}")
+        logger.warning(f"WARN: AI health check ERROR: {e}")
 
     logger.info("Bot started polling...")
     broadcast_task = None
     try:
-        # Start broadcast listener as background task
-
         broadcast_task = asyncio.create_task(broadcast_listener(bot))
         
-        # Add exception handler to task
         def broadcast_task_exception_handler(task):
             try:
                 task.result()
@@ -127,7 +119,6 @@ async def main():
         
         await dp.start_polling(bot)
     finally:
-        # Cleanup
         if broadcast_task and not broadcast_task.done():
             broadcast_task.cancel()
         await shutdown_ai_client()
