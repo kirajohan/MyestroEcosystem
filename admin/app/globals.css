@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 30 100% 97%;
+  --foreground: 20 14% 4%;
+  --primary: 24 95% 53%;
+  --primary-hover: 24 96% 45%;
+  --primary-light: 39 100% 71%;
+  --sidebar-bg: 24 14% 11%;
+  --sidebar-hover: 24 9% 18%;
+}
+
+body {
+  background-color: rgb(255 247 237);
+  color: rgb(20 20 20);
+}
+
+html {
+  scroll-behavior: smooth;
+}

@@ -1,0 +1,266 @@
+-- ============================================================
+-- Myestro Initial Schema
+-- 14 tables (ENUM types o'chirilgan — barcha ENUM lar VARCHAR sifatida ishlatiladi)
+-- ============================================================
+
+-- -----------------------------------------------------------
+-- 1. users
+-- -----------------------------------------------------------
+CREATE TABLE users (
+    id              BIGSERIAL PRIMARY KEY,
+    email           VARCHAR(255) NOT NULL UNIQUE,
+    password_hash   VARCHAR(255),
+    full_name       VARCHAR(255) NOT NULL,
+    role            VARCHAR(20) DEFAULT 'student' NOT NULL,
+    cefr_level      VARCHAR(10) DEFAULT 'A1' NOT NULL,
+    target_level    VARCHAR(10) DEFAULT 'B1' NOT NULL,
+    avatar_url      TEXT,
+    phone           VARCHAR(50),
+    lang            VARCHAR(10) DEFAULT 'uz' NOT NULL,
+    learning_lang   VARCHAR(10) DEFAULT 'en' NOT NULL,
+    telegram_id     BIGINT UNIQUE,
+    telegram_username VARCHAR(255),
+    auth_provider   VARCHAR(20) DEFAULT 'email' NOT NULL,
+    provider_user_id VARCHAR(255),
+    is_active       BOOLEAN DEFAULT TRUE NOT NULL,
+    is_verified     BOOLEAN DEFAULT FALSE NOT NULL,
+    profile_completed BOOLEAN DEFAULT FALSE NOT NULL,
+    last_login_at   TIMESTAMPTZ,
+    location        VARCHAR(255),
+    ai_enabled      BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    deleted_at      TIMESTAMPTZ
+);
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_telegram_id ON users(telegram_id);
+CREATE INDEX idx_users_role ON users(role);
+
+-- -----------------------------------------------------------
+-- 2. sessions
+-- -----------------------------------------------------------
+CREATE TABLE sessions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    refresh_token   VARCHAR(500) NOT NULL,
+    device_info     TEXT,
+    ip_address      VARCHAR(45),
+    expires_at      TIMESTAMPTZ NOT NULL,
+    is_revoked      BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    revoked_at      TIMESTAMPTZ
+);
+
+CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
+
+-- -----------------------------------------------------------
+-- 3. conversation_threads
+-- -----------------------------------------------------------
+CREATE TABLE conversation_threads (
+    id                  BIGSERIAL PRIMARY KEY,
+    user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title               VARCHAR(255),
+    cefr_level          VARCHAR(10) DEFAULT 'A1' NOT NULL,
+    is_active           BOOLEAN DEFAULT TRUE NOT NULL,
+    telegram_thread_id  BIGINT,
+    last_sync_at        TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at          TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_conversation_threads_user_id ON conversation_threads(user_id);
+
+-- -----------------------------------------------------------
+-- 4. messages
+-- -----------------------------------------------------------
+CREATE TABLE messages (
+    id                  BIGSERIAL PRIMARY KEY,
+    thread_id           BIGINT NOT NULL REFERENCES conversation_threads(id) ON DELETE CASCADE,
+    user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role                VARCHAR(20) DEFAULT 'user' NOT NULL,
+    content             TEXT NOT NULL,
+    content_type        VARCHAR(20) DEFAULT 'text' NOT NULL,
+    ai_model            VARCHAR(100),
+    tokens_used         INTEGER,
+    processing_time_ms  INTEGER,
+    cefr_level          VARCHAR(10),
+    grammar_corrections JSONB,
+    vocabulary_suggestions JSONB,
+    source              VARCHAR(20) DEFAULT 'telegram' NOT NULL,
+    created_at          TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_messages_thread_id ON messages(thread_id);
+CREATE INDEX idx_messages_user_id ON messages(user_id);
+CREATE INDEX idx_messages_created_at ON messages(created_at);
+
+-- -----------------------------------------------------------
+-- 10. knowledge_categories
+-- -----------------------------------------------------------
+CREATE TABLE knowledge_categories (
+    id          BIGSERIAL PRIMARY KEY,
+    name        VARCHAR(255) NOT NULL,
+    slug        VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    icon        VARCHAR(100),
+    order_index INTEGER DEFAULT 0,
+    is_active   BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+-- -----------------------------------------------------------
+-- 11. knowledge_docs
+-- -----------------------------------------------------------
+CREATE TABLE knowledge_docs (
+    id          BIGSERIAL PRIMARY KEY,
+    category_id BIGINT REFERENCES knowledge_categories(id) ON DELETE SET NULL,
+    title       VARCHAR(255) NOT NULL,
+    slug        VARCHAR(255) NOT NULL UNIQUE,
+    file_path   TEXT NOT NULL,
+    cefr_level  VARCHAR(10),
+    description TEXT,
+    tags        JSONB,
+    is_active   BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_knowledge_docs_category_id ON knowledge_docs(category_id);
+CREATE INDEX idx_knowledge_docs_cefr_level ON knowledge_docs(cefr_level);
+
+-- -----------------------------------------------------------
+-- 12. api_logs
+-- -----------------------------------------------------------
+CREATE TABLE api_logs (
+    id              BIGSERIAL PRIMARY KEY,
+    user_id         BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    endpoint        VARCHAR(500) NOT NULL,
+    method          VARCHAR(10) NOT NULL,
+    status_code     INTEGER NOT NULL,
+    response_time_ms INTEGER,
+    ip_address      VARCHAR(45),
+    user_agent      TEXT,
+    request_body    JSONB,
+    response_body   JSONB,
+    created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_api_logs_user_id ON api_logs(user_id);
+CREATE INDEX idx_api_logs_created_at ON api_logs(created_at);
+CREATE INDEX idx_api_logs_endpoint ON api_logs(endpoint);
+
+-- -----------------------------------------------------------
+-- 13. error_logs
+-- -----------------------------------------------------------
+CREATE TABLE error_logs (
+    id              BIGSERIAL PRIMARY KEY,
+    service         VARCHAR(100) NOT NULL,
+    error_type      VARCHAR(255) NOT NULL,
+    error_message   TEXT NOT NULL,
+    stack_trace     TEXT,
+    cause           TEXT,
+    solution        TEXT,
+    is_fixed        BOOLEAN DEFAULT FALSE NOT NULL,
+    severity        VARCHAR(20) DEFAULT 'error' NOT NULL,
+    user_id         BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    metadata        JSONB,
+    created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    fixed_at        TIMESTAMPTZ
+);
+
+CREATE INDEX idx_error_logs_service ON error_logs(service);
+CREATE INDEX idx_error_logs_severity ON error_logs(severity);
+CREATE INDEX idx_error_logs_is_fixed ON error_logs(is_fixed);
+CREATE INDEX idx_error_logs_created_at ON error_logs(created_at);
+
+-- -----------------------------------------------------------
+-- 14. audit_logs
+-- -----------------------------------------------------------
+CREATE TABLE audit_logs (
+    id              BIGSERIAL PRIMARY KEY,
+    user_id         BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    action          VARCHAR(100) NOT NULL,
+    resource        VARCHAR(255),
+    details         JSONB,
+    ip_address      VARCHAR(45),
+    user_agent      TEXT,
+    severity        VARCHAR(20) DEFAULT 'info' NOT NULL,
+    created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+
+-- -----------------------------------------------------------
+-- 15. system_settings
+-- -----------------------------------------------------------
+CREATE TABLE system_settings (
+    id              BIGSERIAL PRIMARY KEY,
+    key             VARCHAR(255) NOT NULL UNIQUE,
+    value           TEXT NOT NULL,
+    description     TEXT,
+    created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_system_settings_key ON system_settings(key);
+
+-- -----------------------------------------------------------
+-- 16. content_items (Video / File / Text lessons)
+-- -----------------------------------------------------------
+CREATE TABLE content_items (
+    id              BIGSERIAL PRIMARY KEY,
+    title           VARCHAR(255) NOT NULL,
+    description     TEXT,
+    content_type    VARCHAR(20) NOT NULL,  -- 'video' | 'file' | 'text'
+    file_path       TEXT,
+    telegram_file_id VARCHAR(255),
+    cefr_level      VARCHAR(10),
+    order_index     INTEGER DEFAULT 0,
+    is_active       BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_content_items_type ON content_items(content_type);
+CREATE INDEX idx_content_items_cefr ON content_items(cefr_level);
+CREATE INDEX idx_content_items_active ON content_items(is_active);
+
+-- -----------------------------------------------------------
+-- 17. bot_texts (CMS for bot messages)
+-- -----------------------------------------------------------
+CREATE TABLE bot_texts (
+    id              BIGSERIAL PRIMARY KEY,
+    key             VARCHAR(100) NOT NULL,
+    lang            VARCHAR(10) DEFAULT 'uz' NOT NULL,
+    text            TEXT NOT NULL,
+    updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_bot_texts_key ON bot_texts(key);
+CREATE INDEX idx_bot_texts_lang ON bot_texts(lang);
+
+-- -----------------------------------------------------------
+-- 18. admin_messages (Inbox for user messages)
+-- -----------------------------------------------------------
+CREATE TABLE admin_messages (
+    id              BIGSERIAL PRIMARY KEY,
+    user_id         BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    user_telegram_id BIGINT,
+    user_name       VARCHAR(255),
+    content_type    VARCHAR(20) DEFAULT 'text' NOT NULL,  -- 'text' | 'photo' | 'voice' | 'document' | 'video' | 'sticker'
+    text            TEXT,
+    file_id         VARCHAR(255),
+    is_read         BOOLEAN DEFAULT FALSE NOT NULL,
+    is_replied      BOOLEAN DEFAULT FALSE NOT NULL,
+    admin_reply     TEXT,
+    created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_admin_messages_user_id ON admin_messages(user_id);
+CREATE INDEX idx_admin_messages_is_read ON admin_messages(is_read);
+CREATE INDEX idx_admin_messages_created_at ON admin_messages(created_at);

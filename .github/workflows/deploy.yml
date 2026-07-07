@@ -1,0 +1,25 @@
+name: Deploy Myestro
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd /opt/myestro
+            git pull origin main
+            docker compose -f docker-compose.yml build
+            docker compose -f docker-compose.yml up -d
+            docker compose exec -T backend alembic upgrade head || true
