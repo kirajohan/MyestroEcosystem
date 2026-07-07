@@ -38,7 +38,9 @@ async def get_global_bot_status():
                 _settings_cache["_ts"] = current_time
                 return value
     except Exception as e:
-        logger.warning(f"Failed to fetch BOT_ENABLED setting: {e}")
+        logger.debug(f"Failed to fetch BOT_ENABLED setting (expected if backend offline): {e}")
+        # Default to enabled if API unreachable
+        return "true"
     
     # Return cached value or default
     return _settings_cache.get("BOT_ENABLED", "true")
