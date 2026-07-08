@@ -264,3 +264,36 @@ CREATE TABLE admin_messages (
 CREATE INDEX idx_admin_messages_user_id ON admin_messages(user_id);
 CREATE INDEX idx_admin_messages_is_read ON admin_messages(is_read);
 CREATE INDEX idx_admin_messages_created_at ON admin_messages(created_at);
+
+-- ============================================================
+-- DEFAULT ADMIN USER
+-- ============================================================
+-- Email: admin@myestro.com
+-- Password: admin123
+-- Role: superadmin
+INSERT INTO users (
+    email,
+    password_hash,
+    full_name,
+    role,
+    cefr_level,
+    target_level,
+    lang,
+    auth_provider,
+    is_active,
+    is_verified,
+    profile_completed
+) VALUES (
+    'abdurakhmonbek0770@gmail.com',
+    'admin123',
+    'Super Admin',
+    'admin',
+    'C2',
+    'C2',
+    'uz',
+    'email',
+    TRUE,
+    TRUE,
+    TRUE
+)
+ON CONFLICT (email) DO NOTHING;
