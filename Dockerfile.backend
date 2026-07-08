@@ -4,11 +4,10 @@ FROM python:3.11-slim
 # Loyihaning asosiy ildiz (root) katalogini belgilaymiz
 WORKDIR /app
 
-# System dependencies o'rnatish
-RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# System dependencies o'rnatish (Xotirani tejaydigan variant)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends postgresql-client curl && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # 1. Requirements faylini to'g'ri manzilga ko'chirib, o'rnatamiz
 COPY telegram_bot/backend/requirements.txt ./telegram_bot/backend/
