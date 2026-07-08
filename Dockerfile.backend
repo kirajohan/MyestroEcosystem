@@ -19,7 +19,6 @@ COPY telegram_bot/ ./telegram_bot/
 
 # 3. Agar kerak bo'lsa, migratsiya va env fayllarini nusxalaymiz
 COPY migrations/ ./migrations/
-COPY .env* ./
 
 # ... (tepadagi qismlari o'zgarishsiz qoladi)
 
