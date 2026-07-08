@@ -198,12 +198,11 @@ async def patch_content(
             raise BadRequestException(
                 f"Telegram API xatosi: HTTP {tg_resp.status_code} — {tg_resp.text[:200]}"
             )
-
+        
         tg_data = tg_resp.json()
         if not tg_data.get("ok"):
-            raise BadRequestException(
-                f"Telegram API xatosi: {tg_data.get('description', 'Noma\'lum xato')}"
-            )
+            error_msg = tg_data.get('description', "Noma'lum xato")
+            raise BadRequestException(f"Telegram API xatosi: {error_msg}")
 
         result = tg_data.get("result", {})
         if item.content_type == "video":
