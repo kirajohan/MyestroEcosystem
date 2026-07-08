@@ -21,13 +21,18 @@ COPY telegram_bot/ ./telegram_bot/
 COPY migrations/ ./migrations/
 COPY .env* ./
 
-# Python barcha modullarni (ham 'telegram_bot', ham 'shared'ni) topishi uchun PYTHONPATH sozlaymiz
+# ... (tepadagi qismlari o'zgarishsiz qoladi)
+
+# Python barcha modullarni topishi uchun PYTHONPATH sozlaymiz
 ENV PYTHONPATH=/app:/app/telegram_bot/backend
 
-# Health check (Portni Railway o'zi beradigan $PORT o'zgaruvchisiga moslaymiz)
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
-# Backend papkasining ichiga kirib uvicorn-ni ishga tushiramiz
+# Backend papkasining ichiga kiramiz
 WORKDIR /app/telegram_bot/backend
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# BIZGA FAQAT BITTA CMD KERAK:
+# Avval migratsiyani (alembic) ishga tushiradi, agar u muvaffaqiyatli o'tsa, keyin uvicorn-ni yuritadi
+CMD alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
