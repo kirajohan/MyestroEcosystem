@@ -93,9 +93,9 @@ async def upload_content(
 
     tg_data = tg_resp.json()
     if not tg_data.get("ok"):
-        raise BadRequestException(
-            f"Telegram API xatosi: {tg_data.get('description', 'Noma\'lum xato')}"
-        )
+        error_msg = tg_data.get('description', 'Noma\'lum xato')
+        raise BadRequestException(f"Telegram API xatosi: {error_msg}")
+
 
     # file_id ni ajratib olish
     result = tg_data.get("result", {})
