@@ -14,7 +14,7 @@ COPY telegram_bot/backend/requirements.txt ./telegram_bot/backend/
 RUN pip install --no-cache-dir -r telegram_bot/backend/requirements.txt
 
 # 2. MUHIM: Xatolikni yo'qotish uchun butun 'shared' va 'telegram_bot' papkalarini ko'chiramiz
-COPY shared/ ./shared/
+COPY telegram_bot/shared/ ./shared/
 COPY telegram_bot/ ./telegram_bot/
 
 # 3. Agar kerak bo'lsa, migratsiya va env fayllarini nusxalaymiz
