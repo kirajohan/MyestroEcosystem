@@ -54,10 +54,12 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+# CORS
     # CORS
+    print(f"DEBUG: Allowed Origins loaded: {settings.allowed_origins_list}") # SHUNI QO'SHING
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.allowed_origins_list,  # Yulduzcha o'rniga o'zimizning ro'yxatni qo'ydik!
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

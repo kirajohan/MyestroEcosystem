@@ -1,3 +1,5 @@
+# app/services/auth_service.py — TO'LIQ QAYTA YOZILGAN
+
 import random
 import hashlib
 import hmac
@@ -7,13 +9,10 @@ from redis import Redis
 from app.config import settings
 from app.core.security import (
     hash_password, verify_password,
-    # Token yaratish hozircha kerak emas
-    # create_access_token, create_refresh_token,
-    # verify_token,
 )
-from app.models.user import User  # Session modeli kerak emas
+from app.models.user import User
 from app.core.exceptions import UnauthorizedException, ConflictException, ForbiddenException
-# from datetime import datetime, timedelta, timezone  # token uchun kerak edi
+from app.schemas.phone import normalize_phone  # avvalgi javobda bergan fayl
 
 
 def authenticate_user(db: DBSession, email: str, password: str) -> User:
@@ -26,7 +25,6 @@ def authenticate_user(db: DBSession, email: str, password: str) -> User:
 
 
 def authenticate_admin(db: DBSession, email: str, password: str) -> dict:
-    """Admin tekshiradi, lekin endi token yaratmaydi. Faqat user qaytaradi."""
     user = db.query(User).filter(User.email == email, User.is_active == True).first()
     if not user or not user.password_hash:
         raise UnauthorizedException("Invalid email or password")
@@ -34,28 +32,31 @@ def authenticate_admin(db: DBSession, email: str, password: str) -> dict:
         raise UnauthorizedException("Invalid email or password")
     if user.role not in ["admin", "superadmin"]:
         raise ForbiddenException("Admin access required")
-    # Tokensiz: faqat user qaytaramiz
     return {"user": user}
 
 
-# ========== TOKEN FUNKSIYALAR (hozircha izohda) ==========
-# def create_user_session(db, user_id, device_info=None, ip=None):
-#     """JWT yaratish. Tokensiz tizimda kerak emas."""
-#     ...
-#
-# def refresh_user_session(db, refresh_token):
-#     """Refresh tokenni yangilash. Hozircha o'chirilgan."""
-#     ...
-# =========================================================
-
-
 def register_user(db: DBSession, user_data: dict) -> User:
-    existing = db.query(User).filter(User.email == user_data["email"]).first()
-    if existing:
+    email = user_data["email"]
+    phone = normalize_phone(user_data.get("phone")) or user_data.get("phone")
+    telegram_id = user_data.get("telegram_id")
+
+    existing_email = db.query(User).filter(User.email == email).first()
+    if existing_email:
         raise ConflictException("Email already registered")
 
+    # ⚠️ YANGI: avval bu ikkisi umuman tekshirilmagan edi.
+    if phone:
+        existing_phone = db.query(User).filter(User.phone == phone).first()
+        if existing_phone:
+            raise ConflictException("Phone already registered")
+
+    if telegram_id:
+        existing_tg = db.query(User).filter(User.telegram_id == telegram_id).first()
+        if existing_tg:
+            raise ConflictException("Telegram account already registered")
+
     user = User(
-        email=user_data["email"],
+        email=email,
         password_hash=hash_password(user_data["password"]) if user_data.get("password") else None,
         full_name=user_data["full_name"],
         role=user_data.get("role", "student"),
@@ -63,8 +64,8 @@ def register_user(db: DBSession, user_data: dict) -> User:
         target_level=user_data.get("target_level", "B1"),
         lang=user_data.get("lang", "uz"),
         auth_provider=user_data.get("auth_provider", "email"),
-        phone=user_data.get("phone"),
-        telegram_id=user_data.get("telegram_id"),
+        phone=phone,
+        telegram_id=telegram_id,
     )
     db.add(user)
     db.commit()
@@ -107,6 +108,8 @@ def check_email_exists(db: DBSession, email: str) -> tuple[bool, Dict[str, Any]]
 
 
 def check_phone_exists(db: DBSession, phone: str) -> tuple[bool, Dict[str, Any]]:
+    # ⚠️ ASOSIY TUZATISH — dublikat/mos kelmagan formatlarni bir joyda hal qiladi
+    phone = normalize_phone(phone) or phone
     user = db.query(User).filter(User.phone == phone, User.is_active == True).first()
     if user:
         return True, {
@@ -118,6 +121,7 @@ def check_phone_exists(db: DBSession, phone: str) -> tuple[bool, Dict[str, Any]]
 
 
 def authenticate_by_phone(db: DBSession, phone: str, telegram_id: int, password: str = None) -> Optional[User]:
+    phone = normalize_phone(phone) or phone
     user = db.query(User).filter(
         User.phone == phone,
         User.telegram_id == telegram_id,

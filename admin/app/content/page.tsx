@@ -8,6 +8,7 @@ import { ContentTable } from '@/components/content/ContentTable';
 import { EditContentModal } from '@/components/content/EditContentModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
+import { api } from '@/lib/api'; // O'zingizdagi lib/api fayli yo'li
 import { useContentList, useUpdateContent, useDeleteContent } from '@/hooks/useContent';
 import { ContentItem } from '@/lib/types';
 import { Video, FileText, Upload, CheckCircle, List } from 'lucide-react';
@@ -61,27 +62,24 @@ export default function ContentPage() {
     formData.append('file', file);
 
     try {
-      const resp = await fetch('/api/content', {
-        method: 'POST',
-        body: formData,
-      });
+      // fetch o'rniga bizning tayyor api (axios) dan foydalanamiz
+      const resp = await api.post('/content', formData);
+      const data = resp.data; // axios'da ma'lumotlar .data ichida keladi
 
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.detail || 'Yuklashda xatolik');
-      }
-
-      const data = await resp.json();
-      toast.success(`Muvaffaqiyatli yuklandi! file_id: ${data.telegram_file_id?.slice(0, 20)}...`);
+      toast.success(`Muvaffaqiyatli yuklandi! file_id: ${data.telegram_file_id?.slice(0, 20) || ''}...`);
       setUploadSuccess(true);
+      
       // Formani tozalash
       setTitle('');
       setDescription('');
       setFile(null);
       const fileInput = document.getElementById('file-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
+      
     } catch (err: any) {
-      toast.error(err.message || 'Yuklashda xatolik');
+      // Axios xatoni o'zi ushlaydi, shuning uchun if (!resp.ok) deb yozish shart emas
+      const errorMessage = err.response?.data?.detail || err.message || 'Yuklashda xatolik';
+      toast.error(errorMessage);
     } finally {
       setIsUploadLoading(false);
     }

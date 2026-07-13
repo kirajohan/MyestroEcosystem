@@ -75,14 +75,18 @@ class ChannelCheckMiddleware(BaseMiddleware):
             lang = user_data.get("lang", "uz")
 
         if isinstance(event, Message):
+            logger.info(f"CHANNEL_USERNAME = {settings.CHANNEL_USERNAME!r}")
+            logger.info(f"CHANNEL_ID = {settings.CHANNEL_ID!r}")
             await event.answer(
                 f"❌ <b>Kanalga a'zo bo'lishingiz kerak!</b>\n\n"
                 f"🔗 <a href='https://t.me/{settings.CHANNEL_USERNAME}'>Kanalga a'zo bo'lish</a>\n\n"
-                "A'zo bo'lganidan keyin yana urinib ko'ring."
+                "A'zo bo'lganidan keyin yana urinib ko'ring.",
+                parse_mode="HTML"
             )
         elif isinstance(event, CallbackQuery):
             await event.answer(
                 f"❌ Kanalga a'zo bo'lishingiz kerak: https://t.me/{settings.CHANNEL_USERNAME}",
+                parse_mode="HTML",
                 show_alert=True
             )
 

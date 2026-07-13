@@ -23,7 +23,6 @@ from bot.handlers import (
     voice,
 )
 from bot.handlers.broadcast import broadcast_listener
-from bot.middlewares.registration import RegistrationMiddleware
 from bot.middlewares.ai_guard import AIGuardMiddleware
 from bot.middlewares.channel_check import ChannelCheckMiddleware
 from bot.middlewares.bot_guard import BotGuardMiddleware
@@ -88,8 +87,6 @@ async def main():
     dp.callback_query.middleware(ChannelCheckMiddleware())
     dp.message.middleware(AIGuardMiddleware())
     dp.callback_query.middleware(AIGuardMiddleware())
-    dp.message.middleware(RegistrationMiddleware())
-    dp.callback_query.middleware(RegistrationMiddleware())
 
     # AI Health Check on startup
     logger.info("Running AI health check...")

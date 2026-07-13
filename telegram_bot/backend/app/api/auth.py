@@ -1,3 +1,5 @@
+# app/routers/auth.py — TO'LIQ QAYTA YOZILGAN
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session as DBSession
 from redis import Redis
@@ -11,6 +13,7 @@ from app.schemas.user import (
 from app.services import auth_service
 from app.models.user import User
 from app.core.exceptions import UnauthorizedException, ConflictException
+from app.schemas.phone import normalize_phone
 import redis as redis_lib
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -23,28 +26,19 @@ def get_redis() -> Redis:
 @router.post("/register", response_model=AdminLoginResponse)
 def register(data: UserCreate, db: DBSession = Depends(get_db)):
     user = auth_service.register_user(db, data.model_dump())
-    return AdminLoginResponse(
-        success=True,
-        user=UserResponse.model_validate(user),
-    )
+    return AdminLoginResponse(success=True, user=UserResponse.model_validate(user))
 
 
 @router.post("/login", response_model=AdminLoginResponse)
 def login(data: LoginRequest, db: DBSession = Depends(get_db)):
     user = auth_service.authenticate_user(db, data.email, data.password)
-    return AdminLoginResponse(
-        success=True,
-        user=UserResponse.model_validate(user),
-    )
+    return AdminLoginResponse(success=True, user=UserResponse.model_validate(user))
 
 
 @router.post("/admin-login", response_model=AdminLoginResponse)
 def admin_login(data: AdminLoginRequest, db: DBSession = Depends(get_db)):
     result = auth_service.authenticate_admin(db, data.email, data.password)
-    return AdminLoginResponse(
-        success=True,
-        user=UserResponse.model_validate(result["user"]),
-    )
+    return AdminLoginResponse(success=True, user=UserResponse.model_validate(result["user"]))
 
 
 @router.post("/otp/send")
@@ -75,20 +69,13 @@ def telegram_auth(data: TelegramAuthRequest, db: DBSession = Depends(get_db)):
             "provider_user_id": str(data.id),
             "telegram_id": data.id,
         })
-    return AdminLoginResponse(
-        success=True,
-        user=UserResponse.model_validate(user),
-    )
-
+    return AdminLoginResponse(success=True, user=UserResponse.model_validate(user))
 
 @router.post("/register-init", response_model=AdminLoginResponse)
 def register_init(data: dict, db: DBSession = Depends(get_db)):
     email = data.get("email", "")
     if not email:
         raise UnauthorizedException("Email required")
-    existing = db.query(User).filter(User.email == email).first()
-    if existing:
-        raise ConflictException("Email already registered")
     user = auth_service.register_user(db, {
         "email": email,
         "password": data.get("password", ""),
@@ -97,16 +84,7 @@ def register_init(data: dict, db: DBSession = Depends(get_db)):
         "telegram_id": data.get("telegram_id"),
         "auth_provider": "email",
     })
-    return AdminLoginResponse(
-        success=True,
-        user=UserResponse.model_validate(user),
-    )
-
-
-@router.get("/check-email")
-def check_email(email: str, db: DBSession = Depends(get_db)):
-    exists, user_info = auth_service.check_email_exists(db, email)
-    return {"exists": exists, "user": user_info}
+    return AdminLoginResponse(success=True, user=UserResponse.model_validate(user))
 
 
 @router.post("/check-phone")
@@ -128,7 +106,4 @@ def phone_login(data: dict, db: DBSession = Depends(get_db)):
     user = auth_service.authenticate_by_phone(db, phone, telegram_id, password)
     if not user:
         raise UnauthorizedException("User not found with this phone or wrong password")
-    return AdminLoginResponse(
-        success=True,
-        user=UserResponse.model_validate(user),
-    )
+    return AdminLoginResponse(success=True, user=UserResponse.model_validate(user))
