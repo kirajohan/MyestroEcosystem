@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
 // PATCH — tahrirlash (matn + ixtiyoriy fayl almashtirish)
@@ -63,4 +62,21 @@ export async function DELETE(
       { status: 500 }
     );
   }
+}
+
+// GET — progress endpoint placeholder
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const { id } = params;
+  if (!id) {
+    return NextResponse.json({ error: "id majburiy" }, { status: 400 });
+  }
+
+  // Placeholder response until Redis is properly set up
+  return NextResponse.json(
+    { error: "Broadcast progress endpoint not yet implemented" },
+    { status: 501 }
+  );
 }

@@ -17,23 +17,6 @@ export interface UserResponse {
   created_at: string;
   updated_at: string;
 }
-export interface UserResponse {
-  id: number;
-  email: string;
-  full_name: string;
-  role: 'user' | 'admin';
-  cefr_level: string;
-  target_level: string;
-  is_active: boolean;
-  is_verified: boolean;
-  profile_completed: boolean;
-  telegram_id: number | null;
-  telegram_username: string | null;
-  ai_enabled: boolean;
-  last_login_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 // LoginRequest
 export interface LoginRequest {
@@ -82,16 +65,6 @@ export interface UserUpdate {
   telegram_id?: number | null;
   phone?: string;
   password?: string;
-}
-export interface UserUpdate {
-  full_name?: string;
-  email?: string;
-  role?: 'user' | 'admin';
-  cefr_level?: string;
-  target_level?: string;
-  is_active?: boolean;
-  ai_enabled?: boolean;
-  telegram_id?: number | null;
 }
 
 // SendMessageRequest

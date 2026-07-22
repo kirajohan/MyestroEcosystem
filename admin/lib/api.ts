@@ -4,11 +4,15 @@ import { toast } from 'sonner';
 // Eski holati: const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
 // Yangi holati (Aynan backend public domeningiz bo'lishi shart):
-const API_BASE_URL = 'https://myestro-backend-production.up.railway.app/api';export const api = axios.create({
+const API_BASE_URL = 'http://localhost:8002';
+
+export const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // Content-Type default qo'yilmaydi — Axios avtomatik aniqlaydi:
+  // - Plain object yuborilsa → application/json
+  // - FormData yuborilsa → multipart/form-data; boundary=...
+  // Agar default Content-Type: application/json qo'yilsa, FormData
+  // multipart/form-dataga o'tmaydi va backend 422 qaytaradi.
 });
 
 // Faqat xatoliklarni ko'rsatish, token bilan bog'liq kod YO'Q

@@ -8,7 +8,7 @@ from bot.config import settings
 
 logger = logging.getLogger(__name__)
 
-CONTENT_API = f"{settings.API_BASE_URL or 'http://backend:8000'}/content"
+CONTENT_API = f"{settings.API_BASE_URL or 'http://backend:8002'}/content"
 
 
 async def upload_content_to_telegram(bot: Bot, content_id: int, file_path: str, content_type: str):

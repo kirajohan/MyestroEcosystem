@@ -17,6 +17,7 @@ interface AuthContextType {
   logout: () => void;
   error: string | null;
   user: AdminUser | null;
+  token: string | null;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,19 +27,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<AdminUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
-  // Faqat login holatini tiklash (tokenlarsiz)
+  // Restore login state + token from localStorage
   useEffect(() => {
     const loggedInFlag = localStorage.getItem('isAdminLoggedIn');
     const savedUser = localStorage.getItem('admin_user');
+    const savedToken = localStorage.getItem('admin_token');
     if (loggedInFlag === 'true' && savedUser) {
       try {
         setUser(JSON.parse(savedUser));
         setIsLoggedIn(true);
+        if (savedToken) setToken(savedToken);
       } catch (e) {
         console.error('Failed to restore user:', e);
         localStorage.removeItem('isAdminLoggedIn');
         localStorage.removeItem('admin_user');
+        localStorage.removeItem('admin_token');
       }
     }
   }, []);
@@ -54,7 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.success && data.user) {
         setIsLoggedIn(true);
         setUser(data.user);
-        // Tokensiz saqlash
+        if (data.access_token) {
+          setToken(data.access_token);
+          localStorage.setItem('admin_token', data.access_token);
+        }
         localStorage.setItem('isAdminLoggedIn', 'true');
         localStorage.setItem('admin_user', JSON.stringify(data.user));
       } else {
@@ -73,14 +81,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setIsLoggedIn(false);
     setUser(null);
+    setToken(null);
     setError(null);
-    // Tokensiz tozalash
     localStorage.removeItem('isAdminLoggedIn');
     localStorage.removeItem('admin_user');
+    localStorage.removeItem('admin_token');
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, isLoading, login, logout, error, user }}>
+    <AuthContext.Provider value={{ isLoggedIn, isLoading, login, logout, error, user, token }}>
       {children}
     </AuthContext.Provider>
   );

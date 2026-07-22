@@ -12,7 +12,6 @@ from app.schemas.user import UsersListResponse  # yuqoriga import qo'shing
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-
 @router.get("", response_model=UsersListResponse)  # response_model ni o'zgartiring
 def list_users(
     skip: int = Query(0, ge=0),
@@ -24,20 +23,6 @@ def list_users(
     # Umumiy son
     total = db.query(User).filter(User.deleted_at.is_(None)).count()
     return {"data": [UserResponse.model_validate(u) for u in users], "total": total}
-
-
-
-
-
-
-@router.get("", response_model=List[UserResponse])
-def list_users(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
-    db: DBSession = Depends(get_db),
-):
-    users = db.query(User).filter(User.deleted_at.is_(None)).offset(skip).limit(limit).all()
-    return [UserResponse.model_validate(u) for u in users]
 
 
 @router.get("/{user_id}", response_model=UserResponse)

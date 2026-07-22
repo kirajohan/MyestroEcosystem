@@ -25,6 +25,7 @@ def authenticate_user(db: DBSession, email: str, password: str) -> User:
 
 
 def authenticate_admin(db: DBSession, email: str, password: str) -> dict:
+    from app.core.security import create_access_token
     user = db.query(User).filter(User.email == email, User.is_active == True).first()
     if not user or not user.password_hash:
         raise UnauthorizedException("Invalid email or password")
@@ -32,7 +33,9 @@ def authenticate_admin(db: DBSession, email: str, password: str) -> dict:
         raise UnauthorizedException("Invalid email or password")
     if user.role not in ["admin", "superadmin"]:
         raise ForbiddenException("Admin access required")
-    return {"user": user}
+    # Generate JWT access token for admin panel
+    access_token = create_access_token(user.id, user.email, user.role)
+    return {"user": user, "access_token": access_token}
 
 
 def register_user(db: DBSession, user_data: dict) -> User:

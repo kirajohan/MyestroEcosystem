@@ -38,7 +38,11 @@ def login(data: LoginRequest, db: DBSession = Depends(get_db)):
 @router.post("/admin-login", response_model=AdminLoginResponse)
 def admin_login(data: AdminLoginRequest, db: DBSession = Depends(get_db)):
     result = auth_service.authenticate_admin(db, data.email, data.password)
-    return AdminLoginResponse(success=True, user=UserResponse.model_validate(result["user"]))
+    return AdminLoginResponse(
+        success=True,
+        user=UserResponse.model_validate(result["user"]),
+        access_token=result.get("access_token"),
+    )
 
 
 @router.post("/otp/send")

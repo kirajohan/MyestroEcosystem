@@ -101,8 +101,8 @@ class UsersListResponse(BaseModel):
     data: List[UserResponse]
     total: int
 
-# Tokensiz versiya
+# Admin login response — JWT token bilan
 class AdminLoginResponse(BaseModel):
     success: bool
     user: UserResponse
-    # access_token: Optional[str] = None  # kerak bo'lsa keyin qo'shasiz
+    access_token: Optional[str] = None  # JWT access token (admin panel uchun)

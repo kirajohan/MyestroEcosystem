@@ -75,7 +75,7 @@ services:
       - ./.env
     environment:
       DATABASE_URL: postgresql+asyncpg://myestro:myestro_password@postgres:5432/myestro
-      REDIS_URL: redis://redis:6379/1
+      REDIS_URL: redis://redis:6379/0
       BACKEND_URL: http://backend:8000
       API_BASE_URL: http://backend:8000
     depends_on:
@@ -88,16 +88,17 @@ services:
     networks:
       - myestro-net
 
+ # docker-compose.yml — TUZATILGAN
   admin:
     build:
       context: ./admin
       dockerfile: Dockerfile
-    container_name: myestro-admin
-    restart: unless-stopped
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8002   # brauzer uchun — o'zgartirilmaydi
     ports:
       - "3002:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://backend:8000
+      BACKEND_INTERNAL_URL: http://backend:8000       # server-side proxy uchun — YANGI qo'shiladi
       NEXT_PUBLIC_ADMIN_PASSWORD: admin123
     depends_on:
       backend:

@@ -22,7 +22,6 @@ from bot.config import settings
 from bot.handlers import (
     voice,
 )
-from bot.handlers.broadcast import broadcast_listener
 from bot.middlewares.ai_guard import AIGuardMiddleware
 from bot.middlewares.channel_check import ChannelCheckMiddleware
 from bot.middlewares.bot_guard import BotGuardMiddleware
@@ -86,7 +85,6 @@ async def main():
     dp.message.middleware(ChannelCheckMiddleware())
     dp.callback_query.middleware(ChannelCheckMiddleware())
     dp.message.middleware(AIGuardMiddleware())
-    dp.callback_query.middleware(AIGuardMiddleware())
 
     # AI Health Check on startup
     logger.info("Running AI health check...")
@@ -100,13 +98,16 @@ async def main():
         logger.warning(f"WARN: AI health check ERROR: {e}")
 
     logger.info("Bot started polling...")
-    broadcast_task = None
+    # Start BroadcastWorker (Redis queue consumer)
+    from redis.asyncio import Redis
+    redis_client = Redis.from_url(settings.REDIS_URL, decode_responses=False)
+    broadcast_worker = BroadcastWorker(bot, redis_client)
+    broadcast_task = asyncio.create_task(broadcast_worker.start())
+    
     try:
-        # Broadcast listener disabled for now
-        # broadcast_task = asyncio.create_task(broadcast_listener(bot))
-        
         await dp.start_polling(bot)
     finally:
+        broadcast_worker.stop()
         if broadcast_task and not broadcast_task.done():
             broadcast_task.cancel()
         await shutdown_ai_client()

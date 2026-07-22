@@ -8,8 +8,7 @@ import { ContentTable } from '@/components/content/ContentTable';
 import { EditContentModal } from '@/components/content/EditContentModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
-import { api } from '@/lib/api'; // O'zingizdagi lib/api fayli yo'li
-import { useContentList, useUpdateContent, useDeleteContent } from '@/hooks/useContent';
+import { useContentList, useCreateContent, useUpdateContent, useDeleteContent } from '@/hooks/useContent';
 import { ContentItem } from '@/lib/types';
 import { Video, FileText, Upload, CheckCircle, List } from 'lucide-react';
 
@@ -19,7 +18,6 @@ export default function ContentPage() {
   const [description, setDescription] = useState('');
   const [contentType, setContentType] = useState<'video' | 'file'>('video');
   const [file, setFile] = useState<File | null>(null);
-  const [isUploadLoading, setIsUploadLoading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
   // Table / modal / confirm state
@@ -29,6 +27,7 @@ export default function ContentPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const { data: contents, isLoading: isListLoading } = useContentList();
+  const createMutation = useCreateContent();
   const updateMutation = useUpdateContent();
   const deleteMutation = useDeleteContent();
 
@@ -52,9 +51,6 @@ export default function ContentPage() {
       return;
     }
 
-    setIsUploadLoading(true);
-    setUploadSuccess(false);
-
     const formData = new FormData();
     formData.append('title', title);
     formData.append('description', description);
@@ -62,26 +58,22 @@ export default function ContentPage() {
     formData.append('file', file);
 
     try {
-      // fetch o'rniga bizning tayyor api (axios) dan foydalanamiz
-      const resp = await api.post('/content', formData);
-      const data = resp.data; // axios'da ma'lumotlar .data ichida keladi
+      // useCreateContent hook orqali /api/content (Next.js proxy) ga yuboriladi
+      // fetch + FormData ishlatiladi, Content-Type avtomatik multipart/form-data
+      const data = await createMutation.mutateAsync(formData);
 
       toast.success(`Muvaffaqiyatli yuklandi! file_id: ${data.telegram_file_id?.slice(0, 20) || ''}...`);
       setUploadSuccess(true);
-      
+
       // Formani tozalash
       setTitle('');
       setDescription('');
       setFile(null);
       const fileInput = document.getElementById('file-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
-      
+
     } catch (err: any) {
-      // Axios xatoni o'zi ushlaydi, shuning uchun if (!resp.ok) deb yozish shart emas
-      const errorMessage = err.response?.data?.detail || err.message || 'Yuklashda xatolik';
-      toast.error(errorMessage);
-    } finally {
-      setIsUploadLoading(false);
+      toast.error(err.message || 'Yuklashda xatolik');
     }
   };
 
@@ -237,8 +229,8 @@ export default function ContentPage() {
           )}
 
           {/* Tugma */}
-          <Button type="submit" isLoading={isUploadLoading} className="w-full">
-            {isUploadLoading ? 'Yuklanmoqda...' : 'Yuklash'}
+          <Button type="submit" isLoading={createMutation.isPending} className="w-full">
+            {createMutation.isPending ? 'Yuklanmoqda...' : 'Yuklash'}
           </Button>
         </form>
       </Card>

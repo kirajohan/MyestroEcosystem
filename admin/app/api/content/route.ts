@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
+const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
 
 export async function GET() {
   try {
@@ -20,7 +20,7 @@ export async function GET() {
     return NextResponse.json(data, { status: 200 });
   } catch (error: any) {
     return NextResponse.json(
-      { detail: error?.message || 'Noma\u2018lum xato' },
+      { detail: error?.message || 'Nomatʼlum xato' },
       { status: 500 }
     );
   }
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data, { status: 200 });
   } catch (error: any) {
     return NextResponse.json(
-      { detail: error?.message || 'Noma\u2018lum xato' },
+      { detail: error?.message || 'Nomatʼlum xato' },
       { status: 500 }
     );
   }

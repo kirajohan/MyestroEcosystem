@@ -75,16 +75,21 @@ class BroadcastService:
     def get_filtered_user_ids(self, target_all: bool, target_ids: Optional[List[int]] = None) -> List[int]:
         """Get telegram_id list based on target criteria."""
         if not target_all and target_ids:
-            # Verify all target IDs exist
-            query = select(User.id).where(User.id.in_(target_ids))
+            # Verify all target IDs exist and return telegram_id (not DB id)
+            query = select(User.telegram_id).where(
+                and_(
+                    User.telegram_id.isnot(None),
+                    User.id.in_(target_ids),
+                )
+            )
             result = self.db.execute(query)
             found_ids = [row[0] for row in result.fetchall()]
             return found_ids
         
-        # Get all active users
-        query = select(User.id).where(
+        # Get all active users with telegram_id
+        query = select(User.telegram_id).where(
             and_(
-                User.id.isnot(None),
+                User.telegram_id.isnot(None),
                 User.deleted_at.is_(None),
             )
         )
@@ -118,16 +123,19 @@ class BroadcastService:
         self.redis.expire(progress_key, 86400 * 7)  # 7 days
         
         # 3. Queue job for broadcast worker
+        # Worker expects: { content, message_type, media_url }
+        #   OR: { text, media_type, media_url }
         job_content = {
-            "title": request.title,
-            "content": request.content,
-            "message_type": request.message_type,
-            "file_id": request.file_id,
+            "content": request.content,       # Worker: content.get("content")
+            "message_type": request.message_type,  # Worker: content.get("message_type")
+            "media_url": request.file_id,      # Worker: content.get("media_url") — file_id = media_url
         }
         
         # Send as single job (not batched) — worker handles rate limiting
+        # Worker expects batch_number (we send 1 batch for all users)
         job = {
             "id": broadcast_id,
+            "batch_number": 1,
             "user_ids": user_ids,
             "content": job_content,
             "progress_key": progress_key,

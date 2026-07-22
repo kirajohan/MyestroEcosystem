@@ -17,6 +17,29 @@ export function useContentList() {
   });
 }
 
+// POST /api/content — yangi content yuklash (FormData orqali)
+// Next.js API proxy orqali backend'ga yuboriladi (admin/app/api/content/route.ts)
+export function useCreateContent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      const resp = await fetch('/api/content', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.detail || 'Yuklashda xatolik');
+      }
+      return resp.json() as Promise<ContentItem>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content'] });
+    },
+  });
+}
+
 // PATCH /api/contents/[id] — tahrirlash (matn + ixtiyoriy fayl)
 export function useUpdateContent() {
   const queryClient = useQueryClient();

@@ -6,3 +6,4 @@ from .logs import ApiLog, ErrorLog, AuditLog
 from .content import ContentItem
 from .bot_text import BotText
 from .admin_message import AdminMessage
+from .broadcast import BroadcastJob, BroadcastHistory
