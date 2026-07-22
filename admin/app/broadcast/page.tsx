@@ -68,11 +68,11 @@ export default function BroadcastPage() {
           clearInterval(pollRef.current);
         }
       } catch {
-        // Vaqtinchalik tarmoq xatosi — keyingi tick'da qayta urinamiz
+        // Vaqtinchalik tarmoq xatosi
       }
     }
 
-    poll(); // birinchi so'rovni darhol yuborish
+    poll();
     pollRef.current = setInterval(poll, 2000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -95,7 +95,7 @@ export default function BroadcastPage() {
           rows={4}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="HTML formatlash qo'llab-quvvatlanadi: <b>qalin</b>, <i>qiya</i>..."
+          placeholder="HTML formatlash qo&apos;llab-quvvatlanadi: <b>qalin</b>, <i>qiya</i>..."
         />
       </div>
 
@@ -121,7 +121,7 @@ export default function BroadcastPage() {
               className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm"
               value={mediaUrl}
               onChange={(e) => setMediaUrl(e.target.value)}
-              placeholder="https://... (public bo'lishi shart)"
+              placeholder="https://... (public bo&apos;lishi shart)"
             />
           </div>
         )}
@@ -141,20 +141,20 @@ export default function BroadcastPage() {
         </label>
       </div>
 
-      {/* Foydalanuvchi ID'lari (faqat targetAll = false bo'lsa) */}
+      {/* Foydalanuvchi IDlari */}
       {!targetAll && (
         <div>
           <label className="block text-sm font-medium text-slate-700">
-            Foydalanuvchi ID'lari (vergul yoki yangi qator bilan)
+            Foydalanuvchi IDlari (vergul yoki yangi qator bilan)
           </label>
           <textarea
             className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm font-mono"
             rows={3}
             value={userIdsRaw}
             onChange={(e) => setUserIdsRaw(e.target.value)}
-            placeholder={"123456789\n987654321"}
+            placeholder="123456789\n987654321"
           />
-          <p className="mt-1 text-xs text-slate-500">{userIds.length} ta to'g'ri ID kiritildi</p>
+          <p className="mt-1 text-xs text-slate-500">{userIds.length} ta togri ID kiritildi</p>
         </div>
       )}
 

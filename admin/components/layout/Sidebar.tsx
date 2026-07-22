@@ -21,7 +21,7 @@ const navItems = [
   { label: 'Users', href: '/users', icon: Users },
   { label: 'Content', href: '/content', icon: Video },
   { label: 'Bot Texts', href: '#', icon: FileText, disabled: true },
-  { label: 'Broadcast', href: '#', icon: Send},
+  { label: 'Broadcast', href: '/broadcast', icon: Send},
   { label: 'Inbox', href: '#', icon: MessageSquare, disabled: true },
   { label: 'Logs', href: '#', icon: ScrollText, disabled: true },
   { label: 'Settings', href: '#', icon: Settings, disabled: true },
