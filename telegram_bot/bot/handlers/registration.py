@@ -11,8 +11,9 @@ from bot.states.registration import (
 )
 from bot.keyboards.inline import cefr_level_selection
 from bot.keyboards.reply import (
-    registered_menu_keyboard, confirm_keyboard, remove_keyboard,
+    confirm_keyboard, remove_keyboard,
 )
+from bot.keyboards.orange_keyboard import ColoredKeyboard
 from bot.utils.i18n import get_text
 from bot.config import settings
 import httpx

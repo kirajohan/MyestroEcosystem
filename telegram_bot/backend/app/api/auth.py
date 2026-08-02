@@ -41,7 +41,6 @@ def admin_login(data: AdminLoginRequest, db: DBSession = Depends(get_db)):
     return AdminLoginResponse(
         success=True,
         user=UserResponse.model_validate(result["user"]),
-        access_token=result.get("access_token"),
     )
 
 

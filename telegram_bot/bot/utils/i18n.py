@@ -74,7 +74,7 @@ TRANSLATIONS = {
             "<b>3. AI Teacher qanday ishlaydi?</b>\n"
             "   → <b>OpenRouter</b> orqali GPT-4, Gemini, Claude va Mistral "
             "modellari yordamida. AI sizning darajangizga moslashadi, "
-            "xatolaringizni tuzatadi va ovozli xabarlarni qabul qiladi.\n\n"
+            "xatolaringizni tuzatadi  qabul qiladi.\n\n"
             "<b>4. Ma'lumotlarim xavfsizmi?</b>\n"
             "   → Albatta. Barcha ma'lumotlar shifrlanadi va "
             "O'zbekiston qonunlariga muvofiq saqlanadi."
@@ -490,6 +490,55 @@ TRANSLATIONS = {
             "• 🎙️ Ovozli xabarlar\n\n"
             "Rasm, video yoki hujjatlar tez orada qo'shiladi."
         ),
+        "error.rate_limit": (
+            "⏳ <b>Juda ko'p so'rov yubordingiz</b>\n\n"
+            "Xavfsizlik maqsadida so'rovlar soni cheklangan. "
+            "Iltimos, 1 daqiqadan so'ng qayta urinib ko'ring."
+        ),
+        "error.private_only": (
+            "🚫 <b>Bu bot faqat shaxsiy chatda ishlaydi</b>\n\n"
+            "Guruhlarda botdan foydalanish mumkin emas. "
+            "Iltimos, botga shaxsiy xabar yozing: @myestro_teacher_bot"
+        ),
+        "contact.not_own": (
+            "❌ <b>Faqat o'z telefon raqamingizni ulashing</b>\n\n"
+            "Boshqa foydalanuvchining kontaktini yuborish mumkin emas. "
+            "Iltimos, o'z raqamingizni <b>«Raqamni ulashish»</b> tugmasi orqali yuboring."
+        ),
+        "contact.forwarded": (
+            "❌ <b>Forward qilingan kontakt qabul qilinmaydi</b>\n\n"
+            "Iltimos, o'z telefon raqamingizni to'g'ridan-to'g'ri "
+            "<b>«Raqamni ulashish»</b> tugmasi orqali yuboring."
+        ),
+        "contact.invalid_phone": (
+            "❌ <b>Noto'g'ri telefon raqam formati</b>\n\n"
+            "Iltimos, O'zbekiston formatida kiriting:\n"
+            "<code>+998 XX XXX XX XX</code>\n\n"
+            "Yoki <b>«Raqamni ulashish»</b> tugmasidan foydalaning."
+        ),
+        "contact.session_mismatch": (
+            "❌ <b>Session xatolik</b>\n\n"
+            "Ma'lumotlar mos kelmadi. Xavfsizlik maqsadida qaytadan "
+            "/start ni bosing."
+        ),
+        "auth.too_many_attempts": (
+            "🚫 <b>Juda ko'p urinishlar</b>\n\n"
+            "Xavfsizlik maqsadida kirish vaqtincha bloklandi. "
+            "Iltimos, 5 daqiqadan so'ng qayta urinib ko'ring."
+        ),
+        "register.weak_password": (
+            "❌ <b>Juda oddiy parol</b>\n\n"
+            "Parol quyidagi talablarga javob berishi kerak:\n"
+            "• Kamida 8 ta belgi\n"
+            "• Kamida 1 ta katta harf\n"
+            "• Kamida 1 ta kichik harf\n"
+            "• Kamida 1 ta raqam\n"
+            "• Kamida 1 ta maxsus belgi (!@#$%^&*)"
+        ),
+        "ai.not_registered": (
+            "📝 <b>AI Teacher dan foydalanish uchun ro'yxatdan o'ting</b>\n\n"
+            "Iltimos, avval /start ni bosing va ro'yxatdan o'ting."
+        ),
 
         # ═══════════════════════════════════════════════════════════
         #  LEGACY KEYS (backward compatibility)
@@ -558,6 +607,52 @@ TRANSLATIONS = {
         "about_academy": "🏫 Akademiya haqida",
         "about_contacts": "📞 Aloqa",
         "about_info": "ℹ️ Batafsil ma'lumot",
+
+        # ═══════════════════════════════════════════════════════════
+        #  LESSONS (combined Video + File)
+        # ═══════════════════════════════════════════════════════════
+        "lessons.title": "📚 <b>Darslar</b>",
+        "lessons.prompt": "Kerakli dars turini tanlang:",
+        "lessons.video": "🎬 Video darslar",
+        "lessons.file": "📁 Fayl darslar",
+        "lessons.back": "⬅️ Orqaga",
+
+        # ═══════════════════════════════════════════════════════════
+        #  TEST (CEFR level test)
+        # ═══════════════════════════════════════════════════════════
+        "test.title": "✅ <b>CEFR daraja testi</b>",
+        "test.prompt": "📚 Sinab ko'rmoqchi bo'lgan darajangizni tanlang:",
+        "test.level.A1": "A1 — Boshlang'ich",
+        "test.level.A2": "A2 — Elementar",
+        "test.level.B1": "B1 — O'rta",
+        "test.level.B2": "B2 — Yuqori o'rta",
+        "test.level.C1": "C1 — Ilg'or",
+        "test.level.C2": "C2 — Mahorat",
+        "test.confirm_start": (
+            "📋 <b>{level} darajasi testi</b>\n\n"
+            "Testda savollar bo'ladi.\n"
+            "Tayyormisiz?"
+        ),
+        "test.question": (
+            "❓ <b>Savol {current}/{total}</b>\n\n"
+            "{question}\n\n"
+            "Javobni tanlang:"
+        ),
+        "test.correct": "✅ To'g'ri javob!",
+        "test.incorrect": "❌ Noto'g'ri. To'g'ri javob: {correct_answer}",
+        "test.results": (
+            "📊 <b>Test natijasi</b>\n\n"
+            "✅ To'g'ri javoblar: {correct}/{total}\n"
+            "📈 Foiz: {percent}%\n"
+            "📚 Daraja: {level}\n\n"
+            "{message}"
+        ),
+        "test.results.excellent": "🎉 Ajoyib natija!",
+        "test.results.good": "👍 Yaxshi natija!",
+        "test.results.average": "📖 Yaxshilab o'rganish kerak.",
+        "test.results.poor": "💪 Mashaq qiling, albatta yutib olasiz!",
+        "test.no_questions": "❌ Bu daraja uchun savollar mavjud emas.",
+        "test.error": "❌ Testni yuklashda xatolik yuz berdi.",
     },
     
     "ru": {
@@ -1111,6 +1206,52 @@ TRANSLATIONS = {
         "about_academy": "🏫 Об академии",
         "about_contacts": "📞 Контакты",
         "about_info": "ℹ️ Подробнее о нас",
+
+        # ═══════════════════════════════════════════════════════════
+        #  LESSONS (combined Video + File)
+        # ═══════════════════════════════════════════════════════════
+        "lessons.title": "📚 <b>Уроки</b>",
+        "lessons.prompt": "Выберите тип уроков:",
+        "lessons.video": "🎬 Видеоуроки",
+        "lessons.file": "📁 Файловые уроки",
+        "lessons.back": "⬅️ Назад",
+
+        # ═══════════════════════════════════════════════════════════
+        #  TEST (CEFR level test)
+        # ═══════════════════════════════════════════════════════════
+        "test.title": "✅ <b>Тест уровня CEFR</b>",
+        "test.prompt": "📚 Выберите уровень, который хотите проверить:",
+        "test.level.A1": "A1 — Начальный",
+        "test.level.A2": "A2 — Элементарный",
+        "test.level.B1": "B1 — Средний",
+        "test.level.B2": "B2 — Выше среднего",
+        "test.level.C1": "C1 — Продвинутый",
+        "test.level.C2": "C2 — Мастерство",
+        "test.confirm_start": (
+            "📋 <b>Тест уровня {level}</b>\n\n"
+            "В тесте будут вопросы.\n"
+            "Вы готовы?"
+        ),
+        "test.question": (
+            "❓ <b>Вопрос {current}/{total}</b>\n\n"
+            "{question}\n\n"
+            "Выберите ответ:"
+        ),
+        "test.correct": "✅ Правильный ответ!",
+        "test.incorrect": "❌ Неверно. Правильный ответ: {correct_answer}",
+        "test.results": (
+            "📊 <b>Результат теста</b>\n\n"
+            "✅ Правильных ответов: {correct}/{total}\n"
+            "📈 Процент: {percent}%\n"
+            "📚 Уровень: {level}\n\n"
+            "{message}"
+        ),
+        "test.results.excellent": "🎉 Отличный результат!",
+        "test.results.good": "👍 Хороший результат!",
+        "test.results.average": "📖 Нужно больше учиться.",
+        "test.results.poor": "💪 Продолжайте стараться, у вас всё получится!",
+        "test.no_questions": "❌ Для этого уровня нет вопросов.",
+        "test.error": "❌ Произошла ошибка при загрузке теста.",
     },
     "en": {
         # ═══════════════════════════════════════════════════════════
@@ -1662,6 +1803,52 @@ TRANSLATIONS = {
         "about_academy": "🏫 About Academy",
         "about_contacts": "📞 Contact",
         "about_info": "ℹ️ About us details",
+
+        # ═══════════════════════════════════════════════════════════
+        #  LESSONS (combined Video + File)
+        # ═══════════════════════════════════════════════════════════
+        "lessons.title": "📚 <b>Lessons</b>",
+        "lessons.prompt": "Select the type of lessons:",
+        "lessons.video": "🎬 Video Lessons",
+        "lessons.file": "📁 File Lessons",
+        "lessons.back": "⬅️ Back",
+
+        # ═══════════════════════════════════════════════════════════
+        #  TEST (CEFR level test)
+        # ═══════════════════════════════════════════════════════════
+        "test.title": "✅ <b>CEFR Level Test</b>",
+        "test.prompt": "📚 Select the level you want to test:",
+        "test.level.A1": "A1 — Beginner",
+        "test.level.A2": "A2 — Elementary",
+        "test.level.B1": "B1 — Intermediate",
+        "test.level.B2": "B2 — Upper Intermediate",
+        "test.level.C1": "C1 — Advanced",
+        "test.level.C2": "C2 — Proficiency",
+        "test.confirm_start": (
+            "📋 <b>{level} Level Test</b>\n\n"
+            "The test will have questions.\n"
+            "Are you ready?"
+        ),
+        "test.question": (
+            "❓ <b>Question {current}/{total}</b>\n\n"
+            "{question}\n\n"
+            "Select your answer:"
+        ),
+        "test.correct": "✅ Correct answer!",
+        "test.incorrect": "❌ Incorrect. The correct answer: {correct_answer}",
+        "test.results": (
+            "📊 <b>Test Results</b>\n\n"
+            "✅ Correct answers: {correct}/{total}\n"
+            "📈 Percentage: {percent}%\n"
+            "📚 Level: {level}\n\n"
+            "{message}"
+        ),
+        "test.results.excellent": "🎉 Excellent result!",
+        "test.results.good": "👍 Good result!",
+        "test.results.average": "📖 You need to study more.",
+        "test.results.poor": "💪 Keep trying, you'll get there!",
+        "test.no_questions": "❌ No questions available for this level.",
+        "test.error": "❌ An error occurred while loading the test.",
     },
 }
 

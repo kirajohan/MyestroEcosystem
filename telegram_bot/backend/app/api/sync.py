@@ -7,7 +7,6 @@ from app.models.user import User
 from app.schemas.user import UserResponse
 from app.models.conversation import ConversationThread, Message
 from app.models.logs import ErrorLog
-from app.core.deps import get_current_user
 from app.core.exceptions import NotFoundException, AppException, ConflictException
 
 router = APIRouter(prefix="/sync", tags=["sync"])

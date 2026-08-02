@@ -7,7 +7,7 @@ router = Router()
 async def handle_photo(message: types.Message):
     """Handle photo messages — not supported yet."""
     await message.answer(
-        "😔 Kechirasiz, men faqat matn va ovozli xabarlarni qabul qila olaman.\n"
+        "😔 Kechirasiz, men faqat matn  qabul qila olaman.\n"
         "Пожалуйста, отправьте текст или голосовое сообщение.\n"
         "Please send text or voice messages only."
     )

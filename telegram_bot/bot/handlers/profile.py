@@ -1,12 +1,13 @@
-"""Profile handlers — show profile + edit profile fields."""
+# bot/handlers/profile.py
+"""Profile handlers — show profile + edit profile fields with colored keyboards."""
 
 from aiogram import Router, types, F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup
 from bot.states.registration import MenuSection, RegisteredSection
-from bot.keyboards.reply import registered_menu_keyboard
-from bot.keyboards.inline import registered_menu_kb
+from bot.keyboards.orange_keyboard import ColoredKeyboard  # ✅ Updated
 from bot.utils.i18n import get_text
 from bot.config import API_BASE_URL
 import httpx
@@ -25,17 +26,17 @@ class ProfileEditFSM(StatesGroup):
 # ══════════════════════════════════════════════════════════════
 
 async def show_profile(message: types.Message, state: FSMContext, from_callback: bool = False):
-    """Show user profile with email and inline keyboard."""
+    """Show user profile with colored inline keyboard."""
     user_data = await state.get_data()
     lang = user_data.get("lang", "uz")
     name = user_data.get("full_name", message.from_user.first_name or "User")
     phone = user_data.get("phone", "—")
     email = user_data.get("email", "—")
     level = user_data.get("cefr_level", "A1")
-    password = user_data.get("password")
 
-    # Determine telegram id for this user (state may store different keys)
+    # Determine telegram id for this user
     telegram_id = user_data.get("user_id") or user_data.get("telegram_id") or user_data.get("id") or message.from_user.id
+    
     if telegram_id:
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
@@ -47,38 +48,67 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
                     name = data.get("full_name", name)
                     phone = data.get("phone", phone)
                     level = data.get("cefr_level", level)
-                    password = data.get("password", None)
                     # Update state with fresh data
                     await state.update_data(
-                        email=email, full_name=name, phone=phone, cefr_level=level, password=password
+                        email=email, full_name=name, phone=phone, cefr_level=level
                     )
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[PROFILE FETCH ERROR] {e}")
 
-    # Use localized template with all required fields
-    tmpl = get_text('profile.title', lang)
-    text = tmpl.format(
-        name=name,
-        phone=phone,
-        level=level,
-        lang=lang.upper(),
-        password=password if password else "—"
-    )
-    # Optionally include password display if available (user requested)
-    if password:
-        text += f"\n🔑 Parol: {password}"
+    # Build profile text
+    profile_texts = {
+        "uz": (
+            f"👤 <b>Mening Profilim</b>\n\n"
+            f"📝 <b>Ism:</b> {name}\n"
+            f"📧 <b>Email:</b> {email}\n"
+            f"📱 <b>Telefon:</b> {phone}\n"
+            f"📊 <b>CEFR Level:</b> {level}\n"
+            f"🌐 <b>Til:</b> {lang.upper()}"
+        ),
+        "ru": (
+            f"👤 <b>Мой профиль</b>\n\n"
+            f"📝 <b>Имя:</b> {name}\n"
+            f"📧 <b>Email:</b> {email}\n"
+            f"📱 <b>Телефон:</b> {phone}\n"
+            f"📊 <b>CEFR Level:</b> {level}\n"
+            f"🌐 <b>Язык:</b> {lang.upper()}"
+        ),
+        "en": (
+            f"👤 <b>My Profile</b>\n\n"
+            f"📝 <b>Name:</b> {name}\n"
+            f"📧 <b>Email:</b> {email}\n"
+            f"📱 <b>Phone:</b> {phone}\n"
+            f"📊 <b>CEFR Level:</b> {level}\n"
+            f"🌐 <b>Language:</b> {lang.upper()}"
+        )
+    }
+    
+    text = profile_texts.get(lang, profile_texts["uz"])
 
-    # Inline keyboard for Edit and Back
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    # Inline keyboard — Blue (Edit), Green (Back)
     builder = InlineKeyboardBuilder()
-    edit_text = "✏️ Tahrirlash" if lang == "uz" else ("✏️ Редактировать" if lang == "ru" else "✏️ Edit")
-    back_text = "⬅️ Orqaga" if lang == "uz" else ("⬅️ Назад" if lang == "ru" else "⬅️ Back")
-    builder.button(text=edit_text, callback_data="profile_edit")
-    builder.button(text=back_text, callback_data="back_to_menu")
+    
+    edit_texts = {"uz": "✏️ Tahrirlash", "ru": "✏️ Редактировать", "en": "✏️ Edit"}
+    back_texts = {"uz": "⬅️ Orqaga", "ru": "⬅️ Назад", "en": "⬅️ Back"}
+    
+    from bot.keyboards.extended_buttons import StyledInlineKeyboardButton
+    
+    builder.add(
+        StyledInlineKeyboardButton(
+            text=edit_texts.get(lang, edit_texts["uz"]),
+            callback_data="profile_edit",
+            style="primary"  # 🔵 Blue for edit action
+        ),
+        StyledInlineKeyboardButton(
+            text=back_texts.get(lang, back_texts["uz"]),
+            callback_data="back_to_menu",
+            style="success"  # 🟢 Green for back
+        ),
+    )
     builder.adjust(1)
 
     if from_callback:
-        await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+        await message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     else:
         await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
@@ -86,7 +116,6 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
 @router.callback_query(F.data == "menu_profile")
 async def menu_profile(callback: types.CallbackQuery, state: FSMContext):
     """Show user profile via callback."""
-    await callback.message.delete()
     await show_profile(callback.message, state, from_callback=True)
     await callback.answer()
 
@@ -100,34 +129,66 @@ async def cmd_profile(message: types.Message, state: FSMContext):
 
 
 # ══════════════════════════════════════════════════════════════
-# PROFILE EDIT — FIELD SELECTION
+# PROFILE EDIT — FIELD SELECTION (with colored buttons)
 # ══════════════════════════════════════════════════════════════
 
 @router.callback_query(F.data == "profile_edit")
 async def profile_edit_start(callback: types.CallbackQuery, state: FSMContext):
-    """Show field selection for profile editing."""
+    """Show field selection for profile editing — colored buttons."""
     user_data = await state.get_data()
     lang = user_data.get("lang", "uz")
     await state.set_state(ProfileEditFSM.waiting_field)
 
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
-    texts = {
-        "uz": ["📝 Ism", "📧 Email", "📱 Telefon", "📊 CEFR Level", "🔑 Parol"],
-        "ru": ["📝 Имя", "📧 Email", "📱 Телефон", "📊 CEFR Level", "🔑 Пароль"],
-        "en": ["📝 Name", "📧 Email", "📱 Phone", "📊 CEFR Level", "🔑 Password"],
-    }
-    fields = ["name", "email", "phone", "cefr", "password"]
-    t = texts.get(lang, texts["uz"])
+    from bot.keyboards.extended_buttons import StyledInlineKeyboardButton
     
     builder = InlineKeyboardBuilder()
-    for text, field in zip(t, fields):
-        builder.button(text=text, callback_data=f"edit_{field}")
-    back_text = "⬅️ Orqaga" if lang == "uz" else ("⬅️ Назад" if lang == "ru" else "⬅️ Back")
-    builder.button(text=back_text, callback_data="back_to_menu")
+    
+    # Field options with colors
+    field_options = {
+        "uz": [
+            ("📝 Ism", "edit_name", "primary"),           # Blue
+            ("📧 Email", "edit_email", "primary"),        # Blue
+            ("📱 Telefon", "edit_phone", "primary"),      # Blue
+            ("📊 CEFR Level", "edit_cefr", "success"),    # Green
+            ("⬅️ Orqaga", "back_to_menu", "success"),     # Green back
+        ],
+        "ru": [
+            ("📝 Имя", "edit_name", "primary"),
+            ("📧 Email", "edit_email", "primary"),
+            ("📱 Телефон", "edit_phone", "primary"),
+            ("📊 CEFR Level", "edit_cefr", "success"),
+            ("⬅️ Назад", "back_to_menu", "success"),
+        ],
+        "en": [
+            ("📝 Name", "edit_name", "primary"),
+            ("📧 Email", "edit_email", "primary"),
+            ("📱 Phone", "edit_phone", "primary"),
+            ("📊 CEFR Level", "edit_cefr", "success"),
+            ("⬅️ Back", "back_to_menu", "success"),
+        ],
+    }
+    
+    options = field_options.get(lang, field_options["uz"])
+    
+    for text, callback_data, style in options:
+        builder.add(
+            StyledInlineKeyboardButton(
+                text=text,
+                callback_data=callback_data,
+                style=style
+            )
+        )
+    
     builder.adjust(1)
 
+    prompt_texts = {
+        "uz": "🎯 Qaysi maydonni tahrirlash kerak?",
+        "ru": "🎯 Какое поле вы хотите редактировать?",
+        "en": "🎯 Which field would you like to edit?",
+    }
+
     await callback.message.edit_text(
-        get_text("profile.edit_prompt", lang),
+        prompt_texts.get(lang, prompt_texts["uz"]),
         reply_markup=builder.as_markup(),
     )
     await callback.answer()
@@ -148,33 +209,32 @@ async def profile_edit_field(callback: types.CallbackQuery, state: FSMContext):
 
     prompts = {
         "uz": {
-            "name": "Yangi ismni kiriting:",
-            "email": "Yangi emailni kiriting:",
-            "phone": "Yangi telefon raqamini kiriting:",
-            "cefr": "Yangi CEFR levelni tanlang:",
-            "password": "Yangi parolni kiriting:",
+            "name": "📝 Yangi ismni kiriting:",
+            "email": "📧 Yangi emailni kiriting:",
+            "phone": "📱 Yangi telefon raqamini kiriting:",
+            "cefr": "📊 Yangi CEFR levelni tanlang:",
         },
         "ru": {
-            "name": "Введите новое имя:",
-            "email": "Введите новый email:",
-            "phone": "Введите новый номер телефона:",
-            "cefr": "Выберите новый CEFR level:",
-            "password": "Введите новый пароль:",
+            "name": "📝 Введите новое имя:",
+            "email": "📧 Введите новый email:",
+            "phone": "📱 Введите новый номер телефона:",
+            "cefr": "📊 Выберите новый CEFR level:",
         },
         "en": {
-            "name": "Enter new name:",
-            "email": "Enter new email:",
-            "phone": "Enter new phone number:",
-            "cefr": "Select new CEFR level:",
-            "password": "Enter new password:",
+            "name": "📝 Enter new name:",
+            "email": "📧 Enter new email:",
+            "phone": "📱 Enter new phone number:",
+            "cefr": "📊 Select new CEFR level:",
         },
     }
     prompt = prompts.get(lang, prompts["uz"]).get(field, "Enter new value:")
 
-    # For CEFR, show inline keyboard
+    # For CEFR, show inline keyboard with colored buttons
     if field == "cefr":
-        from bot.keyboards.inline import cefr_level_selection
-        await callback.message.edit_text(prompt, reply_markup=cefr_level_selection())
+        await callback.message.edit_text(
+            prompt,
+            reply_markup=_cefr_selection_keyboard(lang),
+        )
     else:
         await callback.message.edit_text(prompt)
 
@@ -187,7 +247,6 @@ async def profile_edit_value(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     lang = user_data.get("lang", "uz")
     field = user_data.get("editing_field")
-    # Resolve telegram id (state keys vary between flows)
     user_id = user_data.get("user_id") or user_data.get("telegram_id") or user_data.get("id") or message.from_user.id
     new_value = message.text.strip()
 
@@ -201,14 +260,12 @@ async def profile_edit_value(message: types.Message, state: FSMContext):
         "name": "full_name",
         "email": "email",
         "phone": "phone",
-        "password": "password",
     }
     api_field = field_map.get(field, field)
 
     # Update via backend
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # Allow password change via same endpoint — backend will hash it
             resp = await client.put(
                 f"{API_BASE_URL}/sync/user/{user_id}",
                 json={api_field: new_value},
@@ -216,19 +273,27 @@ async def profile_edit_value(message: types.Message, state: FSMContext):
             if resp.status_code == 200:
                 # Update local state
                 await state.update_data(**{api_field: new_value})
+                
+                success_texts = {
+                    "uz": f"✅ {field.upper()} yangilandi!",
+                    "ru": f"✅ {field.upper()} обновлено!",
+                    "en": f"✅ {field.upper()} updated!",
+                }
+                
                 await message.answer(
-                    get_text("profile.updated", lang, field=field),
-                    reply_markup=registered_menu_keyboard(lang),
+                    success_texts.get(lang, success_texts["uz"]),
+                    reply_markup=ColoredKeyboard.reply_main_menu(lang),
                 )
             else:
+                error_msg = f"❌ Xatolik: {resp.status_code}\n{resp.text}"
                 await message.answer(
-                    f"❌ Xatolik: {resp.status_code}\n{resp.text}",
-                    reply_markup=registered_menu_keyboard(lang),
+                    error_msg,
+                    reply_markup=ColoredKeyboard.reply_main_menu(lang),
                 )
     except Exception as e:
         await message.answer(
             f"❌ Xatolik: {str(e)}",
-            reply_markup=registered_menu_keyboard(lang),
+            reply_markup=ColoredKeyboard.reply_main_menu(lang),
         )
 
     await state.set_state(RegisteredSection.main_menu)
@@ -239,7 +304,7 @@ async def profile_edit_cefr(callback: types.CallbackQuery, state: FSMContext):
     """Handle CEFR level selection."""
     user_data = await state.get_data()
     lang = user_data.get("lang", "uz")
-    level = callback.data.split("_")[1]
+    level = callback.data.split("_")[1].upper()
     user_id = user_data.get("user_id") or user_data.get("telegram_id") or user_data.get("id") or callback.from_user.id
 
     if not user_id:
@@ -248,19 +313,26 @@ async def profile_edit_cefr(callback: types.CallbackQuery, state: FSMContext):
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            access_token = user_data.get("access_token")
             resp = await client.put(
                 f"{API_BASE_URL}/sync/user/{user_id}",
                 json={"cefr_level": level},
             )
             if resp.status_code == 200:
                 await state.update_data(cefr_level=level)
+                
+                success_texts = {
+                    "uz": f"✅ CEFR level: <b>{level}</b>",
+                    "ru": f"✅ CEFR уровень: <b>{level}</b>",
+                    "en": f"✅ CEFR level: <b>{level}</b>",
+                }
+                
                 await callback.message.edit_text(
-                    f"✅ CEFR level: {level}",
+                    success_texts.get(lang, success_texts["uz"]),
+                    parse_mode="HTML",
                 )
                 await callback.message.answer(
                     get_text("main_menu", lang),
-                    reply_markup=registered_menu_keyboard(lang),
+                    reply_markup=ColoredKeyboard.reply_main_menu(lang),
                 )
             else:
                 await callback.message.edit_text(f"❌ Xatolik: {resp.status_code}")
@@ -269,3 +341,38 @@ async def profile_edit_cefr(callback: types.CallbackQuery, state: FSMContext):
 
     await state.set_state(RegisteredSection.main_menu)
     await callback.answer()
+
+
+# ══════════════════════════════════════════════════════════════
+# HELPER FUNCTIONS
+# ══════════════════════════════════════════════════════════════
+
+def _cefr_selection_keyboard(lang: str = "uz") -> InlineKeyboardMarkup:
+    """CEFR level selection — colored inline keyboard (all primary blue)."""
+    from bot.keyboards.extended_buttons import StyledInlineKeyboardButton
+    
+    builder = InlineKeyboardBuilder()
+    
+    levels = ["A1", "A2", "B1", "B2", "C1", "C2"]
+    
+    for level in levels:
+        builder.add(
+            StyledInlineKeyboardButton(
+                text=f"📊 {level}",
+                callback_data=f"level_{level.lower()}",
+                style="primary"  # 🔵 Blue for all levels
+            )
+        )
+    
+    # Cancel button — red
+    cancel_texts = {"uz": "❌ Bekor qilish", "ru": "❌ Отмена", "en": "❌ Cancel"}
+    builder.add(
+        StyledInlineKeyboardButton(
+            text=cancel_texts.get(lang, cancel_texts["uz"]),
+            callback_data="back_to_menu",
+            style="danger"  # 🔴 Red for cancel
+        )
+    )
+    
+    builder.adjust(3, 3, 1)  # 3-3-1 layout
+    return builder.as_markup()

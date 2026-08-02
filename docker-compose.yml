@@ -88,18 +88,17 @@ services:
     networks:
       - myestro-net
 
- # docker-compose.yml — TUZATILGAN
   admin:
     build:
       context: ./admin
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8002   # brauzer uchun — o'zgartirilmaydi
+        NEXT_PUBLIC_API_URL: http://localhost:8002
+        NEXT_PUBLIC_ADMIN_PASSWORD: admin123
     ports:
       - "3002:3000"
     environment:
-      BACKEND_INTERNAL_URL: http://backend:8000       # server-side proxy uchun — YANGI qo'shiladi
-      NEXT_PUBLIC_ADMIN_PASSWORD: admin123
+      BACKEND_INTERNAL_URL: http://backend:8000
     depends_on:
       backend:
         condition: service_healthy

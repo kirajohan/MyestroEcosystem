@@ -29,8 +29,8 @@ CREATE TABLE users (
     location        VARCHAR(255),
     ai_enabled      BOOLEAN DEFAULT TRUE NOT NULL,
     created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     deleted_at      TIMESTAMPTZ
+    updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL,
 );
 
 CREATE INDEX idx_users_email ON users(email);
@@ -58,20 +58,25 @@ CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 -- -----------------------------------------------------------
 -- 3. conversation_threads
 -- -----------------------------------------------------------
+-- /backend/app/migrations/init.sql
+
 CREATE TABLE conversation_threads (
-    id                  BIGSERIAL PRIMARY KEY,
-    user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    title               VARCHAR(255),
-    cefr_level          VARCHAR(10) DEFAULT 'A1' NOT NULL,
-    is_active           BOOLEAN DEFAULT TRUE NOT NULL,
-    telegram_thread_id  BIGINT,
-    last_sync_at        TIMESTAMPTZ,
-    created_at          TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    updated_at          TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    telegram_topic_id BIGINT NOT NULL UNIQUE,  -- ⭐ KEY
+    topic_title VARCHAR(255),
+    cefr_level VARCHAR(10) DEFAULT 'A1',
+    is_active BOOLEAN DEFAULT TRUE,
+    last_message_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT idx_thread_user_active UNIQUE(user_id, is_active)
 );
 
-CREATE INDEX idx_conversation_threads_user_id ON conversation_threads(user_id);
+CREATE INDEX idx_threads_user_id ON conversation_threads(user_id);
+CREATE INDEX idx_threads_last_message ON conversation_threads(last_message_at DESC);
 
+-- ⭐ NO messages TABLE — Telegram API'dan olamiz!
+s
 -- -----------------------------------------------------------
 -- 4. messages
 -- -----------------------------------------------------------
@@ -247,23 +252,34 @@ CREATE INDEX idx_bot_texts_lang ON bot_texts(lang);
 -- -----------------------------------------------------------
 -- 18. admin_messages (Inbox for user messages)
 -- -----------------------------------------------------------
-CREATE TABLE admin_messages (
-    id              BIGSERIAL PRIMARY KEY,
-    user_id         BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    user_telegram_id BIGINT,
-    user_name       VARCHAR(255),
-    content_type    VARCHAR(20) DEFAULT 'text' NOT NULL,  -- 'text' | 'photo' | 'voice' | 'document' | 'video' | 'sticker'
-    text            TEXT,
-    file_id         VARCHAR(255),
-    is_read         BOOLEAN DEFAULT FALSE NOT NULL,
-    is_replied      BOOLEAN DEFAULT FALSE NOT NULL,
-    admin_reply     TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
+-- Create inbox_messages table
+CREATE TABLE inbox_messages (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    subject VARCHAR(255),
+    user_message TEXT NOT NULL,
+    admin_reply TEXT,
+    admin_id INTEGER,
+    status VARCHAR(50) DEFAULT 'new',
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    INDEX (user_id),
+    INDEX (status),
+    INDEX (created_at)
 );
 
-CREATE INDEX idx_admin_messages_user_id ON admin_messages(user_id);
-CREATE INDEX idx_admin_messages_is_read ON admin_messages(is_read);
-CREATE INDEX idx_admin_messages_created_at ON admin_messages(created_at);
+-- Create inbox_message_history table
+CREATE TABLE inbox_message_history (
+    id SERIAL PRIMARY KEY,
+    inbox_message_id INTEGER NOT NULL REFERENCES inbox_messages(id) ON DELETE CASCADE,
+    sender_id INTEGER REFERENCES users(id),
+    message_text TEXT NOT NULL,
+    message_type VARCHAR(50) DEFAULT 'user_message',
+    created_at TIMESTAMP DEFAULT NOW(),
+    INDEX (inbox_message_id),
+    INDEX (created_at)
+);
 
 -- -----------------------------------------------------------
 -- 19. broadcast_jobs (Phase 3)

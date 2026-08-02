@@ -5,6 +5,8 @@
 
 export type MediaType = "text" | "photo" | "video" | "document";
 
+export type TargetMode = "all" | "manual" | "filter";
+
 export interface BroadcastJobContent {
   content: string; // xabar matni (HTML formatlash bilan)
   message_type: MediaType;
@@ -20,8 +22,34 @@ export interface BroadcastJob {
 }
 
 export interface BroadcastProgress {
-  status: "pending" | "sending" | "completed" | "failed";
+  status: "pending" | "queued" | "sending" | "completed" | "failed";
   total: number;
   sent: number;
   failed: number;
+}
+
+export interface BroadcastCreatePayload {
+  title: string;
+  content: string;
+  message_type: MediaType;
+  file_id: string | null;
+  target_mode: TargetMode;
+  target_user_ids?: number[];
+  target_filter?: {
+    search?: string;
+    role?: string;
+    cefr_level?: string;
+    lang?: string;
+    is_active?: string;
+  };
+}
+
+export interface BroadcastHistoryItem {
+  broadcast_id: string;
+  title: string;
+  status: string;
+  total: number;
+  sent: number;
+  failed: number;
+  created_at: string;
 }

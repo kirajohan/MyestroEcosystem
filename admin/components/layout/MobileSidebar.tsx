@@ -13,19 +13,19 @@ import {
   ScrollText,
   Settings,
   Bot,
-  LogOut,
+  FileQuestion,
   Menu,
   X,
 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Users', href: '/users', icon: Users },
-  { label: 'Content', href: '#', icon: Video, disabled: true },
+  { label: 'Content', href: '/content', icon: Video },
+  { label: 'Tests', href: '/tests', icon: FileQuestion },
   { label: 'Bot Texts', href: '#', icon: FileText, disabled: true },
-  { label: 'Broadcast', href: '#', icon: Send, disabled: true },
-  { label: 'Inbox', href: '#', icon: MessageSquare, disabled: true },
+  { label: 'Broadcast', href: '/broadcast', icon: Send },
+  { label: 'Inbox', href: '/inbox', icon: MessageSquare },
   { label: 'Logs', href: '#', icon: ScrollText, disabled: true },
   { label: 'Settings', href: '#', icon: Settings, disabled: true },
   { label: 'AI Chat', href: '#', icon: Bot, disabled: true },
@@ -34,7 +34,6 @@ const navItems = [
 export function MobileSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const { logout } = useAuth();
 
   return (
     <>
@@ -100,19 +99,6 @@ export function MobileSidebar() {
           </ul>
         </nav>
 
-        {/* Logout Button */}
-        <div className="p-4 border-t border-stone-800">
-          <button
-            onClick={() => {
-              logout();
-              setIsOpen(false);
-            }}
-            className="flex items-center gap-3 w-full px-4 py-3 text-stone-300 hover:bg-stone-800 rounded-lg transition-colors"
-          >
-            <LogOut size={20} />
-            <span className="text-sm font-medium">Logout</span>
-          </button>
-        </div>
       </div>
     </>
   );

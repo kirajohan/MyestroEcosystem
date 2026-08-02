@@ -6,6 +6,8 @@ Diskga saqlanmaydi.
 
 import io
 import httpx
+import asyncio
+import logging
 from fastapi import APIRouter, Depends, Query, File, UploadFile, Form
 from typing import List, Optional
 from sqlalchemy.orm import Session as DBSession
@@ -15,6 +17,7 @@ from app.schemas.content import ContentItemUpdate, ContentItemResponse
 from app.core.exceptions import NotFoundException, BadRequestException
 from app.config import settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/content", tags=["content"])
 
 TELEGRAM_API = "https://api.telegram.org/bot"
@@ -63,32 +66,49 @@ async def upload_content(
     if not content_bytes:
         raise BadRequestException("Fayl bo'sh")
 
-    # Telegram API ga multipart yuborish
+    # Telegram API ga multipart yuborish (retry logic bilan)
     filename = file.filename or "upload"
     file_stream = io.BytesIO(content_bytes)
 
     telegram_url = f"{TELEGRAM_API}{bot_token}"
-
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            if content_type == "video":
-                tg_resp = await client.post(
-                    f"{telegram_url}/sendVideo",
-                    data={"chat_id": chat_id, "caption": title},
-                    files={"video": (filename, file_stream, file.content_type or "video/mp4")},
-                )
+    
+    max_retries = 3
+    retry_delay = 1.0
+    tg_resp = None
+    
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                if content_type == "video":
+                    tg_resp = await client.post(
+                        f"{telegram_url}/sendVideo",
+                        data={"chat_id": chat_id, "caption": title},
+                        files={"video": (filename, file_stream, file.content_type or "video/mp4")},
+                    )
+                else:
+                    tg_resp = await client.post(
+                        f"{telegram_url}/sendDocument",
+                        data={"chat_id": chat_id, "caption": title},
+                        files={"document": (filename, file_stream, file.content_type or "application/octet-stream")},
+                    )
+            
+            # Check if request was successful
+            if tg_resp.status_code == 200:
+                break
             else:
-                tg_resp = await client.post(
-                    f"{telegram_url}/sendDocument",
-                    data={"chat_id": chat_id, "caption": title},
-                    files={"document": (filename, file_stream, file.content_type or "application/octet-stream")},
-                )
-    except Exception as exc:
-        raise BadRequestException(f"Telegram API bilan aloqa xatosi: {exc}")
-
-    if tg_resp.status_code != 200:
+                logger.warning(f"Telegram API attempt {attempt + 1} failed: HTTP {tg_resp.status_code}")
+                
+        except Exception as exc:
+            logger.warning(f"Telegram API attempt {attempt + 1} error: {exc}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                raise BadRequestException(f"Telegram API bilan aloqa xatosi (3 attempts failed): {exc}")
+    
+    if not tg_resp or tg_resp.status_code != 200:
         raise BadRequestException(
-            f"Telegram API xatosi: HTTP {tg_resp.status_code} — {tg_resp.text[:200]}"
+            f"Telegram API xatosi: HTTP {tg_resp.status_code if tg_resp else 'No response'} — {tg_resp.text[:200] if tg_resp else 'No response'}"
         )
 
     tg_data = tg_resp.json()
@@ -177,26 +197,43 @@ async def patch_content(
         file_stream = io.BytesIO(content_bytes)
         telegram_url = f"{TELEGRAM_API}{bot_token}"
 
-        try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                if item.content_type == "video":
-                    tg_resp = await client.post(
-                        f"{telegram_url}/sendVideo",
-                        data={"chat_id": chat_id, "caption": item.title},
-                        files={"video": (file.filename, file_stream, file.content_type or "video/mp4")},
-                    )
+        max_retries = 3
+        retry_delay = 1.0
+        tg_resp = None
+        
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    if item.content_type == "video":
+                        tg_resp = await client.post(
+                            f"{telegram_url}/sendVideo",
+                            data={"chat_id": chat_id, "caption": item.title},
+                            files={"video": (file.filename, file_stream, file.content_type or "video/mp4")},
+                        )
+                    else:
+                        tg_resp = await client.post(
+                            f"{telegram_url}/sendDocument",
+                            data={"chat_id": chat_id, "caption": item.title},
+                            files={"document": (file.filename, file_stream, file.content_type or "application/octet-stream")},
+                        )
+                
+                # Check if request was successful
+                if tg_resp.status_code == 200:
+                    break
                 else:
-                    tg_resp = await client.post(
-                        f"{telegram_url}/sendDocument",
-                        data={"chat_id": chat_id, "caption": item.title},
-                        files={"document": (file.filename, file_stream, file.content_type or "application/octet-stream")},
-                    )
-        except Exception as exc:
-            raise BadRequestException(f"Telegram API bilan aloqa xatosi: {exc}")
-
-        if tg_resp.status_code != 200:
+                    logger.warning(f"Telegram API attempt {attempt + 1} failed: HTTP {tg_resp.status_code}")
+                    
+            except Exception as exc:
+                logger.warning(f"Telegram API attempt {attempt + 1} error: {exc}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    raise BadRequestException(f"Telegram API bilan aloqa xatosi (3 attempts failed): {exc}")
+        
+        if not tg_resp or tg_resp.status_code != 200:
             raise BadRequestException(
-                f"Telegram API xatosi: HTTP {tg_resp.status_code} — {tg_resp.text[:200]}"
+                f"Telegram API xatosi: HTTP {tg_resp.status_code if tg_resp else 'No response'} — {tg_resp.text[:200] if tg_resp else 'No response'}"
             )
         
         tg_data = tg_resp.json()

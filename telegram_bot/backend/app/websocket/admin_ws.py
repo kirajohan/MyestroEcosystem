@@ -5,9 +5,6 @@ from typing import Set
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.orm import Session as DBSession
 from app.database import get_db
-from app.core.security import verify_token
-from app.config import settings
-from app.models.user import User
 from app.models.logs import ErrorLog
 
 logger = logging.getLogger(__name__)
@@ -46,23 +43,6 @@ async def admin_websocket(websocket: WebSocket, db: DBSession = Depends(get_db))
     """Admin WebSocket for real-time notifications."""
     await manager.connect(websocket)
     try:
-        # Authenticate on connect
-        token_data = await websocket.receive_json()
-        token = token_data.get("token", "")
-
-        try:
-            payload = verify_token(token, settings.JWT_ACCESS_SECRET)
-            user_id = int(payload.get("sub", 0))
-            user = db.query(User).filter(User.id == user_id).first()
-            if not user or user.role not in ("admin", "superadmin"):
-                await websocket.send_json({"type": "error", "message": "Unauthorized"})
-                await websocket.close()
-                return
-        except Exception:
-            await websocket.send_json({"type": "error", "message": "Invalid token"})
-            await websocket.close()
-            return
-
         # Send heartbeat and error notifications
         while True:
             try:

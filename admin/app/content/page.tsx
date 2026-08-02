@@ -10,7 +10,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import { useContentList, useCreateContent, useUpdateContent, useDeleteContent } from '@/hooks/useContent';
 import { ContentItem } from '@/lib/types';
-import { Video, FileText, Upload, CheckCircle, List } from 'lucide-react';
+import { Video, FileText, Upload, CheckCircle, List, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function ContentPage() {
   // Upload form state
@@ -19,6 +19,8 @@ export default function ContentPage() {
   const [contentType, setContentType] = useState<'video' | 'file'>('video');
   const [file, setFile] = useState<File | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Table / modal / confirm state
   const [editItem, setEditItem] = useState<ContentItem | null>(null);
@@ -26,7 +28,7 @@ export default function ContentPage() {
   const [deleteItem, setDeleteItem] = useState<ContentItem | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  const { data: contents, isLoading: isListLoading } = useContentList();
+  const { data: contents, isLoading: isListLoading, refetch: refetchContents } = useContentList();
   const createMutation = useCreateContent();
   const updateMutation = useUpdateContent();
   const deleteMutation = useDeleteContent();
@@ -36,6 +38,7 @@ export default function ContentPage() {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
       setUploadSuccess(false);
+      setUploadError(null);
     }
   };
 
@@ -57,6 +60,9 @@ export default function ContentPage() {
     formData.append('content_type', contentType);
     formData.append('file', file);
 
+    setIsUploading(true);
+    setUploadError(null);
+
     try {
       // useCreateContent hook orqali /api/content (Next.js proxy) ga yuboriladi
       // fetch + FormData ishlatiladi, Content-Type avtomatik multipart/form-data
@@ -72,8 +78,55 @@ export default function ContentPage() {
       const fileInput = document.getElementById('file-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
 
+      // Refresh content list
+      await refetchContents();
+
     } catch (err: any) {
-      toast.error(err.message || 'Yuklashda xatolik');
+      const errorMessage = err.message || 'Yuklashda xatolik';
+      setUploadError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    if (!file || !title.trim()) {
+      toast.error('Qayta urinish uchun fayl va sarlavha kerak');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('content_type', contentType);
+    formData.append('file', file);
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      const data = await createMutation.mutateAsync(formData);
+      toast.success(`Qayta urinish muvaffaqiyatli! file_id: ${data.telegram_file_id?.slice(0, 20) || ''}...`);
+      setUploadSuccess(true);
+      setUploadError(null);
+
+      // Formani tozalash
+      setTitle('');
+      setDescription('');
+      setFile(null);
+      const fileInput = document.getElementById('file-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
+      // Refresh content list
+      await refetchContents();
+
+    } catch (err: any) {
+      const errorMessage = err.message || 'Qayta urinishda xatolik';
+      setUploadError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -134,7 +187,7 @@ export default function ContentPage() {
               <label
                 className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 cursor-pointer transition-colors ${
                   contentType === 'video'
-                    ? 'border-primary bg-orange-50'
+                    ? 'border-primary bg-primary-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -153,7 +206,7 @@ export default function ContentPage() {
               <label
                 className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 cursor-pointer transition-colors ${
                   contentType === 'file'
-                    ? 'border-primary bg-orange-50'
+                    ? 'border-primary bg-primary-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -198,7 +251,7 @@ export default function ContentPage() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Fayl
             </label>
-            <label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary hover:bg-orange-50 transition-colors">
+            <label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary hover:bg-dark-100 transition-colors">
               <div className="flex flex-col items-center gap-2 text-gray-500">
                 <Upload size={24} />
                 <span className="text-sm">
@@ -228,10 +281,41 @@ export default function ContentPage() {
             </div>
           )}
 
+          {/* Error */}
+          {uploadError && (
+            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
+              <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Yuklashda xatolik</p>
+                <p className="text-xs mt-1">{uploadError}</p>
+              </div>
+            </div>
+          )}
+
           {/* Tugma */}
-          <Button type="submit" isLoading={createMutation.isPending} className="w-full">
-            {createMutation.isPending ? 'Yuklanmoqda...' : 'Yuklash'}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              type="submit" 
+              isLoading={isUploading || createMutation.isPending} 
+              className="flex-1"
+              disabled={isUploading}
+            >
+              {isUploading ? 'Yuklanmoqda...' : 'Yuklash'}
+            </Button>
+            
+            {uploadError && (
+              <Button
+                type="button"
+                onClick={handleRetry}
+                isLoading={isUploading}
+                disabled={isUploading}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw size={16} />
+                Qayta urinish
+              </Button>
+            )}
+          </div>
         </form>
       </Card>
 

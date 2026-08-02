@@ -15,9 +15,7 @@ from sqlalchemy import select, and_, or_, desc
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from app.models.user import User
 from app.database import get_db
-from app.core.deps import require_admin
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +54,6 @@ async def get_logs(
     offset: int = Query(0, ge=0),
     hours: int = Query(24, ge=1, le=720),  # Last X hours
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
 ):
     """Get recent logs with optional level filter.
     
@@ -106,7 +103,6 @@ async def search_logs(
     level: Optional[str] = None,
     limit: int = Query(50, ge=1, le=500),
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
 ):
     """Search logs by message content.
     
@@ -160,7 +156,6 @@ async def search_logs(
 async def get_log_stats(
     hours: int = Query(24, ge=1, le=720),
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
 ):
     """Get log statistics for time period."""
     from app.models import Log
@@ -217,7 +212,6 @@ async def get_user_logs(
     user_id: int,
     limit: int = Query(50, ge=1, le=500),
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
 ):
     """Get logs related to specific user (admin only)."""
     from app.models import Log

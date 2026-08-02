@@ -11,7 +11,7 @@ if _app_root not in sys.path:
 if _telegram_bot_root not in sys.path:
     sys.path.insert(0, _telegram_bot_root)
 
-from bot.handlers import academy, admin, ai_agent, ai_chat, contact, document, errors, menu, photo, profile, referral, register, registration, reminders, start, sticker, video, broadcast, inbox
+from bot.handlers import academy, admin, ai_agent, ai_chat, contact, document, errors, menu, photo, profile, referral, register, registration, reminders, start, sticker, video, inbox, lessons, test
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -24,8 +24,6 @@ from bot.handlers import (
 )
 from bot.middlewares.ai_guard import AIGuardMiddleware
 from bot.middlewares.channel_check import ChannelCheckMiddleware
-from bot.middlewares.bot_guard import BotGuardMiddleware
-from bot.utils.ai_client import shutdown_ai_client
 from bot.services.ai_service import ai_service
 from bot.services.broadcast_worker import BroadcastWorker
 
@@ -65,6 +63,8 @@ async def main():
     dp.include_router(register.router)
     dp.include_router(profile.router)
     dp.include_router(menu.router)
+    dp.include_router(lessons.router)
+    dp.include_router(test.router)
     dp.include_router(ai_chat.router)
     dp.include_router(ai_agent.router)
     dp.include_router(registration.router)
@@ -80,8 +80,6 @@ async def main():
     dp.include_router(video.router)
 
     # Register middlewares
-    dp.message.middleware(BotGuardMiddleware())
-    dp.callback_query.middleware(BotGuardMiddleware())
     dp.message.middleware(ChannelCheckMiddleware())
     dp.callback_query.middleware(ChannelCheckMiddleware())
     dp.message.middleware(AIGuardMiddleware())
@@ -99,18 +97,27 @@ async def main():
 
     logger.info("Bot started polling...")
     # Start BroadcastWorker (Redis queue consumer)
+    # ✅ decode_responses=True — string ma'lumotlar uchun (progress tracking, user data)
+    # Binary ma'lumotlar (media upload) uchun worker ichida alohida ulanish yaratiladi
     from redis.asyncio import Redis
-    redis_client = Redis.from_url(settings.REDIS_URL, decode_responses=False)
+    redis_client = Redis.from_url(settings.REDIS_URL, decode_responses=True)
     broadcast_worker = BroadcastWorker(bot, redis_client)
     broadcast_task = asyncio.create_task(broadcast_worker.start())
     
     try:
         await dp.start_polling(bot)
     finally:
-        broadcast_worker.stop()
+        await broadcast_worker.stop()
         if broadcast_task and not broadcast_task.done():
-            broadcast_task.cancel()
-        await shutdown_ai_client()
+            try:
+                await asyncio.wait_for(broadcast_task, timeout=10)
+            except asyncio.TimeoutError:
+                broadcast_task.cancel()
+                try:
+                    await broadcast_task
+                except asyncio.CancelledError:
+                    pass
+        await redis_client.aclose()
         logger.info("AI client shut down.")
 
 

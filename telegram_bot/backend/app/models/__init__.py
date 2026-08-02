@@ -1,9 +1,57 @@
+"""Models package — SQLAlchemy models registry.
+
+Import model classes here so importing this package registers them
+with the SQLAlchemy `Base` metadata. Avoid runtime prints or other
+side-effects so imports remain safe in different contexts.
+"""
+
+# Base (must be imported before models)
+from app.database import Base
+
+# Core models
 from .user import User, Session
 from .conversation import ConversationThread, Message
-from .exam import Exam, ExamSection, ExamQuestion, ExamAttempt, ExamAnswer
 from .knowledge import KnowledgeCategory, KnowledgeDoc
 from .logs import ApiLog, ErrorLog, AuditLog
+from .settings import SystemSetting
 from .content import ContentItem
 from .bot_text import BotText
 from .admin_message import AdminMessage
 from .broadcast import BroadcastJob, BroadcastHistory
+
+# Optional models — guard imports to avoid ImportError during partial setups
+try:
+    from .exam import Exam, ExamSection, ExamQuestion, ExamAttempt, ExamAnswer
+except Exception:
+    Exam = ExamSection = ExamQuestion = ExamAttempt = ExamAnswer = None
+
+try:
+    from .inbox import InboxMessage, InboxMessageHistory
+except Exception:
+    InboxMessage = InboxMessageHistory = None
+
+__all__ = [
+    "Base",
+    "User",
+    "Session",
+    "ConversationThread",
+    "Message",
+    "KnowledgeCategory",
+    "KnowledgeDoc",
+    "ApiLog",
+    "ErrorLog",
+    "AuditLog",
+    "SystemSetting",
+    "ContentItem",
+    "BotText",
+    "AdminMessage",
+    "BroadcastJob",
+    "BroadcastHistory",
+    "InboxMessage",
+    "InboxMessageHistory",
+    "Exam",
+    "ExamSection",
+    "ExamQuestion",
+    "ExamAttempt",
+    "ExamAnswer",
+]

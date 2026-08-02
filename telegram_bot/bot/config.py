@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     API_BASE_URL: str = os.getenv("API_BASE_URL", "http://myestro-backend:8002")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     AI_TRIAL_LIMIT: int = int(os.getenv("AI_TRIAL_LIMIT", "3"))
+
+    # Telegram storage/archive channel for media uploads
+    ARCHIVE_CHAT_ID: str = os.getenv("ARCHIVE_CHAT_ID", "")
+    TELEGRAM_CONTENT_BASE: str = os.getenv("TELEGRAM_CONTENT_BASE", "")
+
+    TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")  # Your group/channel ID
+    ENABLE_THREADED_MODE: str = os.getenv("ENABLE_THREADED_MODE", "false")
     
     # Bot Settings (Phase 2)
     BOT_GLOBAL_ENABLED: str = os.getenv("BOT_GLOBAL_ENABLED", "true")
@@ -33,3 +40,7 @@ settings = Settings()
 # 📤 Eksport qilish (shu bilan import ishlaydi)
 API_BASE_URL = settings.API_BASE_URL
 BOT_TOKEN = settings.BOT_TOKEN
+ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))  # Single admin ID for notifications
+ADMIN_IDS = settings.ADMIN_IDS
+TELEGRAM_CHAT_ID = settings.TELEGRAM_CHAT_ID
+ENABLE_THREADED_MODE = settings.ENABLE_THREADED_MODE

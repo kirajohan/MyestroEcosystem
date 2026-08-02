@@ -30,40 +30,6 @@ def language_switch_kb(lang: str = "uz") -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-# ─── ABOUT US ────────────────────────────────────────────────
-
-def about_us_kb(lang: str = "uz") -> InlineKeyboardMarkup:
-    """About us sub-menu: Havolalar, Ecosystem, FAQ, Orqaga."""
-    from bot.utils.i18n import get_text
-    builder = InlineKeyboardBuilder()
-    builder.button(text="🔗 Havolalar", callback_data="about_links")
-    builder.button(text="🌐 Ecosystem Haqida", callback_data="about_ecosystem")
-    builder.button(text="❓ FAQ", callback_data="about_faq")
-    builder.button(text=get_text("back", lang), callback_data="back_to_menu")
-    builder.adjust(1)
-    return builder.as_markup()
-
-
-# ─── GUIDE ───────────────────────────────────────────────────
-
-def guide_kb(lang: str = "uz") -> InlineKeyboardMarkup:
-    """Guide sub-menu: Bot bo'yicha, AI bo'yicha, FAQ, Orqaga."""
-    from bot.utils.i18n import get_text
-    texts = {
-        "uz": {"bot": "🤖 Bot bo'yicha", "ai": "🧠 AI bo'yicha", "faq": "❓ FAQ"},
-        "ru": {"bot": "🤖 О боте", "ai": "🧠 Об AI", "faq": "❓ FAQ"},
-        "en": {"bot": "🤖 About Bot", "ai": "🧠 About AI", "faq": "❓ FAQ"},
-    }
-    t = texts.get(lang, texts["uz"])
-    builder = InlineKeyboardBuilder()
-    builder.button(text=t["bot"], callback_data="guide_bot")
-    builder.button(text=t["ai"], callback_data="guide_ai")
-    builder.button(text=t["faq"], callback_data="guide_faq")
-    builder.button(text=get_text("back", lang), callback_data="back_to_menu")
-    builder.adjust(1)
-    return builder.as_markup()
-
-
 # ─── CEFR LEVEL SELECTION ────────────────────────────────────
 
 def cefr_level_selection() -> InlineKeyboardMarkup:
@@ -78,19 +44,34 @@ def cefr_level_selection() -> InlineKeyboardMarkup:
 # ─── REGISTERED USER MAIN MENU ──────────────────────────────
 
 def registered_menu_kb(lang: str = "uz") -> InlineKeyboardMarkup:
-    """Inline menu for REGISTERED users."""
+    """Inline menu for REGISTERED users — updated with combined Lessons + Test."""
     from bot.utils.i18n import get_text
     texts = {
-        "uz": ["👤 Profil", "⚙️ Sozlamalar", "📖 Qo'llanma", "📨 Admin ga xabar", "🎬 Video Darslik", "📁 File Darsliklar"],
-        "ru": ["👤 Профиль", "⚙️ Настройки", "📖 Руководство", "📨 Написать админу", "🎬 Видеоурок", "📁 Файлы уроков"],
-        "en": ["👤 Profile", "⚙️ Settings", "📖 Guide", "📨 Message admin", "🎬 Video Lesson", "📁 File Lessons"],
+        "uz": ["👤 Profil", "⚙️ Sozlamalar", "📨 Admin ga xabar", "📚 Darslar", "✅ Test"],
+        "ru": ["👤 Профиль", "⚙️ Настройки",  "📨 Написать админу", "📚 Уроки", "✅ Тест"],
+        "en": ["👤 Profile", "⚙️ Settings",  "📨 Message admin", "📚 Lessons", "✅ Test"],
     }
     items = texts.get(lang, texts["uz"])
-    callbacks = ["menu_profile", "menu_settings", "menu_guide", "menu_admin_msg", "menu_video", "menu_file"]
+    callbacks = ["menu_profile", "menu_settings", "menu_guide", "menu_admin_msg", "menu_lessons", "menu_test"]
     builder = InlineKeyboardBuilder()
     for text, cb in zip(items, callbacks):
         builder.button(text=text, callback_data=cb)
     builder.adjust(2)
+    return builder.as_markup()
+
+
+def about_us_kb(lang: str = "uz") -> InlineKeyboardMarkup:
+    """Biz haqimizda bo'limi uchun inline klaviatura."""
+    builder = InlineKeyboardBuilder()
+    
+    # Masalan: Veb-sayt yoki admin havolasi tugmasi
+    web_text = "🌐 Website" if lang == "en" else ("🌐 Веб-сайт" if lang == "ru" else "🌐 Veb-sayt")
+    builder.button(text=web_text, url="https://myestro.uz")
+    
+    back_text = "⬅️ Back" if lang == "en" else ("⬅️ Назад" if lang == "ru" else "⬅️ Orqaga")
+    builder.button(text=back_text, callback_data="back_to_menu")
+    
+    builder.adjust(1)
     return builder.as_markup()
 
 
@@ -109,7 +90,7 @@ def settings_kb(lang: str = "uz") -> InlineKeyboardMarkup:
     builder.button(text=t["lang"], callback_data="settings_language")
     builder.button(text=t["ai"], callback_data="settings_ai_toggle")
     builder.button(text=t["logout"], callback_data="settings_logout")
-    builder.button(text=get_text("back", lang), callback_data="back_to_menu")
+    builder.button(text=get_text("back", lang), callback_data="back_to_settings")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -251,6 +232,87 @@ def register_login_kb(lang: str = "uz") -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=t["contact"], callback_data="login_contact")
     builder.button(text=t["email"], callback_data="login_email")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+# ─── LESSONS MENU ────────────────────────────────────────────
+
+def lessons_menu_kb(lang: str = "uz") -> InlineKeyboardMarkup:
+    """Lessons sub-menu: Video lessons + File lessons + Back."""
+    from bot.utils.i18n import get_text
+    texts = {
+        "uz": {"video": "🎬 Video darslar", "file": "📁 Fayl darslar", "back": "⬅️ Orqaga"},
+        "ru": {"video": "🎬 Видеоуроки", "file": "📁 Файловые уроки", "back": "⬅️ Назад"},
+        "en": {"video": "🎬 Video Lessons", "file": "📁 File Lessons", "back": "⬅️ Back"},
+    }
+    t = texts.get(lang, texts["uz"])
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t["video"], callback_data="lessons_video")
+    builder.button(text=t["file"], callback_data="lessons_file")
+    builder.button(text=t["back"], callback_data="back_to_menu")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+# ─── TEST (CEFR LEVEL) ───────────────────────────────────────
+
+def test_level_kb(lang: str = "uz") -> InlineKeyboardMarkup:
+    """CEFR level selection grid: A1-A2-B1-B2 / C1-C2 + Back."""
+    from bot.utils.i18n import get_text
+    builder = InlineKeyboardBuilder()
+    levels = ["A1", "A2", "B1", "B2", "C1", "C2"]
+    for level in levels:
+        builder.button(text=f"📚 {level}", callback_data=f"test_level_{level}")
+    builder.button(text=get_text("back", lang), callback_data="back_to_menu")
+    builder.adjust(3, 3, 1)
+    return builder.as_markup()
+
+
+def test_confirm_kb(lang: str = "uz", level: str = "A1") -> InlineKeyboardMarkup:
+    """Test start confirmation: Start + Back to levels."""
+    from bot.utils.i18n import get_text
+    texts = {
+        "uz": {"start": "✅ Testni boshlash", "back": "⬅️ Darajani tanlash"},
+        "ru": {"start": "✅ Начать тест", "back": "⬅️ Выбрать уровень"},
+        "en": {"start": "✅ Start Test", "back": "⬅️ Select Level"},
+    }
+    t = texts.get(lang, texts["uz"])
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t["start"], callback_data=f"test_start_{level}")
+    builder.button(text=t["back"], callback_data="test_select_level")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def test_question_kb(options: list, question_id: int, lang: str = "uz") -> InlineKeyboardMarkup:
+    """Test question options keyboard.
+    
+    Args:
+        options: List of (label, is_correct) tuples for answer options.
+        question_id: Current question ID for tracking.
+        lang: Language code.
+    """
+    builder = InlineKeyboardBuilder()
+    for i, (label, _) in enumerate(options):
+        builder.button(text=label, callback_data=f"test_answer_{question_id}_{i}")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def test_results_kb(lang: str = "uz") -> InlineKeyboardMarkup:
+    """Test results actions: Repeat + Lessons + Menu."""
+    from bot.utils.i18n import get_text
+    texts = {
+        "uz": {"repeat": "🔄 Qayta urinish", "lessons": "📚 Darslar", "menu": "🏠 Asosiy menyu"},
+        "ru": {"repeat": "🔄 Попробовать снова", "lessons": "📚 Уроки", "menu": "🏠 Главное меню"},
+        "en": {"repeat": "🔄 Try Again", "lessons": "📚 Lessons", "menu": "🏠 Main Menu"},
+    }
+    t = texts.get(lang, texts["uz"])
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t["repeat"], callback_data="test_select_level")
+    builder.button(text=t["lessons"], callback_data="menu_lessons")
+    builder.button(text=t["menu"], callback_data="back_to_menu")
     builder.adjust(1)
     return builder.as_markup()
 

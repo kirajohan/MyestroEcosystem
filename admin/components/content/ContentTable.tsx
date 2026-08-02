@@ -81,7 +81,7 @@ export function ContentTable({ items, isLoading, onEdit, onDelete }: ContentTabl
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => onEdit(item)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-2 text-primary hover:bg-dark-100 rounded-lg transition-colors"
                       title="Tahrirlash"
                     >
                       <Pencil size={18} />

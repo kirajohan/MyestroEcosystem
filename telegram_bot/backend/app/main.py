@@ -15,7 +15,7 @@ if _telegram_bot_root not in sys.path:
 
 from app.config import settings
 from app.database import engine
-from app.api import auth, users, stats, exams, admin, ai_assistant, sync, knowledge, settings as settings_router, content, bot_text, admin_messages, broadcast, inbox, logs
+from app.api import auth, users, stats, exams, admin, ai_assistant, sync, knowledge, settings as settings_router, content, bot_text, admin_messages, broadcast, inbox, logs, placeholders
 from app.websocket.admin_ws import router as ws_router
 from app.core.exceptions import AppException
 from app.services.ai_service import shutdown_ai_client
@@ -81,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(broadcast.router)
     app.include_router(inbox.router)
     app.include_router(logs.router)
+    app.include_router(placeholders.router)
     app.include_router(ws_router)  # WebSocket
 
     # Exception handlers

@@ -19,11 +19,62 @@ router = APIRouter(prefix="/users", tags=["users"])
 def list_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    role: Optional[str] = Query(None),
+    cefr_level: Optional[str] = Query(None),
+    lang: Optional[str] = Query(None),
+    is_active: Optional[bool] = Query(None),
     db: DBSession = Depends(get_db),
 ):
-    users = db.query(User).filter(User.deleted_at.is_(None)).offset(skip).limit(limit).all()
-    total = db.query(User).filter(User.deleted_at.is_(None)).count()
+    query = db.query(User).filter(User.deleted_at.is_(None))
+    
+    if search:
+        like_pattern = f"%{search}%"
+        query = query.filter(
+            (User.full_name.ilike(like_pattern)) | (User.email.ilike(like_pattern))
+        )
+    if role:
+        query = query.filter(User.role == role)
+    if cefr_level:
+        query = query.filter(User.cefr_level == cefr_level)
+    if lang:
+        query = query.filter(User.lang == lang)
+    if is_active is not None:
+        query = query.filter(User.is_active == is_active)
+    
+    total = query.count()
+    users = query.offset(skip).limit(limit).all()
     return {"data": [UserResponse.model_validate(u) for u in users], "total": total}
+
+
+@router.get("/ids", response_model=dict)
+def list_user_ids(
+    search: Optional[str] = Query(None),
+    role: Optional[str] = Query(None),
+    cefr_level: Optional[str] = Query(None),
+    lang: Optional[str] = Query(None),
+    is_active: Optional[bool] = Query(None),
+    db: DBSession = Depends(get_db),
+):
+    """Get filtered user IDs (for broadcast targeting)."""
+    query = db.query(User.id).filter(User.deleted_at.is_(None))
+    
+    if search:
+        like_pattern = f"%{search}%"
+        query = query.filter(
+            (User.full_name.ilike(like_pattern)) | (User.email.ilike(like_pattern))
+        )
+    if role:
+        query = query.filter(User.role == role)
+    if cefr_level:
+        query = query.filter(User.cefr_level == cefr_level)
+    if lang:
+        query = query.filter(User.lang == lang)
+    if is_active is not None:
+        query = query.filter(User.is_active == is_active)
+    
+    ids = [row[0] for row in query.all()]
+    return {"user_ids": ids, "total": len(ids)}
 
 
 @router.get("/{user_id}", response_model=UserResponse)

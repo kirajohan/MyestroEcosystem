@@ -79,7 +79,7 @@ export function UserTable({
           {users.map((user) => (
             <tr
               key={user.id}
-              className="border-b hover:bg-orange-50 transition-colors"
+              className="border-b hover:bg-dark-100 transition-colors"
             >
               <td className="px-6 py-4 text-sm text-gray-900">{user.id}</td>
               <td className="px-6 py-4 text-sm font-semibold text-gray-900">

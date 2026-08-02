@@ -12,9 +12,8 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from typing import Optional
 from bot.states.registration import AuthFSM, RegisteredSection, StartSection
-from bot.keyboards.reply import (
-    remove_keyboard, registered_menu_keyboard,
-)
+from bot.keyboards.reply import remove_keyboard
+from bot.keyboards.orange_keyboard import ColoredKeyboard
 from bot.utils.i18n import get_text
 from bot.config import settings
 import httpx
@@ -85,17 +84,66 @@ async def _do_login(message: types.Message, state: FSMContext, user_info: dict, 
     )
     await message.answer(
         get_text("registered.welcome_new", lang, name=user_info.get("full_name", "")),
-        reply_markup=registered_menu_keyboard(lang),
+        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
     )
 
 
 @router.message(F.contact, StateFilter(AuthFSM.requesting_contact))
 async def handle_contact(message: types.Message, state: FSMContext):
     """Handle contact share — check DB, login or register."""
-    phone = message.contact.phone_number
-    telegram_id = message.from_user.id
     user_data = await state.get_data()
     lang = user_data.get("lang", "uz")
+
+    # ═══════════════════════════════════════════════════════════
+    # SECURITY CHECK 1: Block forwarded contacts
+    # ═══════════════════════════════════════════════════════════
+    if message.forward_origin:
+        await message.answer(
+            get_text("contact.forwarded", lang),
+            reply_markup=remove_keyboard,
+        )
+        await state.set_state(StartSection.main_menu)
+        return
+
+    # ═══════════════════════════════════════════════════════════
+    # SECURITY CHECK 2: Only own contact allowed
+    # ═══════════════════════════════════════════════════════════
+    if message.contact.user_id != message.from_user.id:
+        await message.answer(
+            get_text("contact.not_own", lang),
+            reply_markup=remove_keyboard,
+        )
+        await state.set_state(StartSection.main_menu)
+        return
+
+    # ═══════════════════════════════════════════════════════════
+    # SECURITY CHECK 3: State session validation
+    # ═══════════════════════════════════════════════════════════
+    stored_telegram_id = user_data.get("telegram_id")
+    if stored_telegram_id and stored_telegram_id != message.from_user.id:
+        # state.clear() dan keyin yangi state o'rnatamiz (None state'ga tushib qolishining oldini olish)
+        await state.clear()
+        await state.set_state(StartSection.main_menu)
+        await state.update_data(lang=lang)
+        await message.answer(
+            get_text("contact.session_mismatch", lang),
+            reply_markup=remove_keyboard,
+        )
+        return
+
+    phone = message.contact.phone_number
+    telegram_id = message.from_user.id
+
+    # ═══════════════════════════════════════════════════════════
+    # SECURITY CHECK 4: Phone number validation
+    # ═══════════════════════════════════════════════════════════
+    if not phone or len(phone) < 9:
+        await message.answer(
+            get_text("contact.invalid_phone", lang),
+            reply_markup=remove_keyboard,
+        )
+        await state.set_state(StartSection.main_menu)
+        return
 
     # Check DB by phone
     exists, user_info = await _check_phone(phone)

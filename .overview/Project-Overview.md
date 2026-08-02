@@ -1,14 +1,14 @@
 ---
 
-## ESKI — 22/07/2026 12:50 (Asia/Tashkent, UTC+5:00)
+## ESKI — 22/07/2026 19:58 (Asia/Tashkent, UTC+5:00)
 
 ---
 
-## Hozirgi Holat — 22/07/2026 19:58 (Asia/Tashkent, UTC+5:00)
+## Hozirgi Holat — 02/08/2026 14:13 (Asia/Tashkent, UTC+5:00)
 
 ### 1. Loyiha Tavsifi
 
-**Myestro** — O'zbekiston va Markaziy Osiyo bozoriga mo'ljallangan, **AI-powered** ingliz tilini o'rganish platformasi. Platforma **Myestro Ecosystem** doirasida joylashadi va quyidagi mahsulotlarni o'z ichiga oladi:
+**Myestro** — O'zbekiston va Markaziy Osiyo bozoriga mo'ljallangan, **AI-powered** ingliz tilini o'rganish platformasi. Platforma **Myestro Ecosystem** doirasida joylashgan va quyidagi mahsulotlarni o'z ichiga oladi:
 
 - **Myestro Teacher** — Telegram bot (AI o'qituvchi, suhbat, grammatika tuzatish, ovozli xabarlar)
 - **Myestro Exam** — Onlayn imtihon tizimi (CEFR darajalash, IELTS/TOEFL/TOEFL mock)
@@ -274,7 +274,8 @@ telegram_bot/backend/
 │   │   ├── knowledge.py     # KnowledgeCategory, KnowledgeDoc
 │   │   ├── logs.py          # ApiLog, AuditLog, ErrorLog
 │   │   ├── settings.py      # SystemSetting
-│   │   └── user.py          # User, Session
+│   │   ├── user.py          # User, Session
+│   │   └── Inbox.py         # InboxMessage, InboxMessageHistory
 │   ├── schemas/             # 11 Pydantic schemas
 │   │   ├── __init__.py
 │   │   ├── admin_message.py
@@ -420,7 +421,8 @@ telegram_bot/bot/
 │   │   ├── __init__.py
 │   │   ├── inline.py      # Inline keyboards
 │   │   ├── inline_temp.py # Temporary inline keyboards
-│   │   └── reply.py       # Reply keyboards
+│   │   ├── reply.py       # Reply keyboards
+│   │   └── orange_keyboard.py # Colored keyboard factory
 │   ├── middlewares/
 │   │   ├── __init__.py
 │   │   ├── ai_guard.py    # AI enabled check (global + user level)
@@ -429,7 +431,8 @@ telegram_bot/bot/
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── ai_service.py  # AI health check
-│   │   └── broadcast_worker.py # Broadcast worker (Redis BRPOP consumer)
+│   │   ├── broadcast_worker.py # Broadcast worker (Redis BRPOP consumer)
+│   │   └── inbox_service.py # Inbox admin notification service
 │   ├── states/
 │   │   └── registration.py # FSM states for registration
 │   └── utils/
@@ -440,7 +443,9 @@ telegram_bot/bot/
 │       ├── ai_prompts_enhanced.py # Enhanced AI prompts
 │       ├── helpers.py     # Helper utilities
 │       ├── i18n.py        # Internationalization (uz, ru, en)
-│       └── i18n_orig.py   # Original i18n
+│       ├── i18n_orig.py   # Original i18n
+│       ├── markdown_v2.py # Markdown V2 formatter
+│       └── telegram_service.py # Telegram API service
 ├── requirements.txt
 └── Dockerfile
 ```
@@ -474,7 +479,8 @@ Bot (aiogram Dispatcher)
 │   └── video.router
 ├── Services
 │   ├── ai_service (health check)
-│   └── broadcast_worker (Redis consumer)
+│   ├── broadcast_worker (Redis consumer)
+│   └── inbox_service (admin notifications)
 └── Utils
     ├── ai_client (shared AI wrapper)
     ├── i18n (3 languages: uz, ru, en)
@@ -525,6 +531,9 @@ admin/
 │   ├── broadcast/
 │   │   ├── layout.tsx     # AuthGuard + Sidebar + Header
 │   │   └── page.tsx       # Broadcast form, progress polling
+│   ├── inbox/
+│   │   ├── layout.tsx     # AuthGuard + Sidebar + Header
+│   │   └── page.tsx       # Inbox messages, reply, status management
 │   └── api/
 │       ├── content/
 │       │   └── route.ts   # GET/POST /content (proxy to backend)
@@ -548,6 +557,11 @@ admin/
 │   │   ├── UserTable.tsx
 │   │   ├── UserEditForm.tsx
 │   │   └── UserDetailModal.tsx
+│   ├── broadcast/
+│   │   ├── BroadcastForm.tsx
+│   │   └── BroadcastProgress.tsx
+│   ├── chat/
+│   │   └── ChatWindow.tsx
 │   ├── common/
 │   │   ├── EmptyState.tsx
 │   │   ├── ErrorDisplay.tsx
@@ -566,7 +580,8 @@ admin/
 ├── hooks/
 │   ├── useDashboard.ts    # useStats, useActivity, useCEFR
 │   ├── useUsers.ts        # useUsers, useUpdateUser, useDeleteUser, useSendMessage
-│   └── useContent.ts      # useContentList, useUpdateContent, useDeleteContent
+│   ├── useContent.ts      # useContentList, useUpdateContent, useDeleteContent
+│   └── useAudienceSelection.ts # Broadcast audience selection
 ├── lib/
 │   ├── api.ts             # Axios instance (baseURL: localhost:8000)
 │   ├── types.ts           # TypeScript interfaces (User, Login, Stats, etc.)
@@ -613,12 +628,20 @@ App (RootLayout)
 │   ├── ContentTable
 │   ├── EditContentModal
 │   └── ConfirmDialog (delete)
-└── BroadcastPage (/broadcast)
+├── BroadcastPage (/broadcast)
+│   ├── AuthGuard
+│   ├── Sidebar
+│   ├── Header
+│   ├── BroadcastForm (message, media type, media URL, user IDs)
+│   └── ProgressBar (polling every 2s)
+└── InboxPage (/inbox)
     ├── AuthGuard
     ├── Sidebar
     ├── Header
-    ├── Broadcast Form (message, media type, media URL, user IDs)
-    └── Progress Bar (polling every 2s)
+    ├── MessageList (filterable: all, new, replied, closed)
+    ├── MessageThread (chat history)
+    ├── ReplyBox (textarea + send button)
+    └── StatusActions (close thread)
 ```
 
 **API Bog'lanishlari:**
@@ -637,6 +660,11 @@ App (RootLayout)
 | ContentPage | `fetch('/api/contents/${id}')` | `/api/contents/:id` (Next.js proxy) | DELETE |
 | BroadcastPage | `fetch('/api/broadcast')` | `/api/broadcast` (Next.js proxy) | POST |
 | BroadcastPage | `fetch('/api/broadcast/${id}')` | `/api/broadcast/:id` (Next.js proxy) | GET |
+| InboxPage | `fetch('/api/inbox/messages')` | `/api/inbox/messages` (Next.js proxy) | GET |
+| InboxPage | `fetch('/api/inbox/messages/${id}')` | `/api/inbox/messages/:id` (Next.js proxy) | GET |
+| InboxPage | `fetch('/api/inbox/messages/${id}/reply', {method: 'POST'})` | `/api/inbox/messages/:id/reply` | POST |
+| InboxPage | `fetch('/api/inbox/messages/${id}/status', {method: 'PATCH'})` | `/api/inbox/messages/:id/status` | PATCH |
+| InboxPage | `fetch('/api/inbox/messages/${id}', {method: 'DELETE'})` | `/api/inbox/messages/:id` | DELETE |
 
 #### 4.4. Database (PostgreSQL + Redis)
 
@@ -664,7 +692,7 @@ Database Layer
 │   ├── inbox_messages (admin-user xabar almashuvi) [Phase 4]
 │   ├── inbox_message_history (xabar tarixi) [Phase 4]
 │   ├── global_settings (global bot/AI toggle) [Phase 5]
-│   └── logs (strbuyktural loglar) [Phase 6]
+│   └── logs (structured loglar) [Phase 6]
 └── Redis 7 (port 6380)
     ├── DB 0: OTP, kesh, broadcast queue (backend)
     └── DB 1: FSM storage (bot)
@@ -936,6 +964,16 @@ Database Layer
 | `is_read` | BOOLEAN | NOT NULL | `false` | - | - | O'qilganmi |
 | `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | - | `idx_inbox_created_at` | Yaratilgan vaqt |
 | `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | - | - | Yangilangan vaqt |
+
+**Jadval `inbox_message_history` (Phase 4):**
+| Ustun | Tur | Constraint | Default | FK → Jadval | Indeks | Tavsifi |
+|-------|-----|------------|---------|-------------|--------|--------|
+| `id` | BIGSERIAL | PK | - | - | PK | History ID |
+| `inbox_message_id` | BIGINT | NOT NULL | - | `inbox_messages.id` ON DELETE CASCADE | `idx_inbox_history_message` | Xabar |
+| `sender_id` | BIGINT | NULL | - | `users.id` ON DELETE SET NULL | - | Yuboruvchi |
+| `message_text` | TEXT | NOT NULL | - | - | - | Xabar matni |
+| `message_type` | VARCHAR(50) | NOT NULL | `user_message` | - | - | `user_message`/`admin_reply` |
+| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | - | `idx_inbox_history_created_at` | Yaratilgan vaqt |
 
 **Jadval `global_settings` (Phase 5):**
 | Ustun | Tur | Constraint | Default | FK → Jadval | Indeks | Tavsifi |
@@ -1253,15 +1291,15 @@ Database Layer
 ### 8. UI/UX
 
 #### 8.1. Sahifalar va Marshrutlar
-| Sahifa | Marshrut | Ma'lumot Manbai | Auth Kerakmi |
+| Sahifa | Marshrut | Ma'lumot Manbasi | Auth Kerakmi |
 |--------|----------|-----------------|-------------|
 | Login | `/login` | `/auth/admin-login` | Yo'q |
 | Dashboard | `/dashboard` | `/stats`, `/stats/activity`, `/stats/cefr` | Ha (localStorage) |
 | Users | `/users` | `/users` (paginated) | Ha (localStorage) |
 | Content | `/content` | `/content` (GET/POST), `/api/content` (proxy) | Ha (localStorage) |
 | Broadcast | `/broadcast` | `/api/broadcast` (Next.js proxy) | Ha (localStorage) |
+| Inbox | `/inbox` | `/api/inbox/messages` (Next.js proxy) | Ha (localStorage) |
 | Bot Texts | `#` | - | Yo'q (disabled) |
-| Inbox | `#` | - | Yo'q (disabled) |
 | Logs | `#` | - | Yo'q (disabled) |
 | Settings | `#` | - | Yo'q (disabled) |
 | AI Chat | `#` | - | Yo'q (disabled) |
@@ -1279,11 +1317,14 @@ Database Layer
 | `UserDetailModal` | `components/users/UserDetailModal.tsx` | `{user, isOpen, onClose}` | - | - |
 | `ContentTable` | `components/content/ContentTable.tsx` | `{items, isLoading, onEdit, onDelete}` | - | - |
 | `EditContentModal` | `components/content/EditContentModal.tsx` | `{item, isOpen, onClose, onSave, isLoading}` | form state | `useUpdateContent` |
+| `BroadcastForm` | `components/broadcast/BroadcastForm.tsx` | - | form state | `fetch('/api/broadcast')` |
+| `BroadcastProgress` | `components/broadcast/BroadcastProgress.tsx` | `{broadcastId}` | progress | `fetch('/api/broadcast/${id}')` |
 | `LoginPage` | `app/login/page.tsx` | - | form state | `login()` |
 | `DashboardPage` | `app/dashboard/page.tsx` | - | - | `useStats`, `useActivity`, `useCEFR` |
 | `UsersPage` | `app/users/page.tsx` | - | page, search, selectedUser, editingUser, deletingUser | `useUsers`, `useUpdateUser`, `useDeleteUser` |
 | `ContentPage` | `app/content/page.tsx` | - | title, description, contentType, file, editItem, deleteItem | `useContentList`, `useUpdateContent`, `useDeleteContent` |
 | `BroadcastPage` | `app/broadcast/page.tsx` | - | message, mediaType, mediaUrl, userIdsRaw, broadcastId, progress | `fetch('/api/broadcast')` |
+| `InboxPage` | `app/inbox/page.tsx` | - | selectedMessage, replyText, filter | `useQuery`, `useMutation` (inbox API) |
 
 #### 8.3. Dizayn Tizimi
 - **Ranglar:** Primary (`#F97316`), Primary hover (`#EA580C`), Dark (`#1C1917`), Sidebar (`#1C1917`)
@@ -1334,18 +1375,18 @@ Database Layer
 |---|--------|---------|--------------------------|-----------|
 | 1 | Admin panel tokenless auth (localStorage) | XSS orqali sessiya o'tkazib yuborish riski | Phase 7 (Security hardening) | High |
 | 2 | `/exams` endpoint'lari stub (return empty) | Imtihon funksiyasi ishlamaydi | Phase 8 (Exam system) | Medium |
-| 3 | Bot broadcast listener o'chirilgan (`broadcast_listener` ishlatilmaydi) | Broadcast faqat backend queue'ga qo'shadi, bot eshitmaydi | Phase 3 (Broadcast) | Medium |
-| 4 | `backend_users.py` root papkasida (duplikat `/users` router) | Ikki `/users` endpoint'lari — biri `list_users` funksiyasi bilan konflikt | Phase 1 (Cleanup) | Low |
-| 5 | Admin panel `api.ts` da `baseURL: localhost:8000` (hardcoded) | Production'da noto'g'ri URL | Phase 1 (Config) | Low |
+| 3 | Bot broadcast listener o'chirilgan (`broadcast_listener` ishlatilmaydi) | Broadcast faqat backend queue'ga qo'shadi, bot eshitmaydi | Phase 9 (Bot broadcast listener) | Medium |
+| 4 | `backend_users.py` root papkasida (duplikat `/users` router) | Ikki `/users` endpoint'lari — biri `list_users` funksiyasi bilan konflikt | Phase 11 (Cleanup) | Low |
+| 5 | Admin panel `api.ts` da `baseURL: localhost:8000` (hardcoded) | Production'da noto'g'ri URL | Phase 10 (Config) | Low |
 | 6 | `CHANNEL_ID` .env da yo'q | Channel check middleware avtomatik o'tkazib yuboradi | Phase 2 (Channel) | Low |
 | 7 | `admin_messages` jadvali `admin_messages.py` da, lekin `inbox.py` da `InboxMessage` modeli ishlatiladi | Model/schema nomlari farq qiladi | Phase 4 (Inbox) | Medium |
 | 8 | Frontend `types.ts` da `UserResponse` interfeysi ikki marta aniqlanadi | TypeScript duplicate interface xatosi | Phase 1 (Cleanup) | Low |
 | 9 | `ai_assistant.py` da `analyze_logs` funksiyasi `log_id` ni `item.get("id")` orqali o'qiydapti, lekin `log_data` da `id` yo'q | AI log analysis ishlamaydi to'g'ri | Phase 5 (AI) | Low |
 | 10 | Bot `MemoryStorage` ishlatiladi (Redis FSM yo'q) | Bot qayta ishga tushganda barcha FSM state yo'qoladi | Phase 2 (Bot) | Low |
 
-### 12. Keyingi Bosqish (Phase)
+### 12. Keyingi Bosqich (Phase)
 
-**Joriy Phase:** Phase 6 (Structured Logging System) — `logs` jadvali yaratilgan, `/logs` API endpoint'lari ishga tushirilgan.
+**Joriy Phase:** Phase 6 (Structured Logging System) — ✅ Tugallangan
 
 **Keyingi Phase:** Phase 7 (Security Hardening)
 - JWT token admin panelga ulanishi
@@ -1398,3 +1439,13 @@ Database Layer
 | 1.9.0 | 2025-03-20 | WebSocket — `/ws/admin`, real-time error notifications | Myestro Team |
 | 2.0.0 | 2025-06-20 | Repository yangilash — eski repo o'chirildi, yangi MyestroEcosystem repo yaratildi | Myestro Team |
 | 2.1.0 | 2026-07-22 | Project-Overview yaratildi — to'liq arxitektura hujjatlari | Senior Developer |
+| 2.2.0 | 2026-08-02 | Menu handlerlar tuzatildi — keyboard method nomlari, missing handlerlar qo'shildi | Senior Developer |
+
+---
+
+## ESKI — 22/07/2026 19:58 (Asia/Tashkent, UTC+5:00)
+
+---
+
+*Yaratildi: 22/07/2026*
+*Oxirgi yangilanish: 02/08/2026 14:13 (Asia/Tashkent, UTC+5:00)*

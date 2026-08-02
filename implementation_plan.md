@@ -1,74 +1,85 @@
 # Implementation Plan
 
-## Overview
-Fix all 5 issues blocking the Myestro admin panel login page at `http://localhost:3002/login`. The backend health check works (`http://localhost:8002/sync/health` returns `{"status":"ok","version":"1.0.0"}`), but the admin panel is inaccessible due to missing Docker port mapping, TypeScript compilation errors from duplicate interface definitions, a backend route conflict, and configuration mismatches. This implementation will restore full admin panel functionality by addressing infrastructure, build, and code-level issues.
+[Overview]
+Fix critical navigation and functionality issues in the Telegram bot by consolidating to a single keyboard system (ColoredKeyboard), adding missing handlers, and implementing comprehensive test coverage.
 
-The admin panel (Next.js 14) is the management UI for the Myestro AI English learning platform. It provides user management, content management, broadcast, dashboard statistics, and login functionality. Without a working admin panel, administrators cannot manage users, send broadcasts, or view platform statistics. The fixes span three layers: Docker infrastructure (port mapping), frontend build (TypeScript duplicate interfaces), and backend (duplicate route function).
+This plan addresses 5 critical bugs: duplicate keyboard systems causing conflicts, duplicate admin message handlers, missing back button navigation, incomplete settings menu, and missing test button. The solution consolidates all keyboard management to the modern ColoredKeyboard system and adds proper navigation handlers with context-aware routing.
 
-## Types
-No new type definitions are needed. The existing TypeScript interfaces (`UserResponse`, `UserUpdate`, `LoginRequest`, `LoginResponse`, `StatsResponse`, `ActivityPoint`, `CEFRDistribution`, `SendMessageRequest`, `SendMessageResponse`, `ContentItem`, `ContentUpdateForm`) are already correctly defined in `admin/lib/types.ts`. The fix involves removing duplicate definitions, not adding new types. The backend schemas (`UserResponse`, `AdminLoginResponse`, `UserCreate`, `LoginRequest`, `AdminLoginRequest`, etc.) in `telegram_bot/backend/app/schemas/user.py` are already correct and need no changes.
+[Types]
+Single sentence describing the type system changes.
 
-## Files
+No new types required. Existing types from `bot/states/registration.py` will be utilized:
+- `StartSection` - for non-registered user navigation
+- `RegisteredSection` - for registered user navigation  
+- `MenuSection` - for sub-menu state tracking
+- `TestStates` - for test flow states
 
-### New files to be created:
-- None
+[Files]
+Single sentence describing file modifications.
 
-### Existing files to be modified:
-1. **`docker-compose.yml`** — Add `ports:` section to the `admin` service mapping host port 3002 to container port 3000. Also update the healthcheck to use port 3000 (already correct).
-2. **`admin/lib/types.ts`** — Remove the duplicate `UserResponse` interface (lines 20-36) and duplicate `UserUpdate` interface (lines 86-95). Keep only the first definition of each.
-3. **`admin/lib/api.ts`** — Fix the formatting issue on line 7 where `export const api` is on the same line as `API_BASE_URL`. Add proper line break and semicolon.
-4. **`backend_users.py`** (root) — Remove the duplicate `list_users` function (lines 33-40) that returns `List[UserResponse]`. Keep only the first `list_users` (lines 16-26) that returns `UsersListResponse` with `data` + `total` fields, matching the frontend's `useUsers` hook expectation.
+Detailed breakdown:
+- **Modify**: `telegram_bot/bot/keyboards/reply.py` - Remove deprecated keyboard functions (main_menu_keyboard, registered_menu_keyboard) and update imports across codebase
+- **Modify**: `telegram_bot/bot/handlers/menu.py` - Remove duplicate admin handler, add back_to_menu handler with context-aware navigation, fix settings back button
+- **Modify**: `telegram_bot/bot/keyboards/orange_keyboard.py` - Add test button to reply_main_menu layout
+- **Modify**: `telegram_bot/bot/handlers/contact.py` - Update to use ColoredKeyboard instead of old reply keyboards
+- **Modify**: `telegram_bot/bot/handlers/register.py` - Update to use ColoredKeyboard consistently
+- **Modify**: `telegram_bot/bot/handlers/profile.py` - Update imports to use ColoredKeyboard
+- **Create**: `telegram_bot/tests/test_menu_navigation.py` - Test suite for menu navigation and back buttons
+- **Create**: `telegram_bot/tests/test_admin_messages.py` - Test suite for admin message flow
+- **Create**: `telegram_bot/tests/test_settings.py` - Test suite for settings menu
 
-### Files to be deleted or moved:
-- None
+[Functions]
+Single sentence describing function modifications.
 
-### Configuration file updates:
-- `docker-compose.yml` — Add port mapping for admin service
-- No `.env` changes needed (CORS origins already include `http://localhost:3002`)
+Detailed breakdown:
+- **Remove**: `main_menu_keyboard()` from `bot/keyboards/reply.py` - Replaced by ColoredKeyboard.reply_main_menu()
+- **Remove**: `registered_menu_keyboard()` from `bot/keyboards/reply.py` - Replaced by ColoredKeyboard.reply_main_menu()
+- **Modify**: `cmd_admin_message()` in `bot/handlers/menu.py` (lines 183-196) - Remove duplicate, keep this one for non-registered users
+- **Remove**: `msg_admin()` in `bot/handlers/menu.py` (lines 224-236) - Duplicate handler, remove entirely
+- **Add**: `back_to_menu()` in `bot/handlers/menu.py` - New handler for back_to_menu callback with context-aware routing based on user registration status
+- **Modify**: `settings_kb()` in `bot/keyboards/inline.py` - Change back button callback from "back_to_menu" to "back_to_settings" for proper context navigation
+- **Modify**: `reply_main_menu()` in `bot/keyboards/orange_keyboard.py` - Add "✅ Test" button to the layout (2-2-1 becomes 2-2-1 with test)
+- **Update**: All `message.answer()` calls in contact.py, register.py, profile.py - Replace old keyboard imports with ColoredKeyboard
 
-## Functions
+[Classes]
+Single sentence describing class modifications.
 
-### New functions:
-- None
+No new classes required. Existing classes will be updated:
+- `ColoredKeyboard` in `bot/keyboards/orange_keyboard.py` - Add test button to reply_main_menu() method
+- `InboxState` in `bot/handlers/inbox.py` - No changes, already correct
 
-### Modified functions:
-1. **`list_users`** in `backend_users.py` — Remove the second duplicate definition (lines 33-40). The first definition (lines 16-26) returns `UsersListResponse` (`{"data": [...], "total": int}`) which matches the frontend `useUsers` hook's `UsersListResponse` interface. The duplicate returns `List[UserResponse]` (bare array) which would cause a response shape mismatch.
+[Dependencies]
+Single sentence describing dependency modifications.
 
-### Removed functions:
-1. **Second `list_users`** in `backend_users.py` (lines 33-40) — Removed because it duplicates the first `list_users` with the same route (`GET /users`), causing a FastAPI route registration conflict. The first version is kept because it returns the correct response shape (`UsersListResponse` with `data` + `total`) that the admin frontend expects.
+No new dependencies required. All changes use existing dependencies:
+- `aiogram` - Already installed, used for all bot functionality
+- `pytest` - Already in requirements, will be used for new test files
+- `pytest-asyncio` - Already in requirements, needed for async test execution
 
-## Classes
+[Testing]
+Single sentence describing testing approach.
 
-### New classes:
-- None
+Create comprehensive test suite with 3 test files covering menu navigation, admin messages, and settings functionality using pytest and pytest-asyncio with mocked Telegram updates and FSM contexts.
 
-### Modified classes:
-- None (no class changes needed)
+Test requirements:
+- `test_menu_navigation.py` - Test back button routing for registered/non-registered users, test main menu display
+- `test_admin_messages.py` - Test admin message flow, message saving to backend, session state management
+- `test_settings.py` - Test settings menu navigation, language change, AI toggle, logout flow
+- All tests should mock `httpx.AsyncClient` to avoid real API calls
+- All tests should use `aiogram.test` utilities for message/callback mocking
 
-### Removed classes:
-- None
+[Implementation Order]
+Single sentence describing the implementation sequence.
 
-## Dependencies
-No new packages or version changes needed. All required dependencies are already installed:
-- Frontend: `next@14.2.3`, `typescript@5.3.3`, `axios@1.6.0`, `@tanstack/react-query@5.28.0` — all present in `admin/package.json`
-- Backend: `fastapi`, `sqlalchemy`, `pydantic` — all present in `telegram_bot/backend/requirements.txt`
-- Docker: `node:20-alpine` image already used in `admin/Dockerfile`
+Numbered steps showing the logical order of changes to minimize conflicts and ensure successful integration.
 
-## Testing
-No formal test suite exists for the admin panel (the `admin/tests/` directory only contains `e2e.sh`). Testing will be done via:
-
-1. **TypeScript compilation check**: Run `npx tsc --noEmit` in the `admin/` directory to verify no duplicate interface errors remain.
-2. **Docker build verification**: Run `docker compose build admin` to verify the admin panel builds successfully.
-3. **Docker compose up**: Run `docker compose up -d admin` and verify the admin panel is accessible at `http://localhost:3002`.
-4. **Login flow test**: Access `http://localhost:3002/login` in a browser, verify the login page renders, and test login with admin credentials.
-5. **Backend route verification**: Run `curl http://localhost:8002/users` to verify the duplicate route conflict is resolved and the correct response shape is returned.
-6. **Health check**: Run `curl http://localhost:8002/sync/health` to verify backend is still healthy.
-
-## Implementation Order
-1. **Fix `admin/lib/types.ts`** — Remove duplicate `UserResponse` and `UserUpdate` interface definitions. This is the first priority because TypeScript compilation errors prevent the Next.js build from succeeding.
-2. **Fix `admin/lib/api.ts`** — Fix the formatting issue on line 7 (add proper line break between `API_BASE_URL` declaration and `export const api`).
-3. **Fix `backend_users.py`** — Remove the duplicate `list_users` function to resolve the FastAPI route conflict.
-4. **Fix `docker-compose.yml`** — Add `ports:` section to the admin service mapping `"3002:3000"` (host:container).
-5. **Build and verify** — Run `docker compose build admin` to verify the admin panel builds successfully.
-6. **Start and test** — Run `docker compose up -d admin` and test the login page at `http://localhost:3002/login`.
-7. **Backend verification** — Verify `curl http://localhost:8002/users` returns correct response shape and `curl http://localhost:8002/sync/health` still works.
+1. **Update ColoredKeyboard** - Add test button to reply_main_menu() in orange_keyboard.py
+2. **Create back_to_menu handler** - Add context-aware navigation handler to menu.py
+3. **Remove duplicate admin handler** - Delete msg_admin() function from menu.py (lines 224-236)
+4. **Fix settings navigation** - Update settings_kb() back button callback to "back_to_settings"
+5. **Update imports in contact.py** - Replace old keyboard imports with ColoredKeyboard
+6. **Update imports in register.py** - Replace old keyboard imports with ColoredKeyboard  
+7. **Update imports in profile.py** - Ensure consistent ColoredKeyboard usage
+8. **Deprecate old reply.py keyboards** - Comment out or remove main_menu_keyboard() and registered_menu_keyboard()
+9. **Create test suite** - Implement 3 test files with comprehensive coverage
+10. **Run tests** - Execute pytest to verify all functionality works correctly

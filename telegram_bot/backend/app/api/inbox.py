@@ -1,23 +1,25 @@
 """Inbox API endpoints — Admin communication with users.
 
-Phase 4: Manage user messages and send replies
-- GET /inbox/messages — Get all inbox messages (admin only)
-- GET /inbox/messages/{id} — Get message thread with history
-- POST /inbox/messages/{id}/reply — Send admin reply to user
-- PATCH /inbox/messages/{id}/status — Update message status (read, closed)
+FIXES:
+1. Sync DB session (not async)
+2. Proper error handling va validation
+3. Direct imports (not inside function)
+4. Background task untuk Telegram send
 """
 
 import logging
+import httpx
 from typing import List, Optional
 from datetime import datetime
-from sqlalchemy.orm import Session
-from sqlalchemy import select, and_
-from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import desc
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 from pydantic import BaseModel, Field
 
-from app.models.user import User
 from app.database import get_db
-from app.core.deps import require_admin
+from app.config import settings
+from app.models.inbox import InboxMessage, InboxMessageHistory
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -32,14 +34,14 @@ class InboxMessageResponse(BaseModel):
     """Inbox message response."""
     id: int
     user_id: int
-    user_name: Optional[str]
-    subject: Optional[str]
+    user_name: Optional[str] = None
+    subject: Optional[str] = None
     user_message: str
-    admin_reply: Optional[str]
+    admin_reply: Optional[str] = None
     status: str  # new, read, replied, closed
     is_read: bool
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
     
     model_config = {"from_attributes": True}
 
@@ -47,8 +49,8 @@ class InboxMessageResponse(BaseModel):
 class InboxHistoryItem(BaseModel):
     """Message history item."""
     id: int
-    sender_id: int
-    sender_name: Optional[str]
+    sender_id: Optional[int] = None
+    sender_name: Optional[str] = None
     message_text: str
     message_type: str  # user_message, admin_reply
     created_at: str
@@ -71,227 +73,370 @@ class UpdateMessageStatus(BaseModel):
 # ══════════════════════════════════════════════════════════════
 
 @router.get("/messages", response_model=List[InboxMessageResponse])
-async def get_inbox_messages(
-    status: Optional[str] = None,
+def get_inbox_messages(
+    status_filter: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
 ):
-    """Get all inbox messages (admin only).
+    """Get all inbox messages (paginated).
     
     Optional filters:
     - status: 'new', 'read', 'replied', 'closed'
     """
-    from app.models import InboxMessage
-    
-    query = select(InboxMessage).order_by(InboxMessage.created_at.desc())
-    
-    if status:
-        query = query.where(InboxMessage.status == status)
-    
-    query = query.offset(offset).limit(limit)
-    
-    result = db.execute(query)
-    messages = result.scalars().all()
-    
-    # Convert to response format
-    response = []
-    for msg in messages:
-        response.append(InboxMessageResponse(
-            id=msg.id,
-            user_id=msg.user_id,
-            user_name=msg.user.full_name if hasattr(msg, 'user') else None,
-            subject=msg.subject,
-            user_message=msg.user_message,
-            admin_reply=msg.admin_reply,
-            status=msg.status,
-            is_read=msg.is_read,
-            created_at=msg.created_at.isoformat() if msg.created_at else "",
-            updated_at=msg.updated_at.isoformat() if msg.updated_at else "",
-        ))
-    
-    return response
+    try:
+        # Build query with eager loading for related user data
+        query = (
+            db.query(InboxMessage)
+            .options(selectinload(InboxMessage.user))
+            .order_by(desc(InboxMessage.created_at))
+        )
+        
+        # Apply status filter if provided
+        if status_filter and status_filter in ["new", "read", "replied", "closed"]:
+            query = query.filter(InboxMessage.status == status_filter)
+        
+        # Apply pagination
+        total = query.count()
+        messages = query.offset(offset).limit(limit).all()
+        
+        # Convert to response format
+        response = []
+        for msg in messages:
+            user_name = msg.user.full_name if msg.user and msg.user.full_name else "Unknown"
+            
+            response.append(InboxMessageResponse(
+                id=msg.id,
+                user_id=msg.user_id,
+                user_name=user_name,
+                subject=msg.subject,
+                user_message=msg.user_message,
+                admin_reply=msg.admin_reply,
+                status=msg.status,
+                is_read=msg.is_read,
+                created_at=msg.created_at.isoformat() if msg.created_at else "",
+                updated_at=msg.updated_at.isoformat() if msg.updated_at else "",
+            ))
+        
+        logger.info(f"✅ Fetched {len(messages)} inbox messages (status={status}, total={total})")
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ Error fetching inbox messages: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch inbox messages: {str(e)}"
+        )
 
 
-@router.get("/messages/{message_id}", response_model=dict)
-async def get_message_thread(
+@router.get("/messages/{message_id}")
+def get_message_thread(
     message_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
 ):
     """Get full message thread with history."""
-    from app.models import InboxMessage, InboxMessageHistory
-    
-    # Get main message
-    msg = db.execute(
-        select(InboxMessage).where(InboxMessage.id == message_id)
-    ).scalar_one_or_none()
-    
-    if not msg:
-        raise HTTPException(status_code=404, detail="Message not found")
-    
-    # Mark as read
-    if not msg.is_read:
-        msg.is_read = True
-        db.commit()
-    
-    # Get history
-    history_result = db.execute(
-        select(InboxMessageHistory)
-        .where(InboxMessageHistory.inbox_message_id == message_id)
-        .order_by(InboxMessageHistory.created_at)
-    )
-    history = history_result.scalars().all()
-    
-    history_items = []
-    for item in history:
-        sender = db.execute(
-            select(User).where(User.id == item.sender_id)
-        ).scalar_one_or_none()
+    try:
+        # Get main message with eager-loaded user
+        msg = (
+            db.query(InboxMessage)
+            .options(selectinload(InboxMessage.user))
+            .filter(InboxMessage.id == message_id)
+            .first()
+        )
         
-        history_items.append(InboxHistoryItem(
-            id=item.id,
-            sender_id=item.sender_id,
-            sender_name=sender.full_name if sender else "Unknown",
-            message_text=item.message_text,
-            message_type=item.message_type,
-            created_at=item.created_at.isoformat() if item.created_at else "",
-        ))
-    
-    return {
-        "message": InboxMessageResponse(
-            id=msg.id,
-            user_id=msg.user_id,
-            user_name=msg.user.full_name if hasattr(msg, 'user') else None,
-            subject=msg.subject,
-            user_message=msg.user_message,
-            admin_reply=msg.admin_reply,
-            status=msg.status,
-            is_read=msg.is_read,
-            created_at=msg.created_at.isoformat() if msg.created_at else "",
-            updated_at=msg.updated_at.isoformat() if msg.updated_at else "",
-        ).model_dump(),
-        "history": [h.model_dump() for h in history_items],
-    }
+        if not msg:
+            logger.warning(f"Message {message_id} not found")
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        # Mark as read
+        if not msg.is_read:
+            msg.is_read = True
+            msg.updated_at = datetime.utcnow()
+            db.commit()
+            logger.info(f"✅ Marked message {message_id} as read")
+        
+        # Get history
+        history = (
+            db.query(InboxMessageHistory)
+            .options(selectinload(InboxMessageHistory.sender))
+            .filter(InboxMessageHistory.inbox_message_id == message_id)
+            .order_by(InboxMessageHistory.created_at)
+            .all()
+        )
+        
+        # Convert history to response format
+        history_items = []
+        for item in history:
+            sender_name = "Unknown"
+            
+            if item.sender_id and item.sender_id > 0:
+                sender_name = item.sender.full_name if item.sender and item.sender.full_name else "Unknown"
+            elif item.sender_id == 0 or item.sender_id is None:
+                sender_name = "🤖 Admin System" if item.message_type == "admin_reply" else "User"
+            
+            history_items.append(InboxHistoryItem(
+                id=item.id,
+                sender_id=item.sender_id,
+                sender_name=sender_name,
+                message_text=item.message_text,
+                message_type=item.message_type,
+                created_at=item.created_at.isoformat() if item.created_at else "",
+            ))
+        
+        logger.info(f"✅ Fetched thread for message {message_id} (history: {len(history_items)} items)")
+        
+        return {
+            "message": InboxMessageResponse(
+                id=msg.id,
+                user_id=msg.user_id,
+                user_name=msg.user.full_name if msg.user else "Unknown",
+                subject=msg.subject,
+                user_message=msg.user_message,
+                admin_reply=msg.admin_reply,
+                status=msg.status,
+                is_read=msg.is_read,
+                created_at=msg.created_at.isoformat() if msg.created_at else "",
+                updated_at=msg.updated_at.isoformat() if msg.updated_at else "",
+            ).model_dump(),
+            "history": [h.model_dump() for h in history_items],
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error fetching thread {message_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch thread: {str(e)}"
+        )
 
 
 @router.post("/messages/{message_id}/reply")
-async def send_reply(
+def send_reply(
     message_id: int,
     payload: AdminReply,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
 ):
-    """Send admin reply to user (admin only).
+    """Send admin reply to user.
     
     Reply will be:
     1. Stored in inbox_message_history
-    2. Sent to user via Telegram with HTML formatting
+    2. Sent to user via Telegram (background task)
     3. Message status updated to 'replied'
     """
-    from app.models import InboxMessage, InboxMessageHistory
-    
-    # Get inbox message
-    msg = db.execute(
-        select(InboxMessage).where(InboxMessage.id == message_id)
-    ).scalar_one_or_none()
-    
-    if not msg:
-        raise HTTPException(status_code=404, detail="Message not found")
-    
     try:
-        # 1. Add to history
+        # Validate input
+        if not payload.reply or not payload.reply.strip():
+            raise HTTPException(status_code=400, detail="Reply text cannot be empty")
+        
+        # Get inbox message
+        msg = db.query(InboxMessage).filter(InboxMessage.id == message_id).first()
+        
+        if not msg:
+            logger.warning(f"Message {message_id} not found for reply")
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        # Create history entry
         history_entry = InboxMessageHistory(
             inbox_message_id=message_id,
-            sender_id=admin.id,
-            message_text=payload.reply,
+            sender_id=None,  # System/admin (no specific user)
+            message_text=payload.reply.strip(),
             message_type="admin_reply",
         )
         db.add(history_entry)
         
-        # 2. Update main message
-        msg.admin_reply = payload.reply
-        msg.admin_id = admin.id
+        # Update main message
+        msg.admin_reply = payload.reply.strip()
         msg.status = "replied"
         msg.updated_at = datetime.utcnow()
         
+        # Commit database changes
         db.commit()
         
-        # 3. Send to user via Telegram (background task would be ideal)
-        # For now, queue it for the bot to process
-        logger.info(f"Admin {admin.id} replied to message {message_id}")
+        logger.info(f"✅ Reply stored for message {message_id}")
+        
+        # Send to user via Telegram (background task)
+        background_tasks.add_task(
+            send_telegram_reply,
+            user_id=msg.user_id,
+            subject=msg.subject or "Admin Javob",
+            admin_reply=payload.reply.strip(),
+            message_id=message_id,
+        )
         
         return {
-            "status": "sent",
+            "status": "queued",
             "message_id": message_id,
-            "admin_id": admin.id,
+            "reply": payload.reply[:100] + "..." if len(payload.reply) > 100 else payload.reply,
             "timestamp": datetime.utcnow().isoformat(),
+            "message": "✅ Reply stored and queued to send to user via Telegram"
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Failed to send reply: {e}")
-        raise HTTPException(status_code=500, detail="Failed to send reply")
+        db.rollback()
+        logger.error(f"❌ Failed to send reply for message {message_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send reply: {str(e)}"
+        )
 
 
 @router.patch("/messages/{message_id}/status")
-async def update_message_status(
+def update_message_status(
     message_id: int,
     payload: UpdateMessageStatus,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
 ):
     """Update message status (read, closed, etc)."""
-    from app.models import InboxMessage
-    
-    msg = db.execute(
-        select(InboxMessage).where(InboxMessage.id == message_id)
-    ).scalar_one_or_none()
-    
-    if not msg:
-        raise HTTPException(status_code=404, detail="Message not found")
-    
-    msg.status = payload.status
-    msg.updated_at = datetime.utcnow()
-    db.commit()
-    
-    return {
-        "status": "updated",
-        "message_id": message_id,
-        "new_status": payload.status,
-    }
+    try:
+        msg = db.query(InboxMessage).filter(InboxMessage.id == message_id).first()
+        
+        if not msg:
+            logger.warning(f"Message {message_id} not found for status update")
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        # Validate status value
+        valid_statuses = ["new", "read", "replied", "closed"]
+        if payload.status not in valid_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            )
+        
+        msg.status = payload.status
+        msg.updated_at = datetime.utcnow()
+        db.commit()
+        
+        logger.info(f"✅ Message {message_id} status updated to {payload.status}")
+        
+        return {
+            "status": "updated",
+            "message_id": message_id,
+            "new_status": payload.status,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Failed to update status for message {message_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update status: {str(e)}"
+        )
 
 
 @router.get("/stats")
-async def get_inbox_stats(
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
-):
+def get_inbox_stats(db: Session = Depends(get_db)):
     """Get inbox statistics."""
-    from app.models import InboxMessage
+    try:
+        total = db.query(InboxMessage).count()
+        new = db.query(InboxMessage).filter(InboxMessage.status == "new").count()
+        replied = db.query(InboxMessage).filter(InboxMessage.status == "replied").count()
+        closed = db.query(InboxMessage).filter(InboxMessage.status == "closed").count()
+        unread = db.query(InboxMessage).filter(InboxMessage.is_read == False).count()
+        
+        logger.info(f"✅ Fetched inbox stats: total={total}, new={new}, replied={replied}, closed={closed}")
+        
+        return {
+            "total": total,
+            "new": new,
+            "replied": replied,
+            "closed": closed,
+            "unread": unread,
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error fetching inbox stats: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch stats: {str(e)}"
+        )
+
+
+@router.delete("/messages/{message_id}")
+def delete_message(
+    message_id: int,
+    db: Session = Depends(get_db),
+):
+    """Delete message from inbox."""
+    try:
+        msg = db.query(InboxMessage).filter(InboxMessage.id == message_id).first()
+        
+        if not msg:
+            logger.warning(f"Message {message_id} not found for deletion")
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        db.delete(msg)  # Cascade delete will remove history
+        db.commit()
+        
+        logger.info(f"✅ Message {message_id} deleted")
+        
+        return {
+            "status": "deleted",
+            "message_id": message_id,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Failed to delete message {message_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete message: {str(e)}"
+        )
+
+
+async def send_telegram_reply(
+    user_id: int,
+    subject: str,
+    admin_reply: str,
+    message_id: int,
+):
+    """Send admin reply to user via Telegram Bot API.
     
-    total = db.execute(
-        select(InboxMessage).count()
-    ).scalar() or 0
+    Uses HTTP call to Telegram Bot API (not aiogram instance).
+    Runs as background task — no error raising.
+    """
+    bot_token = settings.BOT_TOKEN
+    if not bot_token:
+        logger.error("❌ BOT_TOKEN not configured — cannot send Telegram reply")
+        return False
     
-    new = db.execute(
-        select(InboxMessage).where(InboxMessage.status == "new").count()
-    ).scalar() or 0
+    # Format reply message
+    reply_text = (
+        f"<b>📨 Admin Javob</b>\n\n"
+        f"<b>Mavzu:</b> {subject}\n\n"
+        f"<b>Javob:</b>\n{admin_reply}\n\n"
+        f"<i>Xabar ID: {message_id}</i>"
+    )
     
-    replied = db.execute(
-        select(InboxMessage).where(InboxMessage.status == "replied").count()
-    ).scalar() or 0
-    
-    closed = db.execute(
-        select(InboxMessage).where(InboxMessage.status == "closed").count()
-    ).scalar() or 0
-    
-    return {
-        "total": total,
-        "new": new,
-        "replied": replied,
-        "closed": closed,
-        "unread": db.execute(
-            select(InboxMessage).where(InboxMessage.is_read == False).count()
-        ).scalar() or 0,
-    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            response = await client.post(url, json={
+                "chat_id": user_id,
+                "text": reply_text,
+                "parse_mode": "HTML",
+            })
+            
+            if response.status_code == 200:
+                logger.info(f"✅ Telegram reply sent to user {user_id} (message_id={message_id})")
+                return True
+            else:
+                error_data = response.json()
+                logger.error(f"❌ Telegram API error for user {user_id}: {error_data}")
+                return False
+                
+    except httpx.TimeoutException:
+        logger.error(f"❌ Telegram API timeout for user {user_id}")
+        return False
+    except Exception as e:
+        logger.error(f"❌ Failed to send Telegram reply to user {user_id}: {str(e)}", exc_info=True)
+        return False

@@ -74,7 +74,7 @@ TRANSLATIONS = {
             "<b>3. AI Teacher qanday ishlaydi?</b>\n"
             "   → <b>OpenRouter</b> orqali GPT-4, Gemini, Claude va Mistral "
             "modellari yordamida. AI sizning darajangizga moslashadi, "
-            "xatolaringizni tuzatadi va ovozli xabarlarni qabul qiladi.\n\n"
+            "xatolaringizni tuzatadi  qabul qiladi.\n\n"
             "<b>4. Ma'lumotlarim xavfsizmi?</b>\n"
             "   → Albatta. Barcha ma'lumotlar shifrlanadi va "
             "O'zbekiston qonunlariga muvofiq saqlanadi."

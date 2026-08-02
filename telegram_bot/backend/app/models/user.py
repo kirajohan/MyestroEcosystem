@@ -39,6 +39,7 @@ class User(Base):
 
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
     threads = relationship("ConversationThread", back_populates="user", cascade="all, delete-orphan")
+    inbox_messages = relationship("InboxMessage", back_populates="user", cascade="all, delete-orphan")
 
 
 class Session(Base):
@@ -55,3 +56,5 @@ class Session(Base):
     revoked_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="sessions")
+
+    

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
+const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
 // PATCH — tahrirlash (matn + ixtiyoriy fayl almashtirish)
 export async function PATCH(
@@ -10,23 +10,71 @@ export async function PATCH(
     const { id } = params;
     const formData = await request.formData();
 
-    // Forward to backend PATCH endpoint
-    const backendResp = await fetch(`${API_BASE_URL}/content/${id}`, {
-      method: 'PATCH',
-      body: formData,
-    });
-
-    if (!backendResp.ok) {
-      const errText = await backendResp.text();
+    // Validate content type if file is being uploaded
+    const file = formData.get('file') as File | null;
+    const contentType = formData.get('content_type') as string | null;
+    
+    if (file && !contentType) {
       return NextResponse.json(
-        { detail: errText || 'Backend xatosi' },
-        { status: backendResp.status }
+        { detail: 'content_type maydoni to\'ldirilishi shart' },
+        { status: 400 }
       );
     }
 
-    const data = await backendResp.json();
-    return NextResponse.json(data, { status: 200 });
+    // Forward to backend PATCH endpoint with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for file uploads
+
+    try {
+      const backendResp = await fetch(`${API_BASE_URL}/content/${id}`, {
+        method: 'PATCH',
+        body: formData,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!backendResp.ok) {
+        let errorDetail = 'Backend xatosi';
+        try {
+          const errData = await backendResp.json();
+          errorDetail = errData.detail || errData.message || errorDetail;
+        } catch {
+          const errText = await backendResp.text();
+          errorDetail = errText || errorDetail;
+        }
+        
+        return NextResponse.json(
+          { detail: errorDetail },
+          { status: backendResp.status }
+        );
+      }
+
+      const data = await backendResp.json();
+      
+      // Validate response has required fields
+      if (!data.id || !data.telegram_file_id) {
+        return NextResponse.json(
+          { detail: 'Backend noto\'g\'ri javob qaytardi' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(data, { status: 200 });
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      
+      if (fetchError.name === 'AbortError') {
+        return NextResponse.json(
+          { detail: 'So\'rov vaqti tugadi. Kattaroq fayl yuklash uchun biroz kuting.' },
+          { status: 408 }
+        );
+      }
+      
+      throw fetchError;
+    }
   } catch (error: any) {
+    console.error('Content PATCH error:', error);
     return NextResponse.json(
       { detail: error?.message || "Noma'lum xato" },
       { status: 500 }
@@ -47,9 +95,17 @@ export async function DELETE(
     });
 
     if (!backendResp.ok) {
-      const errText = await backendResp.text();
+      let errorDetail = 'Backend xatosi';
+      try {
+        const errData = await backendResp.json();
+        errorDetail = errData.detail || errData.message || errorDetail;
+      } catch {
+        const errText = await backendResp.text();
+        errorDetail = errText || errorDetail;
+      }
+      
       return NextResponse.json(
-        { detail: errText || 'Backend xatosi' },
+        { detail: errorDetail },
         { status: backendResp.status }
       );
     }
@@ -57,6 +113,7 @@ export async function DELETE(
     const data = await backendResp.json().catch(() => ({ message: 'Deleted' }));
     return NextResponse.json(data, { status: 200 });
   } catch (error: any) {
+    console.error('Content DELETE error:', error);
     return NextResponse.json(
       { detail: error?.message || "Noma'lum xato" },
       { status: 500 }

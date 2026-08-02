@@ -14,6 +14,8 @@ export function useContentList() {
       return resp.json() as Promise<ContentItem[]>;
     },
     staleTime: 30000,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
 
@@ -28,15 +30,26 @@ export function useCreateContent() {
         method: 'POST',
         body: formData,
       });
+      
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.detail || 'Yuklashda xatolik');
+        let errorMessage = 'Yuklashda xatolik';
+        try {
+          const err = await resp.json();
+          errorMessage = err.detail || errorMessage;
+        } catch {
+          const errText = await resp.text();
+          errorMessage = errText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
+      
       return resp.json() as Promise<ContentItem>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content'] });
     },
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(2000 * 2 ** attemptIndex, 10000),
   });
 }
 
@@ -50,15 +63,26 @@ export function useUpdateContent() {
         method: 'PATCH',
         body: formData,
       });
+      
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.detail || 'Tahrirlashda xatolik');
+        let errorMessage = 'Tahrirlashda xatolik';
+        try {
+          const err = await resp.json();
+          errorMessage = err.detail || errorMessage;
+        } catch {
+          const errText = await resp.text();
+          errorMessage = errText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
+      
       return resp.json() as Promise<ContentItem>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content'] });
     },
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(2000 * 2 ** attemptIndex, 10000),
   });
 }
 
@@ -71,14 +95,25 @@ export function useDeleteContent() {
       const resp = await fetch(`/api/contents/${id}`, {
         method: 'DELETE',
       });
+      
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.detail || "O'chirishda xatolik");
+        let errorMessage = "O'chirishda xatolik";
+        try {
+          const err = await resp.json();
+          errorMessage = err.detail || err.message || errorMessage;
+        } catch {
+          const errText = await resp.text();
+          errorMessage = errText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
-      return resp.json();
+      
+      return resp.json().catch(() => ({ message: 'Deleted' }));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content'] });
     },
+    retry: 1,
+    retryDelay: 1000,
   });
 }

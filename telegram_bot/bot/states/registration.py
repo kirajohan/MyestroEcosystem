@@ -66,7 +66,6 @@ class MenuSection(StatesGroup):
     idle = State()                      # Asosiy menyuda
     language_selection = State()        # Til o'zgartirish
     about_us = State()                  # About us sub-menu
-    guide = State()                     # Qo'llanma sub-menu
     contact_admin = State()             # Admin ga xabar yozish
     settings = State()                  # Sozlamalar
     profile = State()                   # Profil
@@ -78,3 +77,22 @@ class RegisteredSection(StatesGroup):
     """Registered user states."""
     main_menu = State()                 # Asosiy menyu (REGISTERED)
     idle = State()                      # Umumiy holat
+
+
+class InboxState(StatesGroup):
+    """User states for inbox interaction (admin messages)."""
+    waiting_for_subject = State()       # Xabar mavzusi
+    waiting_for_message = State()       # Xabar matni
+
+
+class LessonsStates(StatesGroup):
+    """Lessons FSM states — lesson type selection + content viewing."""
+    selecting_type = State()            # Video yoki File tanlash
+    viewing_lessons = State()           # Darslarni ko'rish
+
+
+class TestStates(StatesGroup):
+    """Test FSM states — CEFR level selection + answering + results."""
+    selecting_level = State()           # CEFR level tanlash (A1-C2)
+    answering_questions = State()       # Savollarni javoblash
+    viewing_results = State()           # Natijalarni ko'rish

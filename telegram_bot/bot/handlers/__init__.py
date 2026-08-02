@@ -16,4 +16,5 @@ from . import errors
 from . import ai_agent
 from . import register
 from . import profile
-from . import broadcast
+from . import lessons
+from . import test

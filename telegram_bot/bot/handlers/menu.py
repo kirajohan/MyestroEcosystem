@@ -9,30 +9,42 @@ Covers:
 from aiogram import Router, types, F
 from aiogram.filters import StateFilter, Command, or_f
 from aiogram.fsm.context import FSMContext
+from aiogram.exceptions import TelegramBadRequest
+
 from bot.states.registration import (
     StartSection, RegistrationFSM, MenuSection, RegisteredSection,
 )
-from bot.keyboards.reply import (
-    language_selection_keyboard, main_menu_keyboard, registered_menu_keyboard,
-    contact_request_keyboard, remove_keyboard,
+from bot.keyboards.orange_keyboard import ColoredKeyboard
+from bot.keyboards.inline import (
+    language_selection, language_switch_kb, about_us_kb,
+    settings_kb, admin_contact_kb,
 )
 from bot.config import settings, API_BASE_URL
-import httpx
-from bot.keyboards.inline import (
-    language_selection, language_switch_kb, about_us_kb, guide_kb,
-    phone_request_kb, registration_restart_kb, cefr_level_selection,
-    settings_kb, registered_menu_kb, confirm_kb, admin_contact_kb,
-)
 from bot.utils.i18n import get_text
+import httpx
 
 router = Router()
+
+# Menyudagi barcha tugmalar ro'yxati (Admin session'dan chiqish uchun)
+MENU_BUTTONS = [
+    "🌐 Til/Language", "🌐 Язык", "🌐 Language",
+    "📝 Admin ga xabar", "📝 Написать админу", "📝 Message admin",
+    "👤 Profil", "👤 Профиль", "👤 Profile",
+    "⚙️ Sozlamalar", "⚙️ Настройки", "⚙️ Settings",
+    "🌐 Til o'zgartirish", "🌐 Сменить язык", "🌐 Change Language",
+    "🤖 AI ON/OFF",
+    "🚪 Log Out", "🚪 Выйти",
+    "🎬 Video Darslik", "🎬 Видеоурок", "🎬 Video Lesson",
+    "📁 File Darsliklar", "📁 Файлы уроков", "📁 File Lessons",
+    "⬅️ Orqaga", "⬅️ Назад", "⬅️ Back", "/cancel", "/start"
+]
 
 
 # ══════════════════════════════════════════════════════════════
 # LANGUAGE SELECTION (from /start)
 # ══════════════════════════════════════════════════════════════
 
-@router.message(F.text.in_(["🇺🇿 O'zbek", "🇷🇺 Русский", "🇬🇧 English"]))
+@router.message(F.text.in_(["🇺🇿 O'zbek", "🇷🇺 Русский", "🇬🇧 English"]), StateFilter("*"))
 async def language_selected(message: types.Message, state: FSMContext):
     """Handle language selection from /start reply keyboard."""
     lang_map = {
@@ -46,7 +58,7 @@ async def language_selected(message: types.Message, state: FSMContext):
 
     await message.answer(
         get_text("start.language_changed", lang),
-        reply_markup=main_menu_keyboard(lang),
+        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),  # 🟠 Orange tema
     )
 
 
@@ -74,7 +86,6 @@ async def fetch_content_list(content_type: str, page: int):
             )
             if resp.status_code == 200:
                 items = resp.json()
-                # Umumiy sonni olish uchun alohida so'rov
                 total_resp = await client.get(
                     f"{API_BASE_URL}/content/public?content_type={content_type}&limit=1000&offset=0"
                 )
@@ -90,15 +101,13 @@ def build_content_keyboard(items, content_type: str, page: int, total: int, lang
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     builder = InlineKeyboardBuilder()
 
-    # Har bir item uchun tugma
     prefix = "video" if content_type == "video" else "file"
     for i, item in enumerate(items, 1):
         title = item.get("title", f"{prefix.capitalize()} #{i}")
         idx = (page - 1) * LIMIT + i
-        label = f"{idx}. {title}"
+        label = f"🟠 {idx}. {title}"
         builder.button(text=label, callback_data=f"{prefix}_select_{item['id']}")
 
-    # Navigatsiya tugmalari
     total_pages = max(1, (total + LIMIT - 1) // LIMIT)
     nav_buttons = []
 
@@ -113,11 +122,9 @@ def build_content_keyboard(items, content_type: str, page: int, total: int, lang
     for text, cb in nav_buttons:
         builder.button(text=text, callback_data=cb)
 
-    # Orqaga tugmasi
     back_text = "⬅️ Orqaga" if lang == "uz" else ("⬅️ Назад" if lang == "ru" else "⬅️ Back")
     builder.button(text=back_text, callback_data="back_to_menu")
 
-    # Layout: har bir content alohida qator, navigatsiya bitta qator, back alohida
     builder.adjust(1, len(nav_buttons), 1)
     return builder.as_markup()
 
@@ -129,38 +136,82 @@ async def send_content_list(target, content_type: str, page: int, lang: str, edi
     if not items:
         text_key = "video.not_found" if content_type == "video" else "file.not_found"
         if edit and hasattr(target, 'edit_text'):
-            await target.edit_text(get_text(text_key, lang))
-            await target.edit_reply_markup(reply_markup=None)
+            try:
+                await target.edit_text(get_text(text_key, lang))
+                await target.edit_reply_markup(reply_markup=None)
+            except TelegramBadRequest:
+                pass
         else:
             await target.answer(get_text(text_key, lang))
         return
 
     header = "🎬 Video darsliklar" if content_type == "video" else "📁 File darsliklar"
-    text = f"<b>{header}</b>\n\nKerakli darsni tanlang:"
+    text = f"<b>🟠 {header}</b>\n\nKerakli darsni tanlang:"
     keyboard = build_content_keyboard(items, content_type, page, total, lang)
 
     if edit and hasattr(target, 'edit_text'):
-        await target.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        try:
+            await target.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        except TelegramBadRequest:
+            pass
     else:
         await target.answer(text, reply_markup=keyboard, parse_mode="HTML")
 
 
 # ══════════════════════════════════════════════════════════════
-# MAIN MENU — REPLY KEYBOARD HANDLERS (NOT_REGISTERED)
+# SETTINGS HELPERS (shared by message handlers and callback handlers)
 # ══════════════════════════════════════════════════════════════
 
-# --- Register/Login is now handled by register.py router ---
+async def _toggle_ai_core(state: FSMContext, lang: str, fallback_user_id: int = None):
+    """Toggle AI enabled status in backend and FSM state.
+
+    Returns: (success: bool, status_text: str)
+    """
+    user_data = await state.get_data()
+    ai_enabled = user_data.get("ai_enabled", True)
+    user_id = user_data.get("telegram_id") or fallback_user_id
+
+    new_status = not ai_enabled
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.put(
+                f"{API_BASE_URL}/sync/users/{user_id}/ai-toggle",
+                json={"ai_enabled": new_status},
+            )
+            if resp.status_code != 200:
+                return False, get_text("error", lang)
+    except Exception:
+        return False, get_text("error", lang)
+
+    await state.update_data(ai_enabled=new_status)
+    status_text = get_text("ai.enabled" if new_status else "ai.disabled", lang)
+    return True, status_text
 
 
-# --- About Us ---
-# FIX: F.text.in_([...]) | Command(...) TypeError ni oldini olish uchun
-#      or_f() ishlatiladi — bu ikki xil filter turini xavfsiz birlashtiradi
-@router.message(or_f(
-    F.text.in_(["ℹ️ Biz haqimizda", "ℹ️ О нас", "ℹ️ About us"]),
-    Command("about"),
-))
+async def _do_logout(message, state: FSMContext, lang: str):
+    """Logout — clear state and return to main menu with reply keyboard."""
+    await state.clear()
+    await state.set_state(StartSection.main_menu)
+    await state.update_data(lang=lang)
+    await message.answer(
+        get_text("settings.logout_done", lang),
+        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
+    )
+
+
+# ══════════════════════════════════════════════════════════════
+# MAIN MENU — REPLY KEYBOARD HANDLERS (StateFilter("*") bilan)
+# ══════════════════════════════════════════════════════════════
+
+@router.message(
+    or_f(
+        F.text.in_(["ℹ️ Biz haqimizda", "ℹ️ О нас", "ℹ️ About us"]),
+        Command("about"),
+    ),
+    StateFilter("*")
+)
 async def cmd_about(message: types.Message, state: FSMContext):
-    """Handle About Us — show info + inline sub-menu."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(MenuSection.about_us)
@@ -171,30 +222,14 @@ async def cmd_about(message: types.Message, state: FSMContext):
     )
 
 
-# --- Guide ---
-@router.message(or_f(
-    F.text.in_(["📖 Qo'llanma", "📖 Руководство", "📖 Guide"]),
-    Command("guide"),
-))
-async def cmd_guide(message: types.Message, state: FSMContext):
-    """Handle Guide — show info + inline sub-menu."""
-    user_data = await state.get_data()
-    lang = _get_lang(user_data)
-    await state.set_state(MenuSection.guide)
-
-    await message.answer(
-        get_text("guide.text", lang),
-        reply_markup=guide_kb(lang),
-    )
-
-
-# --- Language ---
-@router.message(or_f(
-    F.text.in_(["🌐 Til/Language", "🌐 Язык", "🌐 Language"]),
-    Command("language"),
-))
+@router.message(
+    or_f(
+        F.text.in_(["🌐 Til/Language", "🌐 Язык", "🌐 Language"]),
+        Command("language"),
+    ),
+    StateFilter("*")
+)
 async def cmd_language(message: types.Message, state: FSMContext):
-    """Handle Language selection — show inline language picker."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(MenuSection.language_selection)
@@ -205,172 +240,176 @@ async def cmd_language(message: types.Message, state: FSMContext):
     )
 
 
-# --- Admin Message ---
-@router.message(or_f(
-    F.text.in_(["📨 Admin ga xabar", "📨 Написать админу", "📨 Message admin"]),
-    Command("admin"),
-))
+@router.message(
+    or_f(
+        F.text.in_(["📝 Admin ga xabar", "📝 Написать админу", "📝 Message admin"]),
+        Command("admin"),
+    ),
+    StateFilter("*")
+)
 async def cmd_admin_message(message: types.Message, state: FSMContext):
-    """Handle Admin Message — show instructions + inline keyboard."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(MenuSection.contact_admin)
 
     await message.answer(
         get_text("admin.instruction", lang),
-        reply_markup=admin_contact_kb(lang),
+        reply_markup=ColoredKeyboard.reply_admin_massage(lang=lang),
     )
 
 
-# ══════════════════════════════════════════════════════════════
-# REGISTERED USER — REPLY KEYBOARD HANDLERS (message, not callback)
-# ══════════════════════════════════════════════════════════════
-
-@router.message(or_f(
-    F.text.in_(["👤 Profil", "👤 Профиль", "👤 Profile"]),
-    Command("profile"),
-))
+@router.message(
+    or_f(
+        F.text.in_(["👤 Profil", "👤 Профиль", "👤 Profile"]),
+        Command("profile"),
+    ),
+    StateFilter("*")
+)
 async def msg_profile(message: types.Message, state: FSMContext):
-    """Reply keyboard → Profile."""
     from bot.handlers.profile import show_profile
     await show_profile(message, state, from_callback=False)
 
 
-@router.message(or_f(
-    F.text.in_(["⚙️ Sozlamalar", "⚙️ Настройки", "⚙️ Settings"]),
-    Command("settings"),
-))
+@router.message(
+    or_f(
+        F.text.in_(["⚙️ Sozlamalar", "⚙️ Настройки", "⚙️ Settings"]),
+        Command("settings"),
+    ),
+    StateFilter("*")
+)
 async def msg_settings(message: types.Message, state: FSMContext):
-    """Reply keyboard → Settings."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(MenuSection.settings)
 
     await message.answer(
         get_text("settings.title", lang),
-        reply_markup=settings_kb(lang),
+        reply_markup=ColoredKeyboard.reply_settings_menu(lang=lang),
     )
 
 
-# NOTE: Guide handler qo'sh dekorator emas — cmd_guide bilan bir xil filter,
-# shuning uchun registered user uchun alohida state-ga bog'liq bo'lmasa
-# cmd_guide handler ishlaydi. Agar kerak bo'lsa — StateFilter qo'shing.
-@router.message(or_f(
-    F.text.in_(["📖 Qo'llanma", "📖 Руководство", "📖 Guide"]),
-    Command("guide"),
-))
-async def msg_guide(message: types.Message, state: FSMContext):
-    """Reply keyboard → Guide (registered users)."""
+# ══════════════════════════════════════════════════════════════
+# SETTINGS SUB-MENU — REPLY KEYBOARD HANDLERS
+# ══════════════════════════════════════════════════════════════
+
+@router.message(
+    F.text.in_(["🌐 Til o'zgartirish", "🌐 Сменить язык", "🌐 Change Language"]),
+    StateFilter(MenuSection.settings),
+)
+async def msg_settings_language(message: types.Message, state: FSMContext):
+    """Settings → Language change (reply keyboard button)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
-    await message.answer(get_text("guide.text", lang))
+    await state.set_state(MenuSection.language_selection)
 
-
-@router.message(or_f(
-    F.text.in_(["📨 Admin ga xabar", "📨 Написать админу", "📨 Message admin"]),
-    Command("admin"),
-))
-async def msg_admin(message: types.Message, state: FSMContext):
-    """Reply keyboard → Admin contact (registered users)."""
-    user_data = await state.get_data()
-    lang = _get_lang(user_data)
-    await state.set_state(MenuSection.contact_admin)
     await message.answer(
-        get_text("admin.instruction", lang),
-        reply_markup=admin_contact_kb(lang),
+        get_text("language.prompt", lang),
+        reply_markup=language_switch_kb(lang),
     )
 
 
-@router.message(or_f(
-    F.text.in_(["🎬 Video Darslik", "🎬 Видеоурок", "🎬 Video Lesson"]),
-    Command("video"),
-))
-async def msg_video(message: types.Message, state: FSMContext):
-    """Reply keyboard → Video lessons (paginated)."""
+@router.message(
+    F.text == "🤖 AI ON/OFF",
+    StateFilter(MenuSection.settings),
+)
+async def msg_settings_ai_toggle(message: types.Message, state: FSMContext):
+    """Settings → AI toggle (reply keyboard button)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
-    await send_content_list(message, "video", 1, lang, edit=False)
+    success, status_text = await _toggle_ai_core(state, lang, fallback_user_id=message.from_user.id)
+    await message.answer(
+        f"{status_text}\n\n{get_text('settings.title', lang)}",
+        reply_markup=ColoredKeyboard.reply_settings_menu(lang=lang),
+    )
 
 
-@router.message(or_f(
-    F.text.in_(["📁 File Darsliklar", "📁 Файлы уроков", "📁 File Lessons"]),
-    Command("file"),
-))
-async def msg_file(message: types.Message, state: FSMContext):
-    """Reply keyboard → File lessons (paginated)."""
+@router.message(
+    F.text.in_(["🚪 Log Out", "🚪 Выйти"]),
+    StateFilter(MenuSection.settings),
+)
+async def msg_settings_logout(message: types.Message, state: FSMContext):
+    """Settings → Logout (reply keyboard button)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
-    await send_content_list(message, "file", 1, lang, edit=False)
+    await _do_logout(message, state, lang)
 
 
-# ══════════════════════════════════════════════════════════════
-# ABOUT US — CALLBACKS
-# ══════════════════════════════════════════════════════════════
-
-@router.callback_query(F.data == "back_to_menu")
-async def back_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
-    """Handle 'back to menu' — show correct main menu based on registration state."""
+@router.message(
+    F.text.in_(["⬅️ Orqaga", "⬅️ Назад", "⬅️ Back"]),
+    StateFilter(MenuSection.settings),
+)
+async def msg_settings_back(message: types.Message, state: FSMContext):
+    """Settings → Back to main menu (reply keyboard button)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     registration_complete = user_data.get("registration_complete", False)
 
     if registration_complete:
         await state.set_state(RegisteredSection.main_menu)
-        await callback.message.edit_text(get_text("main_menu", lang))
-        await callback.message.answer(
-            get_text("main_menu", lang),
-            reply_markup=registered_menu_keyboard(lang),
-        )
     else:
         await state.set_state(StartSection.main_menu)
-        await callback.message.edit_text(get_text("main_menu", lang))
-        await callback.message.answer(
-            get_text("main_menu", lang),
-            reply_markup=main_menu_keyboard(lang),
-        )
-    await callback.answer()
 
-
-@router.callback_query(F.data.startswith("about_"))
-async def about_callbacks(callback: types.CallbackQuery, state: FSMContext):
-    """Handle About Us sub-menu buttons."""
-    user_data = await state.get_data()
-    lang = _get_lang(user_data)
-
-    key_map = {
-        "about_links": "about.links",
-        "about_ecosystem": "about.ecosystem",
-        "about_faq": "about.faq",
-    }
-    text_key = key_map.get(callback.data, "about.text")
-
-    await callback.message.edit_text(
-        get_text(text_key, lang),
-        reply_markup=about_us_kb(lang),
+    await message.answer(
+        get_text("main_menu", lang),
+        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
     )
-    await callback.answer()
 
 
-# ══════════════════════════════════════════════════════════════
-# GUIDE — CALLBACKS
-# ══════════════════════════════════════════════════════════════
-
-@router.callback_query(F.data.startswith("guide_"))
-async def guide_callbacks(callback: types.CallbackQuery, state: FSMContext):
-    """Handle Guide sub-menu buttons."""
+@router.message(
+    or_f(
+        F.text.in_(["🎬 Video Darslik", "🎬 Видеоурок", "🎬 Video Lesson"]),
+        Command("video"),
+    ),
+    StateFilter("*")
+)
+async def msg_video(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     lang = _get_lang(user_data)
+    await send_content_list(message, "video", 1, lang, edit=False)
 
-    key_map = {
-        "guide_bot": "guide.bot",
-        "guide_ai": "guide.ai",
-        "guide_faq": "about.faq",
-    }
-    text_key = key_map.get(callback.data, "guide.text")
 
-    await callback.message.edit_text(
-        get_text(text_key, lang),
-        reply_markup=guide_kb(lang),
+@router.message(
+    or_f(
+        F.text.in_(["📁 File Darsliklar", "📁 Файлы уроков", "📁 File Lessons"]),
+        Command("file"),
+    ),
+    StateFilter("*")
+)
+async def msg_file(message: types.Message, state: FSMContext):
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    await send_content_list(message, "file", 1, lang, edit=False)
+
+
+# ══════════════════════════════════════════════════════════════
+# BACK TO MENU — FIX FOR REPLY KEYBOARD & INLINE CONFLICT
+# ══════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data == "back_to_menu")
+async def back_to_menu(callback: types.CallbackQuery, state: FSMContext):
+    """Context-aware navigation. Fixes Inline vs Reply keyboard conflict."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    registration_complete = user_data.get("registration_complete", False)
+
+    if registration_complete:
+        await state.set_state(RegisteredSection.main_menu)
+    else:
+        await state.set_state(StartSection.main_menu)
+
+    # Inline xabarni tozalaymiz
+    try:
+        await callback.message.delete()
+    except Exception:
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+
+    # Reply Keyboard'ni yangi xabar sifatida yuboramiz (ColoredKeyboard)
+    await callback.message.answer(
+        get_text("main_menu", lang),
+        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
     )
     await callback.answer()
 
@@ -381,94 +420,86 @@ async def guide_callbacks(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.in_(["lang_uz", "lang_ru", "lang_en"]))
 async def change_language(callback: types.CallbackQuery, state: FSMContext):
-    """Handle language change from inline keyboard."""
     new_lang = callback.data.split("_")[1]
     await state.update_data(lang=new_lang)
 
-    # Check if we're in settings or main menu
     current_state = await state.get_state()
     user_data = await state.get_data()
     registration_complete = user_data.get("registration_complete", False)
 
-    if current_state == "MenuSection:language_selection" and not registration_complete:
-        # Non-registered user changing language from main menu
-        await state.set_state(StartSection.main_menu)
-        await callback.message.edit_text(
-            get_text("start.language_changed", new_lang),
-        )
-        await callback.message.answer(
-            get_text("main_menu", new_lang),
-            reply_markup=main_menu_keyboard(new_lang),
-        )
-    else:
-        # Registered user (or any other case) — return to registered main menu
-        await state.set_state(RegisteredSection.main_menu)
-        await callback.message.edit_text(
-            get_text("start.language_changed", new_lang),
-        )
-        await callback.message.answer(
-            get_text("main_menu", new_lang),
-            reply_markup=registered_menu_keyboard(new_lang),
-        )
-    await callback.answer()
+    target_section = StartSection.main_menu if (current_state == "MenuSection:language_selection" and not registration_complete) else RegisteredSection.main_menu
+    await state.set_state(target_section)
 
-
-# ══════════════════════════════════════════════════════════════
-# PHONE SHARE — CALLBACK
-# ══════════════════════════════════════════════════════════════
-
-@router.callback_query(F.data == "phone_share")
-async def phone_share_callback(callback: types.CallbackQuery, state: FSMContext):
-    """Handle 'Raqam yuborish' button — show contact request keyboard."""
-    user_data = await state.get_data()
-    lang = _get_lang(user_data)
+    try:
+        await callback.message.edit_text(get_text("start.language_changed", new_lang))
+    except TelegramBadRequest:
+        pass
 
     await callback.message.answer(
-        get_text("registration.phone_request", lang),
-        reply_markup=contact_request_keyboard(),
+        get_text("main_menu", new_lang),
+        reply_markup=ColoredKeyboard.reply_main_menu(lang=new_lang),
     )
     await callback.answer()
 
 
 # ══════════════════════════════════════════════════════════════
-# REGISTRATION — CALLBACKS
+# PHONE SHARE & REGISTRATION — CALLBACKS
 # ══════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data == "phone_share")
+async def phone_share_callback(callback: types.CallbackQuery, state: FSMContext):
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+
+    await callback.message.answer(
+        get_text("registration.phone_request", lang),
+        reply_markup=ColoredKeyboard.reply_contact(lang=lang),
+    )
+    await callback.answer()
+
 
 @router.callback_query(F.data == "reg_restart")
 async def registration_restart(callback: types.CallbackQuery, state: FSMContext):
-    """Handle 'Boshidan boshlash' — restart registration."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(RegistrationFSM.waiting_name)
 
-    await callback.message.edit_text(get_text("registration.ask_name", lang))
+    try:
+        await callback.message.edit_text(get_text("registration.ask_name", lang))
+    except TelegramBadRequest:
+        pass
     await callback.answer()
 
 
 @router.callback_query(F.data == "confirm_yes")
 async def confirm_yes(callback: types.CallbackQuery, state: FSMContext):
-    """Confirm — end registration and go to registered section."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.update_data(registration_complete=True)
     await state.set_state(RegisteredSection.main_menu)
 
-    await callback.message.edit_text(get_text("registration.done", lang))
+    try:
+        await callback.message.edit_text(get_text("registration.done", lang))
+    except TelegramBadRequest:
+        pass
+
     await callback.message.answer(
         get_text("registered.welcome_new", lang),
-        reply_markup=registered_menu_kb(lang),
+        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
     )
     await callback.answer()
 
 
 @router.callback_query(F.data == "confirm_no")
 async def confirm_no(callback: types.CallbackQuery, state: FSMContext):
-    """Don't confirm — go back to name input."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(RegistrationFSM.waiting_name)
 
-    await callback.message.edit_text(get_text("registration.ask_name", lang))
+    try:
+        await callback.message.edit_text(get_text("registration.ask_name", lang))
+    except TelegramBadRequest:
+        pass
     await callback.answer()
 
 
@@ -476,51 +507,49 @@ async def confirm_no(callback: types.CallbackQuery, state: FSMContext):
 # REGISTERED USER — MENU CALLBACKS
 # ══════════════════════════════════════════════════════════════
 
-# NOTE: menu_profile is handled by handlers/profile.py
-
-
 @router.callback_query(F.data == "menu_settings")
 async def menu_settings(callback: types.CallbackQuery, state: FSMContext):
-    """Show settings menu."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(MenuSection.settings)
 
-    await callback.message.edit_text(
-        get_text("settings.title", lang),
-        reply_markup=settings_kb(lang),
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data == "menu_guide")
-async def menu_registered_guide(callback: types.CallbackQuery, state: FSMContext):
-    """Show guide for registered users."""
-    user_data = await state.get_data()
-    lang = _get_lang(user_data)
+    # Delete inline message, send new message with reply keyboard
+    try:
+        await callback.message.delete()
+    except Exception:
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
 
     await callback.message.answer(
-        get_text("guide.text", lang),
+        get_text("settings.title", lang),
+        reply_markup=ColoredKeyboard.reply_settings_menu(lang=lang),
     )
     await callback.answer()
 
 
 @router.callback_query(F.data == "menu_admin_msg")
 async def menu_registered_admin(callback: types.CallbackQuery, state: FSMContext):
-    """Start admin message from registered menu."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(MenuSection.contact_admin)
 
+    # Delete inline message if any
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+
     await callback.message.answer(
         get_text("admin.instruction", lang),
+        reply_markup=ColoredKeyboard.reply_admin_massage(lang=lang),
     )
     await callback.answer()
 
 
 @router.callback_query(F.data == "menu_video")
 async def menu_video(callback: types.CallbackQuery, state: FSMContext):
-    """Show video lessons from Content DB (paginated)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await send_content_list(callback.message, "video", 1, lang, edit=False)
@@ -529,7 +558,6 @@ async def menu_video(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "menu_file")
 async def menu_file(callback: types.CallbackQuery, state: FSMContext):
-    """Show file lessons from Content DB (paginated)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await send_content_list(callback.message, "file", 1, lang, edit=False)
@@ -542,7 +570,6 @@ async def menu_file(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("content:video:page_"))
 async def content_video_page(callback: types.CallbackQuery, state: FSMContext):
-    """Video darsliklar sahifasini almashtirish."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     page = int(callback.data.split("_")[-1])
@@ -552,7 +579,6 @@ async def content_video_page(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("content:file:page_"))
 async def content_file_page(callback: types.CallbackQuery, state: FSMContext):
-    """File darsliklar sahifasini almashtirish."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     page = int(callback.data.split("_")[-1])
@@ -562,7 +588,6 @@ async def content_file_page(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("video_select_"))
 async def video_select(callback: types.CallbackQuery, state: FSMContext):
-    """Send selected video to user."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     content_id = int(callback.data.split("_")[2])
@@ -583,9 +608,7 @@ async def video_select(callback: types.CallbackQuery, state: FSMContext):
                     if tg_file_id:
                         await callback.message.answer_video(video=tg_file_id, caption=text, parse_mode="HTML")
                     else:
-                        await callback.message.answer(
-                            text + "\n\n❌ Video hali tayyor emas (file_id yo'q)"
-                        )
+                        await callback.message.answer(text + "\n\n❌ Video hali tayyor emas (file_id yo'q)")
                 else:
                     await callback.message.answer(get_text("video.not_found", lang))
             else:
@@ -599,7 +622,6 @@ async def video_select(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("file_select_"))
 async def file_select(callback: types.CallbackQuery, state: FSMContext):
-    """Send selected file to user."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     content_id = int(callback.data.split("_")[2])
@@ -620,9 +642,7 @@ async def file_select(callback: types.CallbackQuery, state: FSMContext):
                     if tg_file_id:
                         await callback.message.answer_document(document=tg_file_id, caption=text, parse_mode="HTML")
                     else:
-                        await callback.message.answer(
-                            text + "\n\n❌ Fayl hali tayyor emas (file_id yo'q)"
-                        )
+                        await callback.message.answer(text + "\n\n❌ Fayl hali tayyor emas (file_id yo'q)")
                 else:
                     await callback.message.answer(get_text("file.not_found", lang))
             else:
@@ -635,98 +655,87 @@ async def file_select(callback: types.CallbackQuery, state: FSMContext):
 
 
 # ══════════════════════════════════════════════════════════════
-# SETTINGS — CALLBACKS
+# SETTINGS — CALLBACKS (FIXED FOR BAD REQUEST)
 # ══════════════════════════════════════════════════════════════
 
 @router.callback_query(F.data == "settings_language")
 async def settings_language(callback: types.CallbackQuery, state: FSMContext):
-    """Show language selection from settings."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(MenuSection.language_selection)
 
-    await callback.message.edit_text(
-        get_text("language.prompt", lang),
-        reply_markup=language_switch_kb(lang),
-    )
+    try:
+        await callback.message.edit_text(
+            get_text("language.prompt", lang),
+            reply_markup=language_switch_kb(lang),
+        )
+    except TelegramBadRequest:
+        pass
     await callback.answer()
 
 
 @router.callback_query(F.data == "back_to_settings")
 async def back_to_settings(callback: types.CallbackQuery, state: FSMContext):
-    """Back to settings from language selection."""
+    """Back to settings — show reply keyboard (from inline language selection)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
+    await state.set_state(MenuSection.settings)
 
-    await callback.message.edit_text(
+    # Delete inline message, send new message with reply keyboard
+    try:
+        await callback.message.delete()
+    except Exception:
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+
+    await callback.message.answer(
         get_text("settings.title", lang),
-        reply_markup=settings_kb(lang),
+        reply_markup=ColoredKeyboard.reply_settings_menu(lang=lang),
     )
     await callback.answer()
 
 
 @router.callback_query(F.data == "settings_logout")
 async def settings_logout(callback: types.CallbackQuery, state: FSMContext):
-    """Handle logout — clear state and return to start."""
+    """Logout callback — backward compat for old inline messages."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
 
-    await state.clear()
-    await callback.message.answer(
-        get_text("settings.logout_done", lang),
-        reply_markup=main_menu_keyboard(lang),
-    )
+    # Delete inline message
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+
+    await _do_logout(callback.message, state, lang)
     await callback.answer()
 
 
 @router.callback_query(F.data == "settings_ai_toggle")
 async def settings_ai_toggle(callback: types.CallbackQuery, state: FSMContext):
-    """Toggle AI ON/OFF — sync with Backend API."""
+    """AI toggle callback — backward compat for old inline messages."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
-    ai_enabled = user_data.get("ai_enabled", True)
-    user_id = user_data.get("telegram_id") or callback.from_user.id
-    user_data_api = None
 
-    # Toggle locally first
-    new_status = not ai_enabled
-
-    # Try to sync with Backend API
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.put(
-                f"{API_BASE_URL}/sync/users/{user_id}/ai-toggle",
-                json={"ai_enabled": new_status},
-            )
-            if resp.status_code == 200:
-                user_data_api = resp.json()
-            else:
-                # Backend failed — revert local toggle
-                new_status = ai_enabled
-                await callback.answer(get_text("error", lang))
-                return
-    except Exception:
-        # Backend unreachable — revert
-        new_status = ai_enabled
-        await callback.answer(get_text("error", lang))
-        return
-
-    # Update local state
-    await state.update_data(ai_enabled=new_status)
-
-    # Notify user
-    status_text = get_text("ai.enabled" if new_status else "ai.disabled", lang)
+    success, status_text = await _toggle_ai_core(state, lang, fallback_user_id=callback.from_user.id)
     await callback.answer(status_text, show_alert=True)
 
-    # Refresh settings menu
-    await callback.message.edit_text(
+    # Delete inline message, send new message with reply keyboard
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+
+    await callback.message.answer(
         get_text("settings.title", lang),
-        reply_markup=settings_kb(lang),
+        reply_markup=ColoredKeyboard.reply_settings_menu(lang=lang),
     )
 
 
 # ══════════════════════════════════════════════════════════════
-# ADMIN CONTACT SESSION — SAVE TO BACKEND (not Telegram forward)
+# ADMIN CONTACT SESSION — FIX FOR STUCK STATE
 # ══════════════════════════════════════════════════════════════
 
 @router.message(
@@ -735,16 +744,32 @@ async def settings_ai_toggle(callback: types.CallbackQuery, state: FSMContext):
     StateFilter(MenuSection.contact_admin),
 )
 async def handle_admin_contact_session(message: types.Message, state: FSMContext):
-    """Save user message to backend admin_messages table (inbox)."""
+    """Save user message to backend admin_messages table.
 
+    Exits contact_admin mode if user presses any menu button.
+    """
     user_data = await state.get_data()
     lang = _get_lang(user_data)
+
+    # Agarda foydalanuvchi menyu tugmalaridan birini bossa, Admin sessiyadan chiqaramiz
+    if message.text in MENU_BUTTONS:
+        registration_complete = user_data.get("registration_complete", False)
+        if registration_complete:
+            await state.set_state(RegisteredSection.main_menu)
+        else:
+            await state.set_state(StartSection.main_menu)
+
+        await message.answer(
+            get_text("main_menu", lang),
+            reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
+        )
+        return
+
     user_id = message.from_user.id
     user_name = message.from_user.full_name or "User"
     username = f"@{message.from_user.username}" if message.from_user.username else ""
     db_user_id = user_data.get("id")
 
-    # Determine content type and extract data
     content_type = message.content_type
     text = message.text or message.caption or ""
     file_id = None
@@ -760,7 +785,6 @@ async def handle_admin_contact_session(message: types.Message, state: FSMContext
     elif message.sticker:
         file_id = message.sticker.file_id
 
-    # Save to backend
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             payload = {
@@ -773,19 +797,9 @@ async def handle_admin_contact_session(message: types.Message, state: FSMContext
             }
             resp = await client.post(f"{API_BASE_URL}/admin-messages", json=payload)
             if resp.status_code in (200, 201):
-                await message.answer(
-                    get_text("admin.sent_inbox", lang),
-                    reply_markup=admin_contact_kb(lang),
-                )
+                await message.answer(get_text("admin.sent_inbox", lang))
             else:
-                print(f"[ADMIN SAVE ERROR] {resp.status_code}: {resp.text}")
-                await message.answer(
-                    get_text("admin.sent", lang),
-                    reply_markup=admin_contact_kb(lang),
-                )
+                await message.answer(get_text("admin.sent", lang))
     except Exception as e:
         print(f"[ADMIN SAVE ERROR] {e}")
-        await message.answer(
-            get_text("admin.sent", lang),
-            reply_markup=admin_contact_kb(lang),
-        )
+        await message.answer(get_text("admin.sent", lang))
