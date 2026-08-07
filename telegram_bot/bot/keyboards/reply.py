@@ -15,6 +15,60 @@ def language_selection_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
+def main_menu_keyboard(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Main menu keyboard for NOT_REGISTERED users — 5 buttons."""
+    if lang == "uz":
+        buttons = [
+            ["📝 Register/Login", "ℹ️ Biz haqimizda"],
+            ["📖 Qo'llanma", "🌐 Til/Language"],
+            ["📨 Admin ga xabar"],
+        ]
+    elif lang == "ru":
+        buttons = [
+            ["📝 Регистрация/Вход", "ℹ️ О нас"],
+            ["📖 Руководство", "🌐 Язык"],
+            ["📨 Написать админу"],
+        ]
+    else:  # en
+        buttons = [
+            ["📝 Register/Login", "ℹ️ About us"],
+            ["📖 Guide", "🌐 Language"],
+            ["📨 Message admin"],
+        ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=btn) for btn in row] for row in buttons],
+        resize_keyboard=True,
+    )
+
+
+def registered_menu_keyboard(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Main menu keyboard for REGISTERED users — inline style with reply fallback."""
+    if lang == "uz":
+        buttons = [
+            ["👤 Profil", "⚙️ Sozlamalar"],
+            ["📖 Qo'llanma", "📨 Admin ga xabar"],
+            ["🎬 Video Darslik", "📁 File Darsliklar"],
+        ]
+    elif lang == "ru":
+        buttons = [
+            ["👤 Профиль", "⚙️ Настройки"],
+            ["📖 Руководство", "📨 Написать админу"],
+            ["🎬 Видеоурок", "📁 Файлы уроков"],
+        ]
+    else:  # en
+        buttons = [
+            ["👤 Profile", "⚙️ Settings"],
+            ["📖 Guide", "📨 Message admin"],
+            ["🎬 Video Lesson", "📁 File Lessons"],
+        ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=btn) for btn in row] for row in buttons],
+        resize_keyboard=True,
+    )
+
+
 def contact_request_keyboard() -> ReplyKeyboardMarkup:
     """Phone number sharing keyboard."""
     return ReplyKeyboardMarkup(
