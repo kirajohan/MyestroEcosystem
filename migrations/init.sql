@@ -1,14 +1,15 @@
 -- ============================================================
 -- Myestro Initial Schema
 -- 14 tables (ENUM types o'chirilgan — barcha ENUM lar VARCHAR sifatida ishlatiladi)
+-- Idempotent: all CREATE TABLE/INDEX use IF NOT EXISTS
 -- ============================================================
 
 -- -----------------------------------------------------------
 -- 1. users
 -- -----------------------------------------------------------
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id              BIGSERIAL PRIMARY KEY,
-    email           VARCHAR(255) NOT NULL UNIQUE,
+    email           VARCHAR(255) UNIQUE,
     password_hash   VARCHAR(255),
     full_name       VARCHAR(255) NOT NULL,
     role            VARCHAR(20) DEFAULT 'student' NOT NULL,
@@ -29,18 +30,18 @@ CREATE TABLE users (
     location        VARCHAR(255),
     ai_enabled      BOOLEAN DEFAULT TRUE NOT NULL,
     created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    deleted_at      TIMESTAMPTZ
-    updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    deleted_at      TIMESTAMPTZ,
+    updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_telegram_id ON users(telegram_id);
-CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 
 -- -----------------------------------------------------------
 -- 2. sessions
 -- -----------------------------------------------------------
-CREATE TABLE sessions (
+CREATE TABLE IF NOT EXISTS sessions (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     refresh_token   VARCHAR(500) NOT NULL,
@@ -52,18 +53,16 @@ CREATE TABLE sessions (
     revoked_at      TIMESTAMPTZ
 );
 
-CREATE INDEX idx_sessions_user_id ON sessions(user_id);
-CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 
 -- -----------------------------------------------------------
 -- 3. conversation_threads
 -- -----------------------------------------------------------
--- /backend/app/migrations/init.sql
-
-CREATE TABLE conversation_threads (
+CREATE TABLE IF NOT EXISTS conversation_threads (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    telegram_topic_id BIGINT NOT NULL UNIQUE,  -- ⭐ KEY
+    telegram_topic_id BIGINT NOT NULL UNIQUE,
     topic_title VARCHAR(255),
     cefr_level VARCHAR(10) DEFAULT 'A1',
     is_active BOOLEAN DEFAULT TRUE,
@@ -72,15 +71,13 @@ CREATE TABLE conversation_threads (
     CONSTRAINT idx_thread_user_active UNIQUE(user_id, is_active)
 );
 
-CREATE INDEX idx_threads_user_id ON conversation_threads(user_id);
-CREATE INDEX idx_threads_last_message ON conversation_threads(last_message_at DESC);
+CREATE INDEX IF NOT EXISTS idx_threads_user_id ON conversation_threads(user_id);
+CREATE INDEX IF NOT EXISTS idx_threads_last_message ON conversation_threads(last_message_at DESC);
 
--- ⭐ NO messages TABLE — Telegram API'dan olamiz!
-s
 -- -----------------------------------------------------------
 -- 4. messages
 -- -----------------------------------------------------------
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
     id                  BIGSERIAL PRIMARY KEY,
     thread_id           BIGINT NOT NULL REFERENCES conversation_threads(id) ON DELETE CASCADE,
     user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -97,14 +94,14 @@ CREATE TABLE messages (
     created_at          TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX idx_messages_thread_id ON messages(thread_id);
-CREATE INDEX idx_messages_user_id ON messages(user_id);
-CREATE INDEX idx_messages_created_at ON messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages(thread_id);
+CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
 
 -- -----------------------------------------------------------
 -- 10. knowledge_categories
 -- -----------------------------------------------------------
-CREATE TABLE knowledge_categories (
+CREATE TABLE IF NOT EXISTS knowledge_categories (
     id          BIGSERIAL PRIMARY KEY,
     name        VARCHAR(255) NOT NULL,
     slug        VARCHAR(255) NOT NULL UNIQUE,
@@ -119,7 +116,7 @@ CREATE TABLE knowledge_categories (
 -- -----------------------------------------------------------
 -- 11. knowledge_docs
 -- -----------------------------------------------------------
-CREATE TABLE knowledge_docs (
+CREATE TABLE IF NOT EXISTS knowledge_docs (
     id          BIGSERIAL PRIMARY KEY,
     category_id BIGINT REFERENCES knowledge_categories(id) ON DELETE SET NULL,
     title       VARCHAR(255) NOT NULL,
@@ -133,13 +130,13 @@ CREATE TABLE knowledge_docs (
     updated_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX idx_knowledge_docs_category_id ON knowledge_docs(category_id);
-CREATE INDEX idx_knowledge_docs_cefr_level ON knowledge_docs(cefr_level);
+CREATE INDEX IF NOT EXISTS idx_knowledge_docs_category_id ON knowledge_docs(category_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_docs_cefr_level ON knowledge_docs(cefr_level);
 
 -- -----------------------------------------------------------
 -- 12. api_logs
 -- -----------------------------------------------------------
-CREATE TABLE api_logs (
+CREATE TABLE IF NOT EXISTS api_logs (
     id              BIGSERIAL PRIMARY KEY,
     user_id         BIGINT REFERENCES users(id) ON DELETE SET NULL,
     endpoint        VARCHAR(500) NOT NULL,
@@ -153,14 +150,14 @@ CREATE TABLE api_logs (
     created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX idx_api_logs_user_id ON api_logs(user_id);
-CREATE INDEX idx_api_logs_created_at ON api_logs(created_at);
-CREATE INDEX idx_api_logs_endpoint ON api_logs(endpoint);
+CREATE INDEX IF NOT EXISTS idx_api_logs_user_id ON api_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_api_logs_created_at ON api_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_api_logs_endpoint ON api_logs(endpoint);
 
 -- -----------------------------------------------------------
 -- 13. error_logs
 -- -----------------------------------------------------------
-CREATE TABLE error_logs (
+CREATE TABLE IF NOT EXISTS error_logs (
     id              BIGSERIAL PRIMARY KEY,
     service         VARCHAR(100) NOT NULL,
     error_type      VARCHAR(255) NOT NULL,
@@ -176,15 +173,15 @@ CREATE TABLE error_logs (
     fixed_at        TIMESTAMPTZ
 );
 
-CREATE INDEX idx_error_logs_service ON error_logs(service);
-CREATE INDEX idx_error_logs_severity ON error_logs(severity);
-CREATE INDEX idx_error_logs_is_fixed ON error_logs(is_fixed);
-CREATE INDEX idx_error_logs_created_at ON error_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_error_logs_service ON error_logs(service);
+CREATE INDEX IF NOT EXISTS idx_error_logs_severity ON error_logs(severity);
+CREATE INDEX IF NOT EXISTS idx_error_logs_is_fixed ON error_logs(is_fixed);
+CREATE INDEX IF NOT EXISTS idx_error_logs_created_at ON error_logs(created_at);
 
 -- -----------------------------------------------------------
 -- 14. audit_logs
 -- -----------------------------------------------------------
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id              BIGSERIAL PRIMARY KEY,
     user_id         BIGINT REFERENCES users(id) ON DELETE SET NULL,
     action          VARCHAR(100) NOT NULL,
@@ -196,14 +193,14 @@ CREATE TABLE audit_logs (
     created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_action ON audit_logs(action);
-CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 
 -- -----------------------------------------------------------
 -- 15. system_settings
 -- -----------------------------------------------------------
-CREATE TABLE system_settings (
+CREATE TABLE IF NOT EXISTS system_settings (
     id              BIGSERIAL PRIMARY KEY,
     key             VARCHAR(255) NOT NULL UNIQUE,
     value           TEXT NOT NULL,
@@ -212,16 +209,16 @@ CREATE TABLE system_settings (
     updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX idx_system_settings_key ON system_settings(key);
+CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings(key);
 
 -- -----------------------------------------------------------
 -- 16. content_items (Video / File / Text lessons)
 -- -----------------------------------------------------------
-CREATE TABLE content_items (
+CREATE TABLE IF NOT EXISTS content_items (
     id              BIGSERIAL PRIMARY KEY,
     title           VARCHAR(255) NOT NULL,
     description     TEXT,
-    content_type    VARCHAR(20) NOT NULL,  -- 'video' | 'file' | 'text'
+    content_type    VARCHAR(20) NOT NULL,
     file_path       TEXT,
     telegram_file_id VARCHAR(255),
     cefr_level      VARCHAR(10),
@@ -231,14 +228,14 @@ CREATE TABLE content_items (
     updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX idx_content_items_type ON content_items(content_type);
-CREATE INDEX idx_content_items_cefr ON content_items(cefr_level);
-CREATE INDEX idx_content_items_active ON content_items(is_active);
+CREATE INDEX IF NOT EXISTS idx_content_items_type ON content_items(content_type);
+CREATE INDEX IF NOT EXISTS idx_content_items_cefr ON content_items(cefr_level);
+CREATE INDEX IF NOT EXISTS idx_content_items_active ON content_items(is_active);
 
 -- -----------------------------------------------------------
 -- 17. bot_texts (CMS for bot messages)
 -- -----------------------------------------------------------
-CREATE TABLE bot_texts (
+CREATE TABLE IF NOT EXISTS bot_texts (
     id              BIGSERIAL PRIMARY KEY,
     key             VARCHAR(100) NOT NULL,
     lang            VARCHAR(10) DEFAULT 'uz' NOT NULL,
@@ -246,14 +243,13 @@ CREATE TABLE bot_texts (
     updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX idx_bot_texts_key ON bot_texts(key);
-CREATE INDEX idx_bot_texts_lang ON bot_texts(lang);
+CREATE INDEX IF NOT EXISTS idx_bot_texts_key ON bot_texts(key);
+CREATE INDEX IF NOT EXISTS idx_bot_texts_lang ON bot_texts(lang);
 
 -- -----------------------------------------------------------
--- 18. admin_messages (Inbox for user messages)
+-- 18. inbox_messages (Admin Inbox for user messages)
 -- -----------------------------------------------------------
--- Create inbox_messages table
-CREATE TABLE inbox_messages (
+CREATE TABLE IF NOT EXISTS inbox_messages (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),
     subject VARCHAR(255),
@@ -263,37 +259,41 @@ CREATE TABLE inbox_messages (
     status VARCHAR(50) DEFAULT 'new',
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    INDEX (user_id),
-    INDEX (status),
-    INDEX (created_at)
+    updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Create inbox_message_history table
-CREATE TABLE inbox_message_history (
+CREATE INDEX IF NOT EXISTS idx_inbox_messages_user_id ON inbox_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_inbox_messages_status ON inbox_messages(status);
+CREATE INDEX IF NOT EXISTS idx_inbox_messages_created_at ON inbox_messages(created_at);
+
+-- -----------------------------------------------------------
+-- 19. inbox_message_history
+-- -----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS inbox_message_history (
     id SERIAL PRIMARY KEY,
     inbox_message_id INTEGER NOT NULL REFERENCES inbox_messages(id) ON DELETE CASCADE,
     sender_id INTEGER REFERENCES users(id),
     message_text TEXT NOT NULL,
     message_type VARCHAR(50) DEFAULT 'user_message',
-    created_at TIMESTAMP DEFAULT NOW(),
-    INDEX (inbox_message_id),
-    INDEX (created_at)
+    created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_inbox_message_history_inbox_id ON inbox_message_history(inbox_message_id);
+CREATE INDEX IF NOT EXISTS idx_inbox_message_history_created_at ON inbox_message_history(created_at);
+
 -- -----------------------------------------------------------
--- 19. broadcast_jobs (Phase 3)
+-- 20. broadcast_jobs (Phase 3)
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS broadcast_jobs (
     id BIGSERIAL PRIMARY KEY,
     created_by_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
-    content TEXT NOT NULL,  -- HTML formatted
-    message_type VARCHAR(20) DEFAULT 'text',  -- 'text', 'photo', 'video', 'document'
-    file_id VARCHAR(255),  -- Telegram file_id for media
-    target_users BIGINT[] DEFAULT '{}',  -- Array of user IDs (NULL or empty = all users)
+    content TEXT NOT NULL,
+    message_type VARCHAR(20) DEFAULT 'text',
+    file_id VARCHAR(255),
+    target_users BIGINT[] DEFAULT '{}',
     scheduled_at TIMESTAMPTZ DEFAULT NOW(),
-    status VARCHAR(20) DEFAULT 'pending',  -- 'pending', 'queued', 'sending', 'completed', 'failed'
+    status VARCHAR(20) DEFAULT 'pending',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     total_users INT DEFAULT 0,
@@ -302,35 +302,32 @@ CREATE TABLE IF NOT EXISTS broadcast_jobs (
     error_message TEXT
 );
 
-CREATE INDEX idx_broadcast_jobs_status ON broadcast_jobs(status);
-CREATE INDEX idx_broadcast_jobs_created_at ON broadcast_jobs(created_at DESC);
-CREATE INDEX idx_broadcast_jobs_created_by ON broadcast_jobs(created_by_id);
+CREATE INDEX IF NOT EXISTS idx_broadcast_jobs_status ON broadcast_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_broadcast_jobs_created_at ON broadcast_jobs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_broadcast_jobs_created_by ON broadcast_jobs(created_by_id);
 
 -- -----------------------------------------------------------
--- 20. broadcast_history (Phase 3)
+-- 21. broadcast_history (Phase 3)
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS broadcast_history (
     id BIGSERIAL PRIMARY KEY,
     broadcast_job_id BIGINT NOT NULL REFERENCES broadcast_jobs(id) ON DELETE CASCADE,
     recipient_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    message_telegram_id BIGINT,  -- Telegram message ID if successfully sent
-    status VARCHAR(20) DEFAULT 'pending',  -- 'pending', 'sent', 'failed'
+    message_telegram_id BIGINT,
+    status VARCHAR(20) DEFAULT 'pending',
     error_message TEXT,
     sent_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_broadcast_history_job_id ON broadcast_history(broadcast_job_id);
-CREATE INDEX idx_broadcast_history_recipient ON broadcast_history(recipient_user_id);
-CREATE INDEX idx_broadcast_history_status ON broadcast_history(status);
-CREATE INDEX idx_broadcast_history_created_at ON broadcast_history(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_broadcast_history_job_id ON broadcast_history(broadcast_job_id);
+CREATE INDEX IF NOT EXISTS idx_broadcast_history_recipient ON broadcast_history(recipient_user_id);
+CREATE INDEX IF NOT EXISTS idx_broadcast_history_status ON broadcast_history(status);
+CREATE INDEX IF NOT EXISTS idx_broadcast_history_created_at ON broadcast_history(created_at DESC);
 
 -- ============================================================
 -- DEFAULT ADMIN USER
 -- ============================================================
--- Email: admin@myestro.com
--- Password: admin123
--- Role: superadmin
 INSERT INTO users (
     email,
     password_hash,

@@ -40,6 +40,7 @@ class ExamResponse(BaseModel):
     max_score: Optional[Decimal] = None
     version: int
     is_sample: bool
+    is_active: bool = True
     attempt_limit: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -69,7 +70,7 @@ class ExamQuestionResponse(BaseModel):
     question_number: int
     question_type: str
     question_text: str
-    options: Optional[Dict[str, Any]] = None
+    options: Optional[List[Dict[str, Any]]] = None
     correct_answer: str
     explanation: Optional[str] = None
     points: Decimal

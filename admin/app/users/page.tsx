@@ -39,7 +39,7 @@ export default function UsersPage() {
     return data.data.filter(
       (user) =>
         user.full_name.toLowerCase().includes(term) ||
-        user.email.toLowerCase().includes(term) ||
+        (user.email?.toLowerCase().includes(term) ?? false) ||
         (user.telegram_username?.toLowerCase().includes(term) ?? false)
     );
   }, [data?.data, searchTerm]);

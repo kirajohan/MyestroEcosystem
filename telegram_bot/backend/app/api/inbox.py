@@ -40,8 +40,8 @@ class InboxMessageResponse(BaseModel):
     admin_reply: Optional[str] = None
     status: str  # new, read, replied, closed
     is_read: bool
-    created_at: datetime
-    updated_at: datetime
+    created_at: str
+    updated_at: str
     
     model_config = {"from_attributes": True}
 
@@ -118,7 +118,7 @@ def get_inbox_messages(
                 updated_at=msg.updated_at.isoformat() if msg.updated_at else "",
             ))
         
-        logger.info(f"✅ Fetched {len(messages)} inbox messages (status={status}, total={total})")
+        logger.info(f"✅ Fetched {len(messages)} inbox messages (status={status_filter}, total={total})")
         return response
         
     except Exception as e:

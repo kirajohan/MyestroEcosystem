@@ -52,12 +52,70 @@ def registered_menu_kb(lang: str = "uz") -> InlineKeyboardMarkup:
         "en": ["👤 Profile", "⚙️ Settings",  "📨 Message admin", "📚 Lessons", "✅ Test"],
     }
     items = texts.get(lang, texts["uz"])
-    callbacks = ["menu_profile", "menu_settings", "menu_guide", "menu_admin_msg", "menu_lessons", "menu_test"]
+    callbacks = ["menu_profile", "menu_settings", "menu_admin_msg", "menu_lessons", "menu_test"]
     builder = InlineKeyboardBuilder()
     for text, cb in zip(items, callbacks):
         builder.button(text=text, callback_data=cb)
-    builder.adjust(2)
+    builder.adjust(2, 2, 1)
     return builder.as_markup()
+
+
+def main_menu_kb(lang: str = "uz") -> InlineKeyboardMarkup:
+    """Main menu — inline keyboard for registered users (2-2-1 layout).
+
+    Buttons: Profil, Sozlamalar, Admin ga xabar, Darslar, Test.
+    Callbacks: menu_profile, menu_settings, menu_admin_msg, menu_lessons, menu_test.
+    """
+    return registered_menu_kb(lang)
+
+
+def settings_menu_kb(lang: str = "uz") -> InlineKeyboardMarkup:
+    """Settings menu — inline keyboard (2-1-1 layout).
+
+    Buttons: Til o'zgartirish, AI ON/OFF, Log Out, Orqaga.
+    Callbacks: settings_language, settings_ai_toggle, settings_logout, back_to_settings.
+    """
+    from bot.utils.i18n import get_text
+    texts = {
+        "uz": {"lang": "🌐 Til o'zgartirish", "ai": "🤖 AI ON/OFF", "logout": "🚪 Log Out"},
+        "ru": {"lang": "🌐 Сменить язык", "ai": "🤖 AI ВКЛ/ВЫКЛ", "logout": "🚪 Выйти"},
+        "en": {"lang": "🌐 Change Language", "ai": "🤖 AI ON/OFF", "logout": "🚪 Log Out"},
+    }
+    t = texts.get(lang, texts["uz"])
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t["lang"], callback_data="settings_language")
+    builder.button(text=t["ai"], callback_data="settings_ai_toggle")
+    builder.button(text=t["logout"], callback_data="settings_logout")
+    builder.button(text=get_text("back", lang), callback_data="back_to_settings")
+    builder.adjust(2, 1, 1)
+    return builder.as_markup()
+
+
+def phone_share_kb(lang: str = "uz") -> InlineKeyboardMarkup:
+    """Phone share — inline keyboard (1 button).
+
+    Button: 📱 Telefon raqamni ulashish.
+    Callback: phone_share.
+    """
+    texts = {
+        "uz": "📱 Telefon raqamni ulashish",
+        "ru": "📞 Поделиться номером",
+        "en": "📞 Share Phone Number",
+    }
+    text = texts.get(lang, texts["uz"])
+    builder = InlineKeyboardBuilder()
+    builder.button(text=text, callback_data="phone_share")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def start_menu_kb(lang: str = "uz") -> InlineKeyboardMarkup:
+    """Start menu — language selection inline keyboard (3 buttons).
+
+    Buttons: 🇺🇿 O'zbek, 🇷🇺 Русский, 🇬🇧 English.
+    Callbacks: lang_uz, lang_ru, lang_en.
+    """
+    return language_selection(include_back=False)
 
 
 def about_us_kb(lang: str = "uz") -> InlineKeyboardMarkup:

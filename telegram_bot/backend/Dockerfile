@@ -18,6 +18,10 @@ COPY backend/scripts/ ./scripts/
 COPY backend/migrations/ ./migrations/
 COPY backend/alembic.ini .
 
+# Make startup script executable
+RUN chmod +x /app/scripts/start_backend.sh
+
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run migrations on startup, then start the server
+CMD ["/app/scripts/start_backend.sh"]

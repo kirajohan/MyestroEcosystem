@@ -30,6 +30,7 @@ class RegistrationFSM(StatesGroup):
     phone_request = State()            # Telefon raqam so'rash
     phone_verified = State()           # DB tekshirildi
     waiting_name = State()             # Ism-Familiya kiritish
+    waiting_email = State()            # Email kiritish (NEW)
     waiting_birthdate = State()        # Tug'ilgan kun (optional)
     waiting_level = State()            # CEFR level tanlash
     confirmation = State()             # Tasdiqlash

@@ -85,7 +85,9 @@ export function UserTable({
               <td className="px-6 py-4 text-sm font-semibold text-gray-900">
                 {user.full_name}
               </td>
-              <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
+              <td className="px-6 py-4 text-sm text-gray-600">
+                {user.email || '—'}
+              </td>
               <td className="px-6 py-4 text-sm">
                 <Badge variant={user.role === 'admin' ? 'admin' : 'user'}>
                   {user.role}

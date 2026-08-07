@@ -152,7 +152,11 @@ def create_sync_user(
     if existing:
         raise ConflictException("User already exists")
     
+    # Normalize empty string to None — Telegram users may not have email
+    email = data.get("email") or None
+
     user = User(
+        email=email,
         telegram_id=telegram_id,
         telegram_username=data.get("telegram_username", ""),
         phone=data.get("phone", ""),
@@ -210,6 +214,9 @@ def update_sync_user(
             if field == "password":
                 # Hash password into password_hash column
                 user.password_hash = hash_password(value)
+            elif field == "email":
+                # Normalize empty string to None — Telegram users may not have email
+                user.email = value or None
             else:
                 setattr(user, field, value)
 

@@ -1,4 +1,4 @@
-"""Menu handlers — reply keyboard routing + callback handlers.
+"""Menu handlers — inline keyboard routing + callback handlers.
 
 Covers:
 - Language selection from /start
@@ -14,10 +14,10 @@ from aiogram.exceptions import TelegramBadRequest
 from bot.states.registration import (
     StartSection, RegistrationFSM, MenuSection, RegisteredSection,
 )
-from bot.keyboards.orange_keyboard import ColoredKeyboard
 from bot.keyboards.inline import (
     language_selection, language_switch_kb, about_us_kb,
-    settings_kb, admin_contact_kb,
+    admin_contact_kb, main_menu_kb, settings_menu_kb,
+    phone_share_kb,
 )
 from bot.config import settings, API_BASE_URL
 from bot.utils.i18n import get_text
@@ -58,7 +58,7 @@ async def language_selected(message: types.Message, state: FSMContext):
 
     await message.answer(
         get_text("start.language_changed", lang),
-        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),  # 🟠 Orange tema
+        reply_markup=main_menu_kb(lang=lang),
     )
 
 
@@ -190,18 +190,18 @@ async def _toggle_ai_core(state: FSMContext, lang: str, fallback_user_id: int = 
 
 
 async def _do_logout(message, state: FSMContext, lang: str):
-    """Logout — clear state and return to main menu with reply keyboard."""
+    """Logout — clear state and return to main menu with inline keyboard."""
     await state.clear()
     await state.set_state(StartSection.main_menu)
     await state.update_data(lang=lang)
     await message.answer(
         get_text("settings.logout_done", lang),
-        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
+        reply_markup=main_menu_kb(lang=lang),
     )
 
 
 # ══════════════════════════════════════════════════════════════
-# MAIN MENU — REPLY KEYBOARD HANDLERS (StateFilter("*") bilan)
+# MAIN MENU — INLINE KEYBOARD HANDLERS (StateFilter("*") bilan)
 # ══════════════════════════════════════════════════════════════
 
 @router.message(
@@ -254,7 +254,7 @@ async def cmd_admin_message(message: types.Message, state: FSMContext):
 
     await message.answer(
         get_text("admin.instruction", lang),
-        reply_markup=ColoredKeyboard.reply_admin_massage(lang=lang),
+        reply_markup=admin_contact_kb(lang=lang),
     )
 
 
@@ -284,12 +284,12 @@ async def msg_settings(message: types.Message, state: FSMContext):
 
     await message.answer(
         get_text("settings.title", lang),
-        reply_markup=ColoredKeyboard.reply_settings_menu(lang=lang),
+        reply_markup=settings_menu_kb(lang=lang),
     )
 
 
 # ══════════════════════════════════════════════════════════════
-# SETTINGS SUB-MENU — REPLY KEYBOARD HANDLERS
+# SETTINGS SUB-MENU — INLINE KEYBOARD HANDLERS
 # ══════════════════════════════════════════════════════════════
 
 @router.message(
@@ -297,7 +297,7 @@ async def msg_settings(message: types.Message, state: FSMContext):
     StateFilter(MenuSection.settings),
 )
 async def msg_settings_language(message: types.Message, state: FSMContext):
-    """Settings → Language change (reply keyboard button)."""
+    """Settings → Language change (inline keyboard button)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(MenuSection.language_selection)
@@ -313,13 +313,13 @@ async def msg_settings_language(message: types.Message, state: FSMContext):
     StateFilter(MenuSection.settings),
 )
 async def msg_settings_ai_toggle(message: types.Message, state: FSMContext):
-    """Settings → AI toggle (reply keyboard button)."""
+    """Settings → AI toggle (inline keyboard button)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     success, status_text = await _toggle_ai_core(state, lang, fallback_user_id=message.from_user.id)
     await message.answer(
         f"{status_text}\n\n{get_text('settings.title', lang)}",
-        reply_markup=ColoredKeyboard.reply_settings_menu(lang=lang),
+        reply_markup=settings_menu_kb(lang=lang),
     )
 
 
@@ -328,7 +328,7 @@ async def msg_settings_ai_toggle(message: types.Message, state: FSMContext):
     StateFilter(MenuSection.settings),
 )
 async def msg_settings_logout(message: types.Message, state: FSMContext):
-    """Settings → Logout (reply keyboard button)."""
+    """Settings → Logout (inline keyboard button)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await _do_logout(message, state, lang)
@@ -339,7 +339,7 @@ async def msg_settings_logout(message: types.Message, state: FSMContext):
     StateFilter(MenuSection.settings),
 )
 async def msg_settings_back(message: types.Message, state: FSMContext):
-    """Settings → Back to main menu (reply keyboard button)."""
+    """Settings → Back to main menu (inline keyboard button)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     registration_complete = user_data.get("registration_complete", False)
@@ -351,7 +351,7 @@ async def msg_settings_back(message: types.Message, state: FSMContext):
 
     await message.answer(
         get_text("main_menu", lang),
-        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
+        reply_markup=main_menu_kb(lang=lang),
     )
 
 
@@ -382,7 +382,7 @@ async def msg_file(message: types.Message, state: FSMContext):
 
 
 # ══════════════════════════════════════════════════════════════
-# BACK TO MENU — FIX FOR REPLY KEYBOARD & INLINE CONFLICT
+# BACK TO MENU — FIX FOR INLINE & REPLY KEYBOARD CONFLICT
 # ══════════════════════════════════════════════════════════════
 
 @router.callback_query(F.data == "back_to_menu")
@@ -406,10 +406,10 @@ async def back_to_menu(callback: types.CallbackQuery, state: FSMContext):
         except Exception:
             pass
 
-    # Reply Keyboard'ni yangi xabar sifatida yuboramiz (ColoredKeyboard)
+    # Inline Keyboard'ni yangi xabar sifatida yuboramiz
     await callback.message.answer(
         get_text("main_menu", lang),
-        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
+        reply_markup=main_menu_kb(lang=lang),
     )
     await callback.answer()
 
@@ -437,7 +437,7 @@ async def change_language(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.message.answer(
         get_text("main_menu", new_lang),
-        reply_markup=ColoredKeyboard.reply_main_menu(lang=new_lang),
+        reply_markup=main_menu_kb(lang=new_lang),
     )
     await callback.answer()
 
@@ -453,7 +453,7 @@ async def phone_share_callback(callback: types.CallbackQuery, state: FSMContext)
 
     await callback.message.answer(
         get_text("registration.phone_request", lang),
-        reply_markup=ColoredKeyboard.reply_contact(lang=lang),
+        reply_markup=phone_share_kb(lang=lang),
     )
     await callback.answer()
 
@@ -485,7 +485,7 @@ async def confirm_yes(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.message.answer(
         get_text("registered.welcome_new", lang),
-        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
+        reply_markup=main_menu_kb(lang=lang),
     )
     await callback.answer()
 
@@ -513,7 +513,7 @@ async def menu_settings(callback: types.CallbackQuery, state: FSMContext):
     lang = _get_lang(user_data)
     await state.set_state(MenuSection.settings)
 
-    # Delete inline message, send new message with reply keyboard
+    # Delete inline message, send new message with inline keyboard
     try:
         await callback.message.delete()
     except Exception:
@@ -524,7 +524,7 @@ async def menu_settings(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.message.answer(
         get_text("settings.title", lang),
-        reply_markup=ColoredKeyboard.reply_settings_menu(lang=lang),
+        reply_markup=settings_menu_kb(lang=lang),
     )
     await callback.answer()
 
@@ -543,7 +543,7 @@ async def menu_registered_admin(callback: types.CallbackQuery, state: FSMContext
 
     await callback.message.answer(
         get_text("admin.instruction", lang),
-        reply_markup=ColoredKeyboard.reply_admin_massage(lang=lang),
+        reply_markup=admin_contact_kb(lang=lang),
     )
     await callback.answer()
 
@@ -676,12 +676,12 @@ async def settings_language(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "back_to_settings")
 async def back_to_settings(callback: types.CallbackQuery, state: FSMContext):
-    """Back to settings — show reply keyboard (from inline language selection)."""
+    """Back to settings — show inline keyboard (from inline language selection)."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(MenuSection.settings)
 
-    # Delete inline message, send new message with reply keyboard
+    # Delete inline message, send new message with inline keyboard
     try:
         await callback.message.delete()
     except Exception:
@@ -692,7 +692,7 @@ async def back_to_settings(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.message.answer(
         get_text("settings.title", lang),
-        reply_markup=ColoredKeyboard.reply_settings_menu(lang=lang),
+        reply_markup=settings_menu_kb(lang=lang),
     )
     await callback.answer()
 
@@ -722,7 +722,7 @@ async def settings_ai_toggle(callback: types.CallbackQuery, state: FSMContext):
     success, status_text = await _toggle_ai_core(state, lang, fallback_user_id=callback.from_user.id)
     await callback.answer(status_text, show_alert=True)
 
-    # Delete inline message, send new message with reply keyboard
+    # Delete inline message, send new message with inline keyboard
     try:
         await callback.message.delete()
     except Exception:
@@ -730,7 +730,7 @@ async def settings_ai_toggle(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.message.answer(
         get_text("settings.title", lang),
-        reply_markup=ColoredKeyboard.reply_settings_menu(lang=lang),
+        reply_markup=settings_menu_kb(lang=lang),
     )
 
 
@@ -761,7 +761,7 @@ async def handle_admin_contact_session(message: types.Message, state: FSMContext
 
         await message.answer(
             get_text("main_menu", lang),
-            reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
+            reply_markup=main_menu_kb(lang=lang),
         )
         return
 

@@ -208,7 +208,7 @@ export default function AudienceSelector({ onSelectionChange }: AudienceSelector
                     />
                   </td>
                   <td className="p-2 font-medium text-gray-800">{user.full_name}</td>
-                  <td className="p-2 text-gray-500">{user.email}</td>
+                  <td className="p-2 text-gray-500">{user.email || "—"}</td>
                   <td className="p-2 text-gray-500">{user.role}</td>
                   <td className="p-2 text-gray-500">{user.cefr_level || "-"}</td>
                   <td className="p-2">

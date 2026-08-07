@@ -130,7 +130,11 @@ def update_me(
     allowed_fields = ["full_name", "email", "phone", "cefr_level", "target_level", "lang", "role"]
     for field, value in request.items():
         if field in allowed_fields and hasattr(user, field):
-            setattr(user, field, value)
+            if field == "email":
+                # Normalize empty string to None — Telegram users may not have email
+                user.email = value or None
+            else:
+                setattr(user, field, value)
 
     db.commit()
     db.refresh(user)
@@ -151,7 +155,11 @@ def update_user(
     allowed_fields = ["full_name", "email", "phone", "cefr_level", "target_level", "lang", "role"]
     for field, value in request.items():
         if field in allowed_fields and hasattr(user, field):
-            setattr(user, field, value)
+            if field == "email":
+                # Normalize empty string to None — Telegram users may not have email
+                user.email = value or None
+            else:
+                setattr(user, field, value)
     
     # Password alohida hash qilinadi
     if "password" in request and request["password"]:

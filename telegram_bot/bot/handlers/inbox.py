@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database import async_session
 from bot.states.registration import InboxState, RegisteredSection, StartSection
-from bot.keyboards.orange_keyboard import ColoredKeyboard
+from bot.keyboards.inline import main_menu_kb
 from bot.utils.i18n import get_text
 
 logger = logging.getLogger(__name__)
@@ -133,5 +133,5 @@ async def inbox_get_message(
 
     await message.answer(
         get_text("main_menu", lang),
-        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
+        reply_markup=main_menu_kb(lang=lang),
     )

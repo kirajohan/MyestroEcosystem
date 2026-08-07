@@ -49,7 +49,7 @@ class UserUpdate(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
-    email: str
+    email: Optional[str] = None
     full_name: str
     role: str
     cefr_level: str

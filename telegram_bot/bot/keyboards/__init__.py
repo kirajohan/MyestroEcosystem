@@ -1,3 +1,37 @@
-from .orange_keyboard import ColoredKeyboard
+from .inline import (
+    main_menu_kb,
+    settings_menu_kb,
+    phone_share_kb,
+    start_menu_kb,
+    language_selection,
+    language_switch_kb,
+    about_us_kb,
+    settings_kb,
+    admin_contact_kb,
+    confirm_kb,
+    cefr_level_selection,
+    lessons_menu_kb,
+    test_level_kb,
+    test_confirm_kb,
+    test_question_kb,
+    test_results_kb,
+)
 
-__all__ = ["ColoredKeyboard"]
+__all__ = [
+    "main_menu_kb",
+    "settings_menu_kb",
+    "phone_share_kb",
+    "start_menu_kb",
+    "language_selection",
+    "language_switch_kb",
+    "about_us_kb",
+    "settings_kb",
+    "admin_contact_kb",
+    "confirm_kb",
+    "cefr_level_selection",
+    "lessons_menu_kb",
+    "test_level_kb",
+    "test_confirm_kb",
+    "test_question_kb",
+    "test_results_kb",
+]

@@ -5,65 +5,76 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 # Import bot modules
 from bot.handlers.menu import back_to_menu, language_selected, msg_settings, cmd_about
-from bot.keyboards.orange_keyboard import ColoredKeyboard
-from bot.keyboards.inline import settings_kb, language_selection, about_us_kb
+from bot.keyboards.inline import (
+    main_menu_kb, settings_kb, language_selection, about_us_kb,
+)
 from bot.states.registration import (
     StartSection, RegisteredSection, MenuSection,
 )
 
 
 # ══════════════════════════════════════════════════════════════
-# ColoredKeyboard Tests
+# MainMenu Keyboard Tests
 # ══════════════════════════════════════════════════════════════
 
-class TestColoredKeyboard:
-    """Test ColoredKeyboard main menu layout."""
+class TestMainMenuKeyboard:
+    """Test main_menu_kb inline keyboard layout."""
 
-    def test_reply_main_menu_has_test_button(self):
+    def test_main_menu_has_test_button(self):
         """Test button should be present in main menu."""
-        keyboard = ColoredKeyboard.reply_main_menu("uz")
-        buttons = [btn.text for row in keyboard.keyboard for btn in row]
+        keyboard = main_menu_kb("uz")
+        buttons = [btn.text for row in keyboard.inline_keyboard for btn in row]
         assert "✅ Test" in buttons
 
-    def test_reply_main_menu_layout_2_2_1(self):
+    def test_main_menu_layout_2_2_1(self):
         """Main menu should have 2-2-1 layout (5 buttons)."""
-        keyboard = ColoredKeyboard.reply_main_menu("uz")
-        rows = keyboard.keyboard
+        keyboard = main_menu_kb("uz")
+        rows = keyboard.inline_keyboard
         assert len(rows) == 3  # 3 rows
         assert len(rows[0]) == 2  # Row 1: 2 buttons
         assert len(rows[1]) == 2  # Row 2: 2 buttons
         assert len(rows[2]) == 1  # Row 3: 1 button
 
-    def test_reply_main_menu_all_languages(self):
+    def test_main_menu_all_languages(self):
         """Main menu should work for all languages."""
         for lang in ["uz", "ru", "en"]:
-            keyboard = ColoredKeyboard.reply_main_menu(lang)
+            keyboard = main_menu_kb(lang)
             assert keyboard is not None
-            assert len(keyboard.keyboard) == 3
+            assert len(keyboard.inline_keyboard) == 3
 
-    def test_reply_main_menu_has_profile_button(self):
+    def test_main_menu_has_profile_button(self):
         """Profile button should be present."""
-        keyboard = ColoredKeyboard.reply_main_menu("uz")
-        buttons = [btn.text for row in keyboard.keyboard for btn in row]
+        keyboard = main_menu_kb("uz")
+        buttons = [btn.text for row in keyboard.inline_keyboard for btn in row]
         assert "👤 Profil" in buttons
 
-    def test_reply_main_menu_has_settings_button(self):
+    def test_main_menu_has_settings_button(self):
         """Settings button should be present."""
-        keyboard = ColoredKeyboard.reply_main_menu("uz")
-        buttons = [btn.text for row in keyboard.keyboard for btn in row]
+        keyboard = main_menu_kb("uz")
+        buttons = [btn.text for row in keyboard.inline_keyboard for btn in row]
         assert "⚙️ Sozlamalar" in buttons
 
-    def test_reply_main_menu_has_admin_button(self):
+    def test_main_menu_has_admin_button(self):
         """Admin message button should be present."""
-        keyboard = ColoredKeyboard.reply_main_menu("uz")
-        buttons = [btn.text for row in keyboard.keyboard for btn in row]
-        assert "📝 Admin ga xabar" in buttons
+        keyboard = main_menu_kb("uz")
+        buttons = [btn.text for row in keyboard.inline_keyboard for btn in row]
+        assert "📨 Admin ga xabar" in buttons
 
-    def test_reply_main_menu_has_lessons_button(self):
+    def test_main_menu_has_lessons_button(self):
         """Lessons button should be present."""
-        keyboard = ColoredKeyboard.reply_main_menu("uz")
-        buttons = [btn.text for row in keyboard.keyboard for btn in row]
+        keyboard = main_menu_kb("uz")
+        buttons = [btn.text for row in keyboard.inline_keyboard for btn in row]
         assert "📚 Darslar" in buttons
+
+    def test_main_menu_callbacks(self):
+        """Main menu buttons should have correct callbacks."""
+        keyboard = main_menu_kb("uz")
+        callbacks = [btn.callback_data for row in keyboard.inline_keyboard for btn in row]
+        assert "menu_profile" in callbacks
+        assert "menu_settings" in callbacks
+        assert "menu_admin_msg" in callbacks
+        assert "menu_lessons" in callbacks
+        assert "menu_test" in callbacks
 
 
 # ══════════════════════════════════════════════════════════════
@@ -85,8 +96,8 @@ class TestBackToMenu:
 
         # Verify state was set to registered main menu
         mock_state.set_state.assert_called_once_with(RegisteredSection.main_menu)
-        # Verify message was edited with main menu
-        mock_callback.message.edit_text.assert_called_once()
+        # Verify message was answered with main menu
+        mock_callback.message.answer.assert_called_once()
         # Verify callback was answered
         mock_callback.answer.assert_called_once()
 
@@ -105,8 +116,8 @@ class TestBackToMenu:
         mock_callback.answer.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_back_to_menu_uses_colored_keyboard(self, mock_callback, mock_state):
-        """Back to menu should use ColoredKeyboard."""
+    async def test_back_to_menu_uses_inline_keyboard(self, mock_callback, mock_state):
+        """Back to menu should use inline keyboard."""
         mock_state.get_data = AsyncMock(return_value={
             "lang": "uz",
             "registration_complete": True,
@@ -115,7 +126,7 @@ class TestBackToMenu:
         await back_to_menu(mock_callback, mock_state)
 
         # Verify reply_markup was passed
-        call_kwargs = mock_callback.message.edit_text.call_args.kwargs
+        call_kwargs = mock_callback.message.answer.call_args.kwargs
         assert "reply_markup" in call_kwargs
         assert call_kwargs["reply_markup"] is not None
 
@@ -130,7 +141,7 @@ class TestBackToMenu:
         await back_to_menu(mock_callback, mock_state)
 
         # Verify Russian text was used
-        call_args = mock_callback.message.edit_text.call_args
+        call_args = mock_callback.message.answer.call_args
         assert "Главное меню" in call_args.args[0] or "🏠" in call_args.args[0]
 
 

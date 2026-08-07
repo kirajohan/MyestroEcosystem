@@ -13,20 +13,21 @@ from pathlib import Path
 
 def run_migrations():
     """Run SQL migration files in order."""
-    migrations_dir = Path(__file__).parent / "migrations"
+    migrations_dir = Path(__file__).parent.parent / "migrations"
     
     if not migrations_dir.exists():
         print(f"Migrations directory not found: {migrations_dir}")
         return False
     
-    # SQL migration files in order
-    migration_files = sorted([
-        "init.sql",  # If exists
+    # SQL migration files in order (init.sql MUST be first — creates users table)
+    migration_files = [
+        "init.sql",
         "broadcast_tables.sql",
         "inbox_tables.sql",
+        "exam_tables.sql",
         "global_settings.sql",
         "logs_table.sql",
-    ])
+    ]
     
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
@@ -54,21 +55,21 @@ def run_migrations():
                 print(f"⊘ Skipping {migration_file} (not found)")
                 continue
             
-            print(f"→ Running {migration_file}...", end=" ")
+            print(f"> Running {migration_file}...", end=" ")
             try:
                 with open(filepath, 'r') as f:
                     sql = f.read()
                 cur.execute(sql)
                 conn.commit()
-                print("✓")
+                print("OK")
             except Exception as e:
-                print(f"✗ {e}")
+                print(f"FAILED: {e}")
                 conn.rollback()
                 return False
         
         cur.close()
         conn.close()
-        print("\n✓ All migrations completed successfully")
+        print("\nAll migrations completed successfully")
         return True
         
     except Exception as e:
@@ -79,7 +80,7 @@ def run_migrations():
 def run_alembic():
     """Run Alembic migrations for backend."""
     try:
-        print("→ Running Alembic migrations...")
+        print("Running Alembic migrations...")
         result = subprocess.run(
             ["alembic", "upgrade", "head"],
             cwd=Path(__file__).parent / "telegram_bot" / "backend",
@@ -87,13 +88,13 @@ def run_alembic():
             text=True
         )
         if result.returncode == 0:
-            print("✓ Alembic migrations completed")
+            print("Alembic migrations completed")
             return True
         else:
-            print(f"✗ Alembic error: {result.stderr}")
+            print(f"Alembic error: {result.stderr}")
             return False
     except FileNotFoundError:
-        print("⊘ Alembic not found, skipping")
+        print("Alembic not found, skipping")
         return True
 
 
@@ -102,13 +103,13 @@ if __name__ == "__main__":
     
     # Run SQL migrations
     if not run_migrations():
-        print("\n✗ SQL migrations failed")
+        print("\nSQL migrations failed")
         sys.exit(1)
     
     # Run Alembic
     if not run_alembic():
-        print("\n✗ Alembic migrations failed")
+        print("\nAlembic migrations failed")
         sys.exit(1)
     
-    print("\n✓ Database initialization complete!")
+    print("\nDatabase initialization complete!")
     sys.exit(0)

@@ -5,7 +5,7 @@ import re
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from bot.states.registration import AuthFSM, RegisteredSection
-from bot.keyboards.orange_keyboard import ColoredKeyboard  # ✅ Updated
+from bot.keyboards.inline import main_menu_kb, confirm_kb
 from bot.utils.i18n import get_text
 from bot.utils.helpers import clean_telegram_text
 from bot.config import settings
@@ -161,7 +161,7 @@ async def handle_confirm_password(message: types.Message, state: FSMContext):
     await message.answer(
         confirmation_texts.get(lang, confirmation_texts["uz"]),
         parse_mode="Markdown",
-        reply_markup=ColoredKeyboard.inline_confirm(lang),  # ✅ Green (Yes) & Red (No)
+        reply_markup=confirm_kb(lang),
     )
 
 
@@ -310,7 +310,7 @@ async def _do_login_success(
     await message.answer(
         welcome_texts.get(lang, welcome_texts["uz"]),
         parse_mode="Markdown",
-        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang)  # ✅ Blue/Green/Red mixed
+        reply_markup=main_menu_kb(lang=lang)
     )
 
     # Optional: Show channel join message

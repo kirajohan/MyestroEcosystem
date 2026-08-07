@@ -8,7 +8,7 @@ from bot.handlers.menu import (
     settings_language, back_to_settings, settings_logout, settings_ai_toggle,
     menu_settings, change_language,
 )
-from bot.keyboards.inline import settings_kb, language_switch_kb
+from bot.keyboards.inline import settings_kb, language_switch_kb, main_menu_kb, settings_menu_kb
 from bot.states.registration import MenuSection, RegisteredSection, StartSection
 
 
@@ -56,7 +56,7 @@ class TestBackToSettings:
 
         await back_to_settings(mock_callback, mock_state)
 
-        mock_callback.message.edit_text.assert_called_once()
+        mock_callback.message.answer.assert_called_once()
         mock_callback.answer.assert_called_once()
 
     @pytest.mark.asyncio
@@ -66,7 +66,7 @@ class TestBackToSettings:
 
         await back_to_settings(mock_callback, mock_state)
 
-        call_kwargs = mock_callback.message.edit_text.call_args.kwargs
+        call_kwargs = mock_callback.message.answer.call_args.kwargs
         assert "reply_markup" in call_kwargs
         assert call_kwargs["reply_markup"] is not None
 
@@ -77,7 +77,7 @@ class TestBackToSettings:
 
         await back_to_settings(mock_callback, mock_state)
 
-        call_args = mock_callback.message.edit_text.call_args
+        call_args = mock_callback.message.answer.call_args
         assert "Настройки" in call_args.args[0]
 
 
@@ -100,8 +100,8 @@ class TestSettingsLogout:
         mock_callback.answer.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_settings_logout_uses_colored_keyboard(self, mock_callback, mock_state):
-        """Logout should show main menu with ColoredKeyboard."""
+    async def test_settings_logout_uses_inline_keyboard(self, mock_callback, mock_state):
+        """Logout should show main menu with inline keyboard."""
         mock_state.get_data = AsyncMock(return_value={"lang": "uz"})
 
         await settings_logout(mock_callback, mock_state)
@@ -178,8 +178,8 @@ class TestSettingsAIToggle:
         await settings_ai_toggle(mock_callback, mock_state)
 
         # Verify settings menu was refreshed
-        mock_callback.message.edit_text.assert_called_once()
-        call_kwargs = mock_callback.message.edit_text.call_args.kwargs
+        mock_callback.message.answer.assert_called_once()
+        call_kwargs = mock_callback.message.answer.call_args.kwargs
         assert "reply_markup" in call_kwargs
 
 
@@ -198,7 +198,7 @@ class TestMenuSettings:
         await menu_settings(mock_callback, mock_state)
 
         mock_state.set_state.assert_called_once_with(MenuSection.settings)
-        mock_callback.message.edit_text.assert_called_once()
+        mock_callback.message.answer.assert_called_once()
         mock_callback.answer.assert_called_once()
 
     @pytest.mark.asyncio
@@ -208,7 +208,7 @@ class TestMenuSettings:
 
         await menu_settings(mock_callback, mock_state)
 
-        call_kwargs = mock_callback.message.edit_text.call_args.kwargs
+        call_kwargs = mock_callback.message.answer.call_args.kwargs
         assert "reply_markup" in call_kwargs
         assert call_kwargs["reply_markup"] is not None
 
@@ -287,8 +287,8 @@ class TestChangeLanguage:
         mock_callback.answer.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_change_language_uses_colored_keyboard(self, mock_callback, mock_state):
-        """Change language should use ColoredKeyboard."""
+    async def test_change_language_uses_inline_keyboard(self, mock_callback, mock_state):
+        """Change language should use inline keyboard."""
         mock_callback.data = "lang_uz"
         mock_state.get_data = AsyncMock(return_value={
             "lang": "ru",

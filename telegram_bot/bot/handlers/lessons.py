@@ -4,10 +4,10 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command, or_f
 from aiogram.fsm.context import FSMContext
+from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.states.registration import LessonsStates, RegisteredSection
-from bot.keyboards.orange_keyboard import ColoredKeyboard  # ✅ Updated
-from bot.keyboards.extended_buttons import StyledInlineKeyboardButton
+from bot.keyboards.inline import main_menu_kb
 from bot.utils.i18n import get_text
 import httpx
 
@@ -59,10 +59,9 @@ def build_content_keyboard(items, content_type: str, page: int, total: int, lang
         label = f"#{idx}. {title}"
         
         builder.add(
-            StyledInlineKeyboardButton(
+            InlineKeyboardButton(
                 text=label,
                 callback_data=f"{prefix}_select_{item['id']}",
-                style="primary"  # 🔵 Blue for content items
             )
         )
 
@@ -72,15 +71,14 @@ def build_content_keyboard(items, content_type: str, page: int, total: int, lang
 
     if page > 1:
         nav_builder.add(
-            StyledInlineKeyboardButton(
+            InlineKeyboardButton(
                 text="⬅️ Oldingi",
                 callback_data=f"content:{content_type}:page_{page - 1}",
-                style="primary"  # 🔵 Blue
             )
         )
 
     nav_builder.add(
-        StyledInlineKeyboardButton(
+        InlineKeyboardButton(
             text=f"📄 {page}/{total_pages}",
             callback_data="noop"
         )
@@ -88,20 +86,18 @@ def build_content_keyboard(items, content_type: str, page: int, total: int, lang
 
     if page < total_pages:
         nav_builder.add(
-            StyledInlineKeyboardButton(
+            InlineKeyboardButton(
                 text="Keyingi ➡️",
                 callback_data=f"content:{content_type}:page_{page + 1}",
-                style="primary"  # 🔵 Blue
             )
         )
 
-    # Back button — Green
+    # Back button
     back_texts = {"uz": "⬅️ Orqaga", "ru": "⬅️ Назад", "en": "⬅️ Back"}
     nav_builder.add(
-        StyledInlineKeyboardButton(
+        InlineKeyboardButton(
             text=back_texts.get(lang, back_texts["uz"]),
             callback_data="back_to_lessons",
-            style="success"  # 🟢 Green back
         )
     )
 
@@ -145,23 +141,20 @@ def _lessons_submenu_keyboard(lang: str = "uz") -> InlineKeyboardBuilder:
     back_texts = {"uz": "⬅️ Orqaga", "ru": "⬅️ Назад", "en": "⬅️ Back"}
     
     builder.add(
-        StyledInlineKeyboardButton(
+        InlineKeyboardButton(
             text=video_texts.get(lang, video_texts["uz"]),
             callback_data="lessons_video",
-            style="primary"  # 🔵 Blue
         ),
-        StyledInlineKeyboardButton(
+        InlineKeyboardButton(
             text=file_texts.get(lang, file_texts["uz"]),
             callback_data="lessons_file",
-            style="success"  # 🟢 Green
         ),
     )
     
     builder.add(
-        StyledInlineKeyboardButton(
+        InlineKeyboardButton(
             text=back_texts.get(lang, back_texts["uz"]),
             callback_data="back_to_menu",
-            style="danger"  # 🔴 Red back to main menu
         )
     )
     
@@ -394,15 +387,13 @@ def _continue_lessons_keyboard(lang: str = "uz") -> InlineKeyboardBuilder:
     back_texts = {"uz": "⬅️ Orqaga", "ru": "⬅️ Назад", "en": "⬅️ Back"}
     
     builder.add(
-        StyledInlineKeyboardButton(
+        InlineKeyboardButton(
             text=more_texts.get(lang, more_texts["uz"]),
             callback_data="back_to_lessons",
-            style="primary"  # 🔵 Blue
         ),
-        StyledInlineKeyboardButton(
+        InlineKeyboardButton(
             text=back_texts.get(lang, back_texts["uz"]),
             callback_data="back_to_menu",
-            style="success"  # 🟢 Green
         ),
     )
     

@@ -4,14 +4,17 @@ from aiogram import Router, types, F
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from bot.states.registration import RegistrationFSM, RegisteredSection
-from bot.keyboards.orange_keyboard import ColoredKeyboard
+from bot.keyboards.inline import (
+    cefr_level_selection, main_menu_kb, phone_share_kb, start_menu_kb,
+)
 from bot.utils.i18n import get_text
 from bot.config import settings
 import httpx
+import re
 
 router = Router()
 
-CHECK_USER_URL = f"{settings.API_BASE_URL}/sync/user/"
+CHECK_USER_URL = f"{settings.API_BASE_URL}/sync/user"
 
 
 # ══════════════════════════════════════════════════════════════
@@ -64,7 +67,7 @@ async def start_handler(message: types.Message, state: FSMContext):
         await message.answer(
             welcome_text,
             parse_mode="HTML",
-            reply_markup=ColoredKeyboard.reply_main_menu(lang=user_lang),
+            reply_markup=main_menu_kb(lang=user_lang),
         )
     else:
         # ── NEW USER ──
@@ -84,7 +87,7 @@ async def start_handler(message: types.Message, state: FSMContext):
         await message.answer(
             welcome_text,
             parse_mode="HTML",
-            reply_markup=ColoredKeyboard.reply_start_menu(lang="uz"),
+            reply_markup=start_menu_kb(lang="uz"),
         )
 
 
@@ -117,7 +120,7 @@ async def language_selected_for_registration(message: types.Message, state: FSMC
     await message.answer(
         phone_request_text,
         parse_mode="HTML",
-        reply_markup=ColoredKeyboard.reply_contact(lang=lang),
+        reply_markup=phone_share_kb(lang=lang),
     )
 
 
@@ -130,7 +133,7 @@ async def language_selected_for_registration(message: types.Message, state: FSMC
     StateFilter(RegistrationFSM.phone_request),
 )
 async def handle_phone_contact_new_user(message: types.Message, state: FSMContext):
-    """Handle phone contact from new user — save to DB and show main menu."""
+    """Handle phone contact from new user — ask for NAME (mandatory registration)."""
     # Verify the contact belongs to the user
     if message.contact.user_id != message.from_user.id:
         user_data = await state.get_data()
@@ -143,44 +146,203 @@ async def handle_phone_contact_new_user(message: types.Message, state: FSMContex
     lang = user_data.get("lang", "uz")
     telegram_id = message.from_user.id
 
-    # Save user to DB
+    # ✅ Save phone to state (don't create user yet)
+    await state.update_data(
+        telegram_id=telegram_id,
+        phone=phone_number,
+        lang=lang,
+    )
+
+    # → Move to NAME input
+    await state.set_state(RegistrationFSM.waiting_name)
+
+    # Ask for full name
+    ask_name_texts = {
+        "uz": "👤 <b>Iltimos, to'liq ism-familiyangizni kiriting:</b>\n\n<i>Masalan: Ali Rakhmonov</i>",
+        "ru": "👤 <b>Пожалуйста, введите ваше полное имя:</b>\n\n<i>Например: Иван Иванов</i>",
+        "en": "👤 <b>Please enter your full name:</b>\n\n<i>For example: John Smith</i>",
+    }
+    
+    await message.answer(
+        ask_name_texts.get(lang, ask_name_texts["uz"]),
+        parse_mode="HTML",
+    )
+
+
+# ══════════════════════════════════════════════════════════════
+# NAME INPUT HANDLER — NEW
+# ══════════════════════════════════════════════════════════════
+
+@router.message(StateFilter(RegistrationFSM.waiting_name))
+async def handle_name_input(message: types.Message, state: FSMContext):
+    """Handle name input from user — validate and ask for EMAIL."""
+    full_name = message.text.strip()
+    user_data = await state.get_data()
+    lang = user_data.get("lang", "uz")
+
+    # Validate name (at least 2 characters, max 100)
+    if len(full_name) < 2 or len(full_name) > 100:
+        validation_texts = {
+            "uz": "❌ Ism 2-100 ta belgi uzunligida bo'lishi kerak!",
+            "ru": "❌ Имя должно быть от 2 до 100 символов!",
+            "en": "❌ Name must be between 2 and 100 characters!",
+        }
+        await message.answer(validation_texts.get(lang, validation_texts["uz"]))
+        return
+
+    # ✅ Save name to state
+    await state.update_data(full_name=full_name)
+
+    # → Move to EMAIL input
+    await state.set_state(RegistrationFSM.waiting_email)
+
+    # Ask for email
+    ask_email_texts = {
+        "uz": "📧 <b>Email manzilingizni kiriting:</b>\n\n<i>Masalan: user@example.com</i>",
+        "ru": "📧 <b>Введите ваш адрес электронной почты:</b>\n\n<i>Например: user@example.com</i>",
+        "en": "📧 <b>Please enter your email address:</b>\n\n<i>For example: user@example.com</i>",
+    }
+    
+    await message.answer(
+        ask_email_texts.get(lang, ask_email_texts["uz"]),
+        parse_mode="HTML",
+    )
+
+
+# ══════════════════════════════════════════════════════════════
+# EMAIL INPUT HANDLER — NEW
+# ══════════════════════════════════════════════════════════════
+
+@router.message(StateFilter(RegistrationFSM.waiting_email))
+async def handle_email_input(message: types.Message, state: FSMContext):
+    """Handle email input from user — validate and ask for CEFR level."""
+    email = message.text.strip().lower()
+    user_data = await state.get_data()
+    lang = user_data.get("lang", "uz")
+
+    # Simple email validation
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    
+    if not re.match(email_pattern, email):
+        validation_texts = {
+            "uz": "❌ Email formati notog'ri! Iltimos, to'g'ri email kiriting.",
+            "ru": "❌ Неверный формат электронной почты! Пожалуйста, введите существующий адрес электронной почты.",
+            "en": "❌ Invalid email format! Please enter a valid email address.",
+        }
+        await message.answer(validation_texts.get(lang, validation_texts["uz"]))
+        return
+
+    # ✅ Save email to state
+    await state.update_data(email=email)
+
+    # → Move to LEVEL selection
+    await state.set_state(RegistrationFSM.waiting_level)
+
+    # Ask for CEFR level
+    ask_level_texts = {
+        "uz": "📊 <b>Inglis tilida qaysi darajasiz turibsiz?</b>\n\nA0 - Hech qanday bilim yok\nA1 - Boshlang'ich\nA2 - Elementar\nB1 - O'rta\nB2 - Yuqori o'rta\nC1 - Advanced\nC2 - Mutaxassis",
+        "ru": "📊 <b>Какой уровень английского языка у вас?</b>\n\nA0 - Нет знаний\nA1 - Начинающий\nA2 - Элементарный\nB1 - Средненний\nB2 - Выше среднего\nC1 - Продвинутый\nC2 - Владение в совершенстве",
+        "en": "📊 <b>What is your current English level?</b>\n\nA0 - No knowledge\nA1 - Beginner\nA2 - Elementary\nB1 - Intermediate\nB2 - Upper-Intermediate\nC1 - Advanced\nC2 - Proficiency",
+    }
+    
+    await message.answer(
+        ask_level_texts.get(lang, ask_level_texts["uz"]),
+        parse_mode="HTML",
+        reply_markup=cefr_level_selection(),
+    )
+
+
+# ══════════════════════════════════════════════════════════════
+# LEVEL SELECTION CALLBACK — NEW
+# ══════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data.startswith("level_"), StateFilter(RegistrationFSM.waiting_level))
+async def handle_level_selection(callback: types.CallbackQuery, state: FSMContext):
+    """Handle CEFR level selection — create user in DB and show main menu."""
+    level = callback.data.split("_")[1]  # Extract level from callback data
+    user_data = await state.get_data()
+    lang = user_data.get("lang", "uz")
+    telegram_id = user_data.get("telegram_id")
+    phone = user_data.get("phone")
+    full_name = user_data.get("full_name")
+
+    # ✅ Save level to state
+    await state.update_data(cefr_level=level)
+
+    # → Create user in DB with all registration data
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             payload = {
                 "telegram_id": telegram_id,
-                "phone": phone_number,
+                "phone": phone,
+                "email": user_data.get("email", ""),
+                "full_name": full_name,
+                "cefr_level": level,
                 "lang": lang,
+                "auth_provider": "telegram",
             }
-            response = await client.post(f"{settings.API_BASE_URL}/sync/user/", json=payload)
+            response = await client.post(
+                f"{settings.API_BASE_URL}/sync/user",
+                json=payload
+            )
             
             if response.status_code in (200, 201):
                 user_data_db = response.json()
                 user_id = user_data_db.get("id")
                 
-                # Update state with user data
+                # Update state with full user data
                 await state.update_data(
-                    telegram_id=telegram_id,
-                    phone=phone_number,
-                    lang=lang,
-                    registration_complete=True,
                     id=user_id,
+                    registration_complete=True,
                 )
             else:
-                print(f"[PHONE SAVE ERROR] {response.status_code}: {response.text}")
+                error_texts = {
+                    "uz": f"❌ Ro'yxatdan o'tishda xato: {response.status_code}",
+                    "ru": f"❌ Ошибка при регистрации: {response.status_code}",
+                    "en": f"❌ Registration error: {response.status_code}",
+                }
+                await callback.message.edit_text(
+                    error_texts.get(lang, error_texts["uz"])
+                )
+                await callback.answer()
+                return
     except Exception as e:
-        print(f"[PHONE SAVE ERROR] {e}")
+        print(f"[REGISTRATION ERROR] {e}")
+        error_texts = {
+            "uz": "❌ Ro'yxatdan o'tishda xato yuz berdi!",
+            "ru": "❌ Произошла ошибка при регистрации!",
+            "en": "❌ An error occurred during registration!",
+        }
+        await callback.message.edit_text(
+            error_texts.get(lang, error_texts["uz"])
+        )
+        await callback.answer()
+        return
 
-    # Set state to registered main menu
+    # → Set state to REGISTERED MAIN MENU
     await state.set_state(RegisteredSection.main_menu)
 
-    # Get welcome text
-    welcome_text = get_text("registered.welcome_new", lang)
+    # Welcome message
+    welcome_texts = {
+        "uz": f"✅ <b>Ro'yxatdan o'tish muvaffaqiyatli!</b>\n\n👋 Xush kelibsiz, <b>{full_name}</b>!\n\n📊 Daraj: <b>{level}</b>\n📧 Email: <b>{user_data.get('email', 'N/A')}</b>\n📞 Telefon: <b>{phone}</b>\n\n🎉 Endi asosiy menyuni foydalana olasiz!",
+        "ru": f"✅ <b>Регистрация успешна!</b>\n\n👋 Добро пожаловать, <b>{full_name}</b>!\n\n📊 Уровень: <b>{level}</b>\n📧 Email: <b>{user_data.get('email', 'N/A')}</b>\n📞 Номер: <b>{phone}</b>\n\n🎉 Теперь вы можете использовать главное меню!",
+        "en": f"✅ <b>Registration successful!</b>\n\n👋 Welcome, <b>{full_name}</b>!\n\n📊 Level: <b>{level}</b>\n📧 Email: <b>{user_data.get('email', 'N/A')}</b>\n📞 Phone: <b>{phone}</b>\n\n🎉 You can now use the main menu!",
+    }
 
-    await message.answer(
-        welcome_text,
+    await callback.message.edit_text(
+        welcome_texts.get(lang, welcome_texts["uz"]),
         parse_mode="HTML",
-        reply_markup=ColoredKeyboard.reply_main_menu(lang=lang),
+        reply_markup=None,
     )
+
+    # Send main menu
+    await callback.message.answer(
+        "📋 <b>Asosiy menyu</b>",
+        parse_mode="HTML",
+        reply_markup=main_menu_kb(lang=lang),
+    )
+
+    await callback.answer()
 
 
 # ══════════════════════════════════════════════════════════════
@@ -258,5 +420,5 @@ async def menu_handler(message: types.Message, state: FSMContext):
     await message.answer(
         get_text("main_menu", user_lang),
         parse_mode="HTML",
-        reply_markup=ColoredKeyboard.reply_main_menu(lang=user_lang),
+        reply_markup=main_menu_kb(lang=user_lang),
     )

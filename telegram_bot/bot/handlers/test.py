@@ -86,6 +86,20 @@ async def test_menu(message: types.Message, state: FSMContext):
 
 # ─── Level Selection ─────────────────────────────────────────
 
+@router.callback_query(F.data == "menu_test")
+async def menu_test(callback: types.CallbackQuery, state: FSMContext):
+    """Handle Test button from main menu — show CEFR level selection grid."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    await state.set_state(TestStates.selecting_level)
+
+    await callback.message.edit_text(
+        get_text("test.title", lang) + "\n\n" + get_text("test.prompt", lang),
+        reply_markup=test_level_kb(lang),
+    )
+    await callback.answer()
+
+
 @router.callback_query(F.data == "test_select_level")
 async def test_select_level(callback: types.CallbackQuery, state: FSMContext):
     """Back to level selection from confirmation or results."""

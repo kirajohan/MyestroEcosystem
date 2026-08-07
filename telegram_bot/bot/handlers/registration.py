@@ -9,11 +9,10 @@ from aiogram.fsm.context import FSMContext
 from bot.states.registration import (
     RegistrationStates, RegistrationFSM, RegisteredSection,
 )
-from bot.keyboards.inline import cefr_level_selection
+from bot.keyboards.inline import cefr_level_selection, main_menu_kb
 from bot.keyboards.reply import (
     confirm_keyboard, remove_keyboard,
 )
-from bot.keyboards.orange_keyboard import ColoredKeyboard
 from bot.utils.i18n import get_text
 from bot.config import settings
 import httpx

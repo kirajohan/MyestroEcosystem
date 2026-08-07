@@ -5,9 +5,10 @@ from aiogram import Router, types, F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup
 from bot.states.registration import MenuSection, RegisteredSection
-from bot.keyboards.orange_keyboard import ColoredKeyboard  # ✅ Updated
+from bot.keyboards.inline import main_menu_kb
 from bot.utils.i18n import get_text
 from bot.config import API_BASE_URL
 import httpx
@@ -85,24 +86,20 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
     
     text = profile_texts.get(lang, profile_texts["uz"])
 
-    # Inline keyboard — Blue (Edit), Green (Back)
+    # Inline keyboard — Edit + Back
     builder = InlineKeyboardBuilder()
     
     edit_texts = {"uz": "✏️ Tahrirlash", "ru": "✏️ Редактировать", "en": "✏️ Edit"}
     back_texts = {"uz": "⬅️ Orqaga", "ru": "⬅️ Назад", "en": "⬅️ Back"}
     
-    from bot.keyboards.extended_buttons import StyledInlineKeyboardButton
-    
     builder.add(
-        StyledInlineKeyboardButton(
+        InlineKeyboardButton(
             text=edit_texts.get(lang, edit_texts["uz"]),
             callback_data="profile_edit",
-            style="primary"  # 🔵 Blue for edit action
         ),
-        StyledInlineKeyboardButton(
+        InlineKeyboardButton(
             text=back_texts.get(lang, back_texts["uz"]),
             callback_data="back_to_menu",
-            style="success"  # 🟢 Green for back
         ),
     )
     builder.adjust(1)
@@ -139,43 +136,40 @@ async def profile_edit_start(callback: types.CallbackQuery, state: FSMContext):
     lang = user_data.get("lang", "uz")
     await state.set_state(ProfileEditFSM.waiting_field)
 
-    from bot.keyboards.extended_buttons import StyledInlineKeyboardButton
-    
     builder = InlineKeyboardBuilder()
     
-    # Field options with colors
+    # Field options
     field_options = {
         "uz": [
-            ("📝 Ism", "edit_name", "primary"),           # Blue
-            ("📧 Email", "edit_email", "primary"),        # Blue
-            ("📱 Telefon", "edit_phone", "primary"),      # Blue
-            ("📊 CEFR Level", "edit_cefr", "success"),    # Green
-            ("⬅️ Orqaga", "back_to_menu", "success"),     # Green back
+            ("📝 Ism", "edit_name"),
+            ("📧 Email", "edit_email"),
+            ("📱 Telefon", "edit_phone"),
+            ("📊 CEFR Level", "edit_cefr"),
+            ("⬅️ Orqaga", "back_to_menu"),
         ],
         "ru": [
-            ("📝 Имя", "edit_name", "primary"),
-            ("📧 Email", "edit_email", "primary"),
-            ("📱 Телефон", "edit_phone", "primary"),
-            ("📊 CEFR Level", "edit_cefr", "success"),
-            ("⬅️ Назад", "back_to_menu", "success"),
+            ("📝 Имя", "edit_name"),
+            ("📧 Email", "edit_email"),
+            ("📱 Телефон", "edit_phone"),
+            ("📊 CEFR Level", "edit_cefr"),
+            ("⬅️ Назад", "back_to_menu"),
         ],
         "en": [
-            ("📝 Name", "edit_name", "primary"),
-            ("📧 Email", "edit_email", "primary"),
-            ("📱 Phone", "edit_phone", "primary"),
-            ("📊 CEFR Level", "edit_cefr", "success"),
-            ("⬅️ Back", "back_to_menu", "success"),
+            ("📝 Name", "edit_name"),
+            ("📧 Email", "edit_email"),
+            ("📱 Phone", "edit_phone"),
+            ("📊 CEFR Level", "edit_cefr"),
+            ("⬅️ Back", "back_to_menu"),
         ],
     }
     
     options = field_options.get(lang, field_options["uz"])
     
-    for text, callback_data, style in options:
+    for text, callback_data in options:
         builder.add(
-            StyledInlineKeyboardButton(
+            InlineKeyboardButton(
                 text=text,
                 callback_data=callback_data,
-                style=style
             )
         )
     
@@ -282,18 +276,18 @@ async def profile_edit_value(message: types.Message, state: FSMContext):
                 
                 await message.answer(
                     success_texts.get(lang, success_texts["uz"]),
-                    reply_markup=ColoredKeyboard.reply_main_menu(lang),
+                    reply_markup=main_menu_kb(lang),
                 )
             else:
                 error_msg = f"❌ Xatolik: {resp.status_code}\n{resp.text}"
                 await message.answer(
                     error_msg,
-                    reply_markup=ColoredKeyboard.reply_main_menu(lang),
+                    reply_markup=main_menu_kb(lang),
                 )
     except Exception as e:
         await message.answer(
             f"❌ Xatolik: {str(e)}",
-            reply_markup=ColoredKeyboard.reply_main_menu(lang),
+            reply_markup=main_menu_kb(lang),
         )
 
     await state.set_state(RegisteredSection.main_menu)
@@ -332,7 +326,7 @@ async def profile_edit_cefr(callback: types.CallbackQuery, state: FSMContext):
                 )
                 await callback.message.answer(
                     get_text("main_menu", lang),
-                    reply_markup=ColoredKeyboard.reply_main_menu(lang),
+                    reply_markup=main_menu_kb(lang),
                 )
             else:
                 await callback.message.edit_text(f"❌ Xatolik: {resp.status_code}")
@@ -348,29 +342,25 @@ async def profile_edit_cefr(callback: types.CallbackQuery, state: FSMContext):
 # ══════════════════════════════════════════════════════════════
 
 def _cefr_selection_keyboard(lang: str = "uz") -> InlineKeyboardMarkup:
-    """CEFR level selection — colored inline keyboard (all primary blue)."""
-    from bot.keyboards.extended_buttons import StyledInlineKeyboardButton
-    
+    """CEFR level selection — inline keyboard."""
     builder = InlineKeyboardBuilder()
     
     levels = ["A1", "A2", "B1", "B2", "C1", "C2"]
     
     for level in levels:
         builder.add(
-            StyledInlineKeyboardButton(
+            InlineKeyboardButton(
                 text=f"📊 {level}",
                 callback_data=f"level_{level.lower()}",
-                style="primary"  # 🔵 Blue for all levels
             )
         )
     
-    # Cancel button — red
+    # Cancel button
     cancel_texts = {"uz": "❌ Bekor qilish", "ru": "❌ Отмена", "en": "❌ Cancel"}
     builder.add(
-        StyledInlineKeyboardButton(
+        InlineKeyboardButton(
             text=cancel_texts.get(lang, cancel_texts["uz"]),
             callback_data="back_to_menu",
-            style="danger"  # 🔴 Red for cancel
         )
     )
     
