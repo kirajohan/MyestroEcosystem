@@ -5,8 +5,8 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.states.registration import MenuSection, RegisteredSection
-from bot.keyboards.reply import registered_menu_keyboard
-from bot.keyboards.inline import registered_menu_kb
+from bot.keyboards.reply import registered_menu_kb
+from bot.keyboards.reply import registered_menu_kb
 from bot.utils.i18n import get_text
 from bot.config import API_BASE_URL
 import httpx
@@ -218,17 +218,17 @@ async def profile_edit_value(message: types.Message, state: FSMContext):
                 await state.update_data(**{api_field: new_value})
                 await message.answer(
                     get_text("profile.updated", lang, field=field),
-                    reply_markup=registered_menu_keyboard(lang),
+                    reply_markup=registered_menu_kb(lang),
                 )
             else:
                 await message.answer(
                     f"❌ Xatolik: {resp.status_code}\n{resp.text}",
-                    reply_markup=registered_menu_keyboard(lang),
+                    reply_markup=registered_menu_kb(lang),
                 )
     except Exception as e:
         await message.answer(
             f"❌ Xatolik: {str(e)}",
-            reply_markup=registered_menu_keyboard(lang),
+            reply_markup=registered_menu_kb(lang),
         )
 
     await state.set_state(RegisteredSection.main_menu)
@@ -260,7 +260,7 @@ async def profile_edit_cefr(callback: types.CallbackQuery, state: FSMContext):
                 )
                 await callback.message.answer(
                     get_text("main_menu", lang),
-                    reply_markup=registered_menu_keyboard(lang),
+                    reply_markup=registered_menu_kb(lang),
                 )
             else:
                 await callback.message.edit_text(f"❌ Xatolik: {resp.status_code}")

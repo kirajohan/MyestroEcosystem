@@ -38,7 +38,7 @@ export function UserDetailModal({
             </div>
             <div>
               <p className="text-sm text-gray-600">Email</p>
-              <p className="text-lg font-semibold">{user.email}</p>
+              <p className="text-lg font-semibold">{user.email || '—'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Role</p>

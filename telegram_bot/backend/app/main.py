@@ -5,7 +5,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.api import broadcast  
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+
+from app.database import close_redis
+from app.core.exceptions import AppException
 
 
 # Add telegram_bot root to path so shared module is importable
@@ -15,7 +18,10 @@ if _telegram_bot_root not in sys.path:
 
 from app.config import settings
 from app.database import engine
-from app.api import auth, users, stats, exams, admin, ai_assistant, sync, knowledge, settings as settings_router, content, bot_text, admin_messages, broadcast, inbox, logs
+from app.api import (
+    auth, users, content, broadcast, inbox, settings as settings_router,
+    stats, knowledge, ai_assistant, admin, sync, bot_text, admin_messages, exams, logs
+)
 from app.websocket.admin_ws import router as ws_router
 from app.core.exceptions import AppException
 from app.services.ai_service import shutdown_ai_client
@@ -28,7 +34,8 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
     logger.info("Starting Myestro API...")
     logger.info("Database tables are managed via Alembic migrations")
-
+    logger.info(f"CORS Origins: {settings.ALLOWED_ORIGINS}")
+   
     # Verify Redis connection
     try:
         import redis as redis_lib
@@ -48,18 +55,21 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
+    
     app = FastAPI(
-        title="Myestro API",
-        version="1.0.0",
+        title="Myestro Backend API",
+        description="AI-powered English learning platform",
+        version="2.1.0",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
         lifespan=lifespan,
     )
-
-# CORS
+    
     # CORS
-    print(f"DEBUG: Allowed Origins loaded: {settings.allowed_origins_list}") # SHUNI QO'SHING
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.allowed_origins_list,  # Yulduzcha o'rniga o'zimizning ro'yxatni qo'ydik!
+        allow_origins=settings.allowed_origins_list,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -68,6 +78,7 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(auth.router)
     app.include_router(users.router)
+    app.include_router(content.router)
     app.include_router(stats.router)
     app.include_router(exams.router)
     app.include_router(admin.router)
@@ -81,21 +92,43 @@ def create_app() -> FastAPI:
     app.include_router(broadcast.router)
     app.include_router(inbox.router)
     app.include_router(logs.router)
-    app.include_router(ws_router)  # WebSocket
+    app.include_router(ws_router)  
 
     # Exception handlers
+    
     @app.exception_handler(AppException)
-    async def app_exception_handler(request: Request, exc: AppException):
+    async def app_exception_handler(request, exc: AppException):
         return JSONResponse(
             status_code=exc.status_code,
-            content={"detail": exc.detail},
+            content={
+                "error": True,
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+            },
         )
-
+    
+    @app.exception_handler(Exception)
+    async def general_exception_handler(request, exc: Exception):
+        logger.error(f"Unhandled exception: {exc}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": True,
+                "detail": "Internal server error",
+                "status_code": 500,
+            },
+        )
+    
     # Health check
-    @app.get("/health")
-    def health_check():
-        return {"status": "ok", "version": "1.0.0"}
-
+    @app.get("/health", tags=["system"])
+    async def health_check():
+        """Service health status."""
+        return {
+            "status": "ok",
+            "service": "myestro-backend",
+            "version": "2.1.0"
+        }
+    
     return app
 
 

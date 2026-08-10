@@ -11,7 +11,7 @@ from bot.states.registration import (
 )
 from bot.keyboards.inline import cefr_level_selection
 from bot.keyboards.reply import (
-    registered_menu_keyboard, confirm_keyboard, remove_keyboard,
+    registered_menu_kb, confirm_kb, remove_keyboard,
 )
 from bot.utils.i18n import get_text
 from bot.config import settings
@@ -132,7 +132,7 @@ async def process_level(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.edit_text(
         get_text("registration.confirm_title", lang,
                  name=name, phone=phone, age=str(age), level=level),
-        reply_markup=confirm_keyboard(lang),
+        reply_markup=confirm_kb(lang),
     )
     await callback.answer()
 

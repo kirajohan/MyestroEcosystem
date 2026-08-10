@@ -13,8 +13,8 @@ from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from bot.states.registration import AuthFSM, RegisteredSection, StartSection
 from bot.keyboards.reply import (
-    remove_keyboard, confirm_keyboard, contact_request_keyboard,
-    registered_menu_keyboard,
+    remove_keyboard, confirm_kb , contact_request_keyboard,
+    registered_menu_kb,
 )
 from bot.utils.i18n import get_text
 from bot.config import settings
@@ -256,7 +256,7 @@ async def handle_confirm_password(message: types.Message, state: FSMContext):
 
     await message.answer(
         get_text("register.confirm", lang, name=name, email=email, phone=phone),
-        reply_markup=confirm_keyboard(lang),
+        reply_markup=confirm_kb (lang),
     )
 
 
@@ -267,8 +267,8 @@ async def handle_confirmation(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     lang = _get_lang(user_data)
 
-    confirm_texts = ["✅ Tasdiqlash", "✅ Подтвердить", "✅ Confirm"]
-    restart_texts = ["🔄 Boshidan to'ldirish", "🔄 Заполнить заново", "🔄 Start over"]
+    confirm_texts = ["✅ Ha", "✅ Да", "✅ Yes"]  # uz, ru, en
+    restart_texts = ["❌ Yo'q", "❌ Нет", "❌ No"]  # uz, ru, en
 
     if text in confirm_texts:
         name = user_data.get("register_name", "")
@@ -306,7 +306,7 @@ async def handle_confirmation(message: types.Message, state: FSMContext):
         phone = user_data.get("register_phone", "—")
         await message.answer(
             get_text("register.confirm", lang, name=name, email=email, phone=phone),
-            reply_markup=confirm_keyboard(lang),
+            reply_markup=confirm_kb (lang),
         )
 
 
@@ -443,7 +443,7 @@ async def _do_login(message: types.Message, state: FSMContext, user_info: dict, 
     )
     await message.answer(
         get_text("registered.welcome_new", lang, name=user_info.get("full_name", "")),
-        reply_markup=registered_menu_keyboard(lang),
+        reply_markup=registered_menu_kb(lang),
     )
     
     # Phase 2: Show channel join message

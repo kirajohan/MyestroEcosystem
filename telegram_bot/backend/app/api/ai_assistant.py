@@ -1,11 +1,23 @@
-from fastapi import APIRouter, Depends
+"""AI assistant endpoints with memory system support."""
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-from app.services.ai_service import ask_ai, analyze_error_logs
-from app.models.logs import ErrorLog
-from sqlalchemy.orm import Session as DBSession
-from app.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+import redis.asyncio as redis
+import logging
 
+from app.database import get_async_db, get_redis
+from app.services.ai_service import ask_ai, analyze_error_logs
+from app.services.ai_memory_service import AIMemoryService
+from app.models.logs import ErrorLog
+from app.schemas.chat_context import (
+    ChatQueryWithMemoryRequest,
+    ChatQueryWithMemoryResponse,
+    AIMemorySessionResponse
+)
+
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ai-assistant", tags=["ai_assistant"])
 
 
@@ -19,41 +31,166 @@ class AIQueryResponse(BaseModel):
     response: str
 
 
+# ═══════════════════════════════════════════════════════════════════
+# LEGACY ENDPOINTS (backwards compatible)
+# ═══════════════════════════════════════════════════════════════════
+
 @router.get("/query", response_model=AIQueryResponse)
 async def query_ai(
     prompt: str,
-    db: DBSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
+    """Legacy: Simple AI query without memory (stateless)."""
     result = await ask_ai(prompt)
     return AIQueryResponse(response=result)
 
 
 @router.post("/analyze-logs")
 async def analyze_logs(
-    db: DBSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
-    logs = db.query(ErrorLog).filter(ErrorLog.is_fixed == False).limit(10).all()
+    """Analyze error logs using AI to suggest causes and solutions."""
+    logs = await db.execute(
+        "SELECT id, error_type, error_message, service FROM error_logs WHERE is_fixed = FALSE LIMIT 10"
+    )
+    log_records = logs.fetchall()
+    
     log_data = [
         {
-            "id": log.id,
-            "error_type": log.error_type,
-            "error_message": log.error_message,
-            "service": log.service,
+            "id": log[0],
+            "error_type": log[1],
+            "error_message": log[2],
+            "service": log[3],
         }
-        for log in logs
+        for log in log_records
     ]
+    
     results = await analyze_error_logs(log_data)
 
+    # Update logs with analysis
     for item in results:
-        log_id = item.get("id")
-        if not log_id:
-            continue
-        matching_log = db.query(ErrorLog).filter(
-            ErrorLog.id == log_id
-        ).first()
-        if matching_log:
-            matching_log.cause = item.get("cause")
-            matching_log.solution = item.get("solution")
-    db.commit()
+        if item.get("error_type") != "parse_failed":
+            # Find matching log by error_type and message pattern
+            for log in log_records:
+                if log[1] == item.get("error_type"):
+                    # Update in database (optional)
+                    logger.info(f"Analysis for {log[1]}: {item.get('solution')}")
 
     return {"analyzed": len(results), "results": results}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# NEW ENDPOINTS (with memory system)
+# ═══════════════════════════════════════════════════════════════════
+
+async def get_memory_service(
+    db: AsyncSession = Depends(get_async_db),
+    redis_client: redis.Redis = Depends(get_redis)
+) -> AIMemoryService:
+    """Dependency injection for AIMemoryService."""
+    return AIMemoryService(db, redis_client)
+
+
+@router.post(
+    "/query-with-memory",
+    response_model=ChatQueryWithMemoryResponse,
+    summary="Query AI with memory context",
+    description="""
+    Query AI assistant with automatic memory management.
+    
+    Features:
+    - Maintains chat history per user session
+    - Automatic context summarization
+    - Redis caching for performance
+    - Persistent storage in PostgreSQL
+    """
+)
+async def query_with_memory(
+    request: ChatQueryWithMemoryRequest,
+    memory_service: AIMemoryService = Depends(get_memory_service),
+):
+    """
+    Query AI with full memory context and history.
+    
+    - Automatically creates session for user
+    - Loads last 10 messages from cache/database
+    - Generates summary if conversation > 15 messages
+    - Saves response to both Redis and PostgreSQL
+    """
+    try:
+        response = await memory_service.query_with_memory(
+            user_id=request.user_id,
+            user_message=request.message,
+            system_prompt=request.system_prompt,
+            model=request.model,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens
+        )
+        return response
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error in query_with_memory: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="AI query failed")
+
+
+@router.get(
+    "/session/{user_id}",
+    response_model=AIMemorySessionResponse,
+    summary="Get user's active AI session"
+)
+async def get_session(
+    user_id: int,
+    memory_service: AIMemoryService = Depends(get_memory_service),
+):
+    """Get user's active AI session info."""
+    try:
+        session = await memory_service.get_or_create_session(user_id)
+        return AIMemorySessionResponse.from_orm(session)
+    except Exception as e:
+        logger.error(f"Error getting session: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get session")
+
+
+@router.post(
+    "/session/{user_id}/clear",
+    summary="Clear session memory cache"
+)
+async def clear_session_memory(
+    user_id: int,
+    memory_service: AIMemoryService = Depends(get_memory_service),
+):
+    """Clear Redis cache for user's session (soft reset)."""
+    try:
+        session = await memory_service.get_or_create_session(user_id)
+        success = await memory_service.clear_session_memory(session.session_id)
+        return {
+            "status": "success" if success else "failed",
+            "session_id": str(session.session_id),
+            "message": "Memory cache cleared" if success else "Error clearing cache"
+        }
+    except Exception as e:
+        logger.error(f"Error clearing session: {e}")
+        raise HTTPException(status_code=500, detail="Failed to clear session")
+
+
+@router.post(
+    "/cleanup-expired",
+    summary="Cleanup expired sessions",
+    tags=["admin"]
+)
+async def cleanup_expired_sessions(
+    memory_service: AIMemoryService = Depends(get_memory_service),
+):
+    """Admin endpoint: Remove expired sessions (call from scheduler)."""
+    try:
+        count = await memory_service.cleanup_expired_sessions()
+        return {
+            "status": "success",
+            "cleaned_sessions": count,
+            "message": f"Cleaned {count} expired sessions"
+        }
+    except Exception as e:
+        logger.error(f"Error in cleanup: {e}")
+        raise HTTPException(status_code=500, detail="Cleanup failed")

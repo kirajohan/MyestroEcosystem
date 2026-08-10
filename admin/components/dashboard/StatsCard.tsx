@@ -14,7 +14,7 @@ export function StatsCard({
   isLoading,
 }: StatsCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow p-6 border-l-4 border-primary">
+    <div className="bg-white rounded-2xl shadow-xl border border-dark-200 p-6">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-gray-600 text-sm font-medium">{title}</p>
@@ -24,7 +24,7 @@ export function StatsCard({
             <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
           )}
         </div>
-        <Icon className="text-primary" size={32} />
+        <Icon className="text-primary-600" size={32} />
       </div>
     </div>
   );

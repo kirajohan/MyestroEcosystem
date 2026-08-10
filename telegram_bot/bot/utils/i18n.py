@@ -242,9 +242,8 @@ TRANSLATIONS = {
             "<a href='https://t.me/myestro_support'>qo'llab-quvvatlash</a> ga murojaat qiling."
         ),
         "login.success": (
-            "✅ <b>Xush kelibsiz, {name}!</b>\n\n"
+            "✅ <b>Xush kelibsiz!</b>\n\n"
             "Siz muvaffaqiyatli tizimga kirdingiz.\n"
-            "Oxirgi faollik: {last_active}\n\n"
             "👇 <b>Asosiy menyu:</b>"
         ),
         "login.failed": (
@@ -797,9 +796,8 @@ TRANSLATIONS = {
             "<a href='https://t.me/myestro_support'>поддержку</a>."
         ),
         "login.success": (
-            "✅ <b>Добро пожаловать, {name}!</b>\n\n"
+            "✅ <b>Добро пожаловать!</b>\n\n"
             "Вы успешно вошли в систему.\n"
-            "Последняя активность: {last_active}\n\n"
             "👇 <b>Главное меню:</b>"
         ),
         "login.failed": (
@@ -1348,9 +1346,8 @@ TRANSLATIONS = {
             "<a href='https://t.me/myestro_support'>support</a>."
         ),
         "login.success": (
-            "✅ <b>Welcome back, {name}!</b>\n\n"
+            "✅ <b>Welcome back!</b>\n\n"
             "You have successfully logged in.\n"
-            "Last active: {last_active}\n\n"
             "👇 <b>Main Menu:</b>"
         ),
         "login.failed": (

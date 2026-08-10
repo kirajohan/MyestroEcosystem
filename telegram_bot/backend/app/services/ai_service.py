@@ -1,4 +1,6 @@
 """AI service — re-exports shared client and adds backend-specific features."""
+'''C:\Projects\MyestroEco\MyestroEco\telegram_bot\backend\app\services\ai_service.py'''
+
 import json
 import logging
 from typing import List, Dict, Any

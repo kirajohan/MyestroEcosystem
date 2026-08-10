@@ -1,9 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import api from '@/lib/api';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-interface AdminUser {
+interface AuthUser {
   id: number;
   email: string;
   full_name: string;
@@ -16,80 +16,97 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   error: string | null;
-  user: AdminUser | null;
+  user: AuthUser | null;
   token: string | null;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const TOKEN_KEY = 'myestro_admin_token';
+const USER_KEY = 'myestro_admin_user';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<AdminUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  // Restore login state + token from localStorage
+  // Check localStorage on mount
   useEffect(() => {
-    const loggedInFlag = localStorage.getItem('isAdminLoggedIn');
-    const savedUser = localStorage.getItem('admin_user');
-    const savedToken = localStorage.getItem('admin_token');
-    if (loggedInFlag === 'true' && savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
+    try {
+      const storedToken = localStorage.getItem(TOKEN_KEY);
+      const storedUser = localStorage.getItem(USER_KEY);
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
         setIsLoggedIn(true);
-        if (savedToken) setToken(savedToken);
-      } catch (e) {
-        console.error('Failed to restore user:', e);
-        localStorage.removeItem('isAdminLoggedIn');
-        localStorage.removeItem('admin_user');
-        localStorage.removeItem('admin_token');
       }
+    } catch {
+      // Ignore parse errors
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
     setError(null);
-
     try {
-      const response = await api.post('/auth/admin-login', { email, password });
-      const data = response.data;
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (data.success && data.user) {
-        setIsLoggedIn(true);
-        setUser(data.user);
-        if (data.access_token) {
-          setToken(data.access_token);
-          localStorage.setItem('admin_token', data.access_token);
-        }
-        localStorage.setItem('isAdminLoggedIn', 'true');
-        localStorage.setItem('admin_user', JSON.stringify(data.user));
-      } else {
-        setError('Login failed');
-        throw new Error('Login failed');
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || 'Login xatosi');
       }
+
+      const adminToken = data.token || `admin_${Date.now()}`;
+      const adminUser: AuthUser = {
+        id: data.user?.id ?? 0,
+        email: data.user?.email ?? email,
+        full_name: data.user?.full_name ?? 'Admin',
+        role: data.user?.role ?? 'admin',
+      };
+
+      localStorage.setItem(TOKEN_KEY, adminToken);
+      localStorage.setItem(USER_KEY, JSON.stringify(adminUser));
+
+      setToken(adminToken);
+      setUser(adminUser);
+      setIsLoggedIn(true);
+      router.push('/dashboard');
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || 'Parol notogri yoki admin huquqi yoq';
-      setError(msg);
-      throw new Error(msg);
-    } finally {
-      setIsLoading(false);
+      setError(err.message || 'Login xatosi');
+      throw err;
     }
   };
 
   const logout = () => {
-    setIsLoggedIn(false);
-    setUser(null);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     setToken(null);
-    setError(null);
-    localStorage.removeItem('isAdminLoggedIn');
-    localStorage.removeItem('admin_user');
-    localStorage.removeItem('admin_token');
+    setUser(null);
+    setIsLoggedIn(false);
+    router.push('/login');
+  };
+
+  const value: AuthContextType = {
+    isLoggedIn,
+    isLoading,
+    login,
+    logout,
+    error,
+    user,
+    token,
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, isLoading, login, logout, error, user, token }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -79,7 +79,7 @@ export function EditContentModal({ isOpen, item, onClose, onSave, isLoading }: E
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Yangi fayl (ixtiyoriy)
           </label>
-          <label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary hover:bg-orange-50 transition-colors">
+          <label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary hover:bg-dark-100 transition-colors">
             <div className="flex flex-col items-center gap-2 text-gray-500">
               <Upload size={24} />
               <span className="text-sm">

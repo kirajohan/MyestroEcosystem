@@ -12,17 +12,17 @@ import {
   ScrollText,
   Settings,
   Bot,
-  LogOut,
+  FileQuestion,
 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Users', href: '/users', icon: Users },
   { label: 'Content', href: '/content', icon: Video },
+  { label: 'Tests', href: '/tests', icon: FileQuestion },
   { label: 'Bot Texts', href: '#', icon: FileText, disabled: true },
-  { label: 'Broadcast', href: '/broadcast', icon: Send},
-  { label: 'Inbox', href: '#', icon: MessageSquare, disabled: true },
+  { label: 'Broadcast', href: '/broadcast', icon: Send },
+  { label: 'Inbox', href: '/inbox', icon: MessageSquare },
   { label: 'Logs', href: '#', icon: ScrollText, disabled: true },
   { label: 'Settings', href: '#', icon: Settings, disabled: true },
   { label: 'AI Chat', href: '#', icon: Bot, disabled: true },
@@ -30,12 +30,11 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { logout } = useAuth();
 
   return (
-    <div className="fixed left-0 top-0 h-screen w-60 bg-dark flex flex-col">
+    <div className="fixed left-0 top-0 h-screen w-60 bg-dark-900 flex flex-col">
       {/* Logo */}
-      <div className="p-6 border-b border-stone-800">
+      <div className="p-6 border-b border-dark-800">
         <h1 className="text-xl font-bold text-white">Myestro Admin</h1>
       </div>
 
@@ -56,11 +55,11 @@ export function Sidebar() {
                     isDisabled
                       ? 'text-stone-600 cursor-not-allowed'
                       : isActive
-                        ? 'bg-primary text-white'
-                        : 'text-stone-300 hover:bg-stone-800'
+                        ? 'bg-primary-600 text-primary-100'
+                        : 'text-stone-300 hover:bg-dark-800'
                   }`}
                 >
-                  <Icon size={20} />
+                  <Icon className={isActive ? 'text-primary-100' : 'text-stone-300'} size={20} />
                   <span className="text-sm font-medium">{item.label}</span>
                   {isDisabled && (
                     <span className="ml-auto text-xs text-stone-500">Soon</span>
@@ -72,16 +71,6 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* Logout Button */}
-      <div className="p-4 border-t border-stone-800">
-        <button
-          onClick={logout}
-          className="flex items-center gap-3 w-full px-4 py-3 text-stone-300 hover:bg-stone-800 rounded-lg transition-colors"
-        >
-          <LogOut size={20} />
-          <span className="text-sm font-medium">Logout</span>
-        </button>
-      </div>
     </div>
   );
 }

@@ -1,10 +1,8 @@
 import axios from 'axios';
 import { toast } from 'sonner';
 
-// Eski holati: const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
-
-// Yangi holati (Aynan backend public domeningiz bo'lishi shart):
-const API_BASE_URL = 'http://localhost:8002';
+// Backend URL: environment'dan o'qiladi, fallback localhost:8002
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

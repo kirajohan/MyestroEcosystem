@@ -1,3 +1,5 @@
+'''C:\Projects\MyestroEco\MyestroEco\telegram_bot\backend\app\schemas\conversation.py'''
+
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime

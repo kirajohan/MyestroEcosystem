@@ -12,7 +12,7 @@ import { useState } from 'react';
 
 const editUserSchema = z.object({
   full_name: z.string().min(1, 'Toliq ism majburiy'),
-  email: z.string().email('Noto\'g\'ri email'),
+  email: z.string().email('Noto\'g\'ri email').optional().or(z.literal('')),
   role: z.enum(['user', 'admin']),
   cefr_level: z.string(),
   target_level: z.string(),
@@ -46,7 +46,7 @@ export function UserEditForm({ user, onSave, isLoading }: UserEditFormProps) {
     resolver: zodResolver(editUserSchema),
     defaultValues: {
       full_name: user.full_name,
-      email: user.email,
+      email: user.email || '',
       role: user.role,
       cefr_level: user.cefr_level,
       target_level: user.target_level,

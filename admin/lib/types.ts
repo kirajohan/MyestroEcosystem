@@ -1,7 +1,7 @@
 // UserResponse (backend schema)
 export interface UserResponse {
   id: number;
-  email: string;
+  email: string | null;
   full_name: string;
   role: 'user' | 'admin';
   cefr_level: string;

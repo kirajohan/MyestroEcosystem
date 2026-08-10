@@ -2,6 +2,7 @@ import asyncio
 import logging
 import sys
 import os
+import httpx
 
 # Add parent directories to path for imports
 _app_root = os.path.abspath(os.path.dirname(__file__))
@@ -13,7 +14,7 @@ if _telegram_bot_root not in sys.path:
 
 from bot.handlers import academy, admin, ai_agent, ai_chat, contact, document, errors, menu, photo, profile, referral, register, registration, reminders, start, sticker, video, broadcast, inbox
 
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher , Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -28,10 +29,13 @@ from bot.middlewares.bot_guard import BotGuardMiddleware
 from bot.utils.ai_client import shutdown_ai_client
 from bot.services.ai_service import ai_service
 from bot.services.broadcast_worker import BroadcastWorker
+from aiogram.fsm.storage.redis import RedisStorage
+from bot.utils.ai_memory_client import AIMemoryClient
 
 
 logging.basicConfig(level=settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
+
 
 
 async def main():
@@ -47,6 +51,23 @@ async def main():
 
     # FSM Storage (Memory — no Redis)
     storage = MemoryStorage()
+    redis_storage = RedisStorage.from_url(settings.REDIS_URL + "/1")
+    dp = Dispatcher(storage=redis_storage)
+
+    http_client = httpx.AsyncClient(
+        timeout=30.0,
+        limits=httpx.Limits(max_connections=100)
+    )
+
+    ai_memory_client = AIMemoryClient(
+        backend_url=settings.BACKEND_URL,
+        http_client=http_client
+    )
+
+    # Store in bot context (for handlers)
+    dp["ai_memory_client"] = ai_memory_client
+    dp["http_client"] = http_client
+    
 
     # Bot instance
     bot = Bot(

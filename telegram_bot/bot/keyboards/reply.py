@@ -1,126 +1,270 @@
-"""Reply keyboards for Myestro Telegram Bot."""
+"""Reply keyboards for Myestro Telegram Bot - REPLY KEYBOARD ONLY."""
 
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.utils.keyboard import ReplyKeyboardBuilder
+from bot.keyboards.extended_buttons import StyledKeyboardButton
+from typing import List, Dict
 
 
-def language_selection_keyboard() -> ReplyKeyboardMarkup:
-    """3 tilda language selection keyboard (for /start)."""
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🇺🇿 O'zbek")],
-            [KeyboardButton(text="🇷🇺 Русский")],
-            [KeyboardButton(text="🇬🇧 English")],
-        ],
-        resize_keyboard=True,
+# ─── LANGUAGE SELECTION ──────────────────────────────────────
+
+def language_selection(include_back: bool = False) -> ReplyKeyboardMarkup:
+    """Language selection keyboard."""
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text="🇺🇿 O'zbek", style="primary"),
+        StyledKeyboardButton(text="🇷🇺 Русский", style="primary"),
+        StyledKeyboardButton(text="🇬🇧 English", style="primary"),
     )
+    if include_back:
+        builder.add(
+            StyledKeyboardButton(text="⬅️ Orqaga", style="danger"),
+        )
+    builder.adjust(1)
+    return builder.as_markup(resize_keyboard=True)
 
 
-def main_menu_keyboard(lang: str = "uz") -> ReplyKeyboardMarkup:
-    """Main menu keyboard for NOT_REGISTERED users — 5 buttons."""
-    if lang == "uz":
-        buttons = [
-            ["📝 Register/Login", "ℹ️ Biz haqimizda"],
-            ["📖 Qo'llanma", "🌐 Til/Language"],
-            ["📨 Admin ga xabar"],
-        ]
-    elif lang == "ru":
-        buttons = [
-            ["📝 Регистрация/Вход", "ℹ️ О нас"],
-            ["📖 Руководство", "🌐 Язык"],
-            ["📨 Написать админу"],
-        ]
-    else:  # en
-        buttons = [
-            ["📝 Register/Login", "ℹ️ About us"],
-            ["📖 Guide", "🌐 Language"],
-            ["📨 Message admin"],
-        ]
-
-    return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=btn) for btn in row] for row in buttons],
-        resize_keyboard=True,
+def language_switch_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Language switch with back button."""
+    from bot.utils.i18n import get_text
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text="🇺🇿 O'zbek", style="primary"),
+        StyledKeyboardButton(text="🇷🇺 Русский", style="primary"),
+        StyledKeyboardButton(text="🇬🇧 English", style="primary"),
     )
-
-
-def registered_menu_keyboard(lang: str = "uz") -> ReplyKeyboardMarkup:
-    """Main menu keyboard for REGISTERED users — inline style with reply fallback."""
-    if lang == "uz":
-        buttons = [
-            ["👤 Profil", "⚙️ Sozlamalar"],
-            ["📖 Qo'llanma", "📨 Admin ga xabar"],
-            ["🎬 Video Darslik", "📁 File Darsliklar"],
-        ]
-    elif lang == "ru":
-        buttons = [
-            ["👤 Профиль", "⚙️ Настройки"],
-            ["📖 Руководство", "📨 Написать админу"],
-            ["🎬 Видеоурок", "📁 Файлы уроков"],
-        ]
-    else:  # en
-        buttons = [
-            ["👤 Profile", "⚙️ Settings"],
-            ["📖 Guide", "📨 Message admin"],
-            ["🎬 Video Lesson", "📁 File Lessons"],
-        ]
-
-    return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=btn) for btn in row] for row in buttons],
-        resize_keyboard=True,
+    builder.add(
+        StyledKeyboardButton(text="⬅️ Orqaga", style="danger"),
     )
+    builder.adjust(1)
+    return builder.as_markup(resize_keyboard=True)
 
 
-def contact_request_keyboard() -> ReplyKeyboardMarkup:
-    """Phone number sharing keyboard."""
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📱 Telefon raqamni ulashish", request_contact=True)],
-        ],
-        resize_keyboard=True,
+# ─── ABOUT US ────────────────────────────────────────────────
+
+def about_us_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """About us submenu."""
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text="🔗 Havolalar", style="success"),
+        StyledKeyboardButton(text="🌐 Ecosystem Haqida", style="success"),
+        StyledKeyboardButton(text="❓ FAQ", style="success"),
     )
-
-
-def skip_keyboard(lang: str = "uz") -> ReplyKeyboardMarkup:
-    """Skip button for optional fields."""
-    if lang == "uz":
-        text = "⏭️ Skip"
-    elif lang == "ru":
-        text = "⏭️ Пропустить"
-    else:
-        text = "⏭️ Skip"
-    return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=text)]],
-        resize_keyboard=True,
+    builder.add(
+        StyledKeyboardButton(text="⬅️ Orqaga", style="danger"),
     )
+    builder.adjust(1)
+    return builder.as_markup(resize_keyboard=True)
 
 
-def confirm_keyboard(lang: str = "uz") -> ReplyKeyboardMarkup:
-    """Confirmation keyboard: Tasdiqlash / Boshidan."""
-    if lang == "uz":
-        buttons = [["✅ Tasdiqlash", "🔄 Boshidan to'ldirish"]]
-    elif lang == "ru":
-        buttons = [["✅ Подтвердить", "🔄 Заполнить заново"]]
-    else:
-        buttons = [["✅ Confirm", "🔄 Start over"]]
-    return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=btn) for btn in row] for row in buttons],
-        resize_keyboard=True,
+# ─── GUIDE ───────────────────────────────────────────────────
+
+def guide_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Guide submenu."""
+    texts = {
+        "uz": {"bot": "🤖 Bot bo'yicha", "ai": "🧠 AI bo'yicha", "faq": "❓ FAQ"},
+        "ru": {"bot": "🤖 О боте", "ai": "🧠 Об AI", "faq": "❓ FAQ"},
+        "en": {"bot": "🤖 About Bot", "ai": "🧠 About AI", "faq": "❓ FAQ"},
+    }
+    t = texts.get(lang, texts["uz"])
+    
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["bot"], style="primary"),
+        StyledKeyboardButton(text=t["ai"], style="primary"),
+        StyledKeyboardButton(text=t["faq"], style="primary"),
     )
+    builder.add(
+        StyledKeyboardButton(text="⬅️ Orqaga", style="danger"),
+    )
+    builder.adjust(1)
+    return builder.as_markup(resize_keyboard=True)
 
 
-def lesson_numbers_keyboard(lesson_ids: list, lang: str = "uz") -> ReplyKeyboardMarkup:
-    """Numeric keyboard for lesson selection (max 3 per row)."""
-    back_text = "⬅️ Orqaga" if lang == "uz" else ("⬅️ Назад" if lang == "ru" else "⬅️ Back")
-    keyboard = []
-    row = []
-    for i, lid in enumerate(lesson_ids):
-        row.append(KeyboardButton(text=str(lid)))
-        if (i + 1) % 3 == 0:
-            keyboard.append(row)
-            row = []
-    if row:
-        keyboard.append(row)
-    keyboard.append([KeyboardButton(text=back_text)])
-    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+# ─── CEFR LEVEL SELECTION ────────────────────────────────────
 
+def cefr_level_selection() -> ReplyKeyboardMarkup:
+    """CEFR level selection."""
+    builder = ReplyKeyboardBuilder()
+    levels = ["A0", "A1", "A2", "B1", "B2", "C1", "C2"]
+    for level in levels:
+        builder.add(
+            StyledKeyboardButton(text=level, style="primary"),
+        )
+    builder.adjust(3)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# ─── REGISTERED USER MAIN MENU ──────────────────────────────
+
+def registered_menu_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Main menu for REGISTERED users."""
+    texts = {
+        "uz": ["👤 Profil", "⚙️ Sozlamalar", "📖 Qo'llanma", "📨 Admin ga xabar", "🎬 Video Darslik", "📁 File Darsliklar"],
+        "ru": ["👤 Профиль", "⚙️ Настройки", "📖 Руководство", "📨 Написать админу", "🎬 Видеоурок", "📁 Файлы уроков"],
+        "en": ["👤 Profile", "⚙️ Settings", "📖 Guide", "📨 Message admin", "🎬 Video Lesson", "📁 File Lessons"],
+    }
+    items = texts.get(lang, texts["uz"])
+    styles = ["primary", "primary", "success", "danger", "success", "success"]
+    
+    builder = ReplyKeyboardBuilder()
+    for text, style in zip(items, styles):
+        builder.add(
+            StyledKeyboardButton(text=text, style=style),
+        )
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# ─── SETTINGS ────────────────────────────────────────────────
+
+def settings_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Settings submenu."""
+    texts = {
+        "uz": {"lang": "🌐 Til o'zgartirish", "ai": "🤖 AI ON/OFF", "logout": "🚪 Log Out"},
+        "ru": {"lang": "🌐 Сменить язык", "ai": "🤖 AI ВКЛ/ВЫКЛ", "logout": "🚪 Выйти"},
+        "en": {"lang": "🌐 Change Language", "ai": "🤖 AI ON/OFF", "logout": "🚪 Log Out"},
+    }
+    t = texts.get(lang, texts["uz"])
+    
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["lang"], style="primary"),
+        StyledKeyboardButton(text=t["ai"], style="primary"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["logout"], style="danger"),
+    )
+    builder.add(
+        StyledKeyboardButton(text="⬅️ Orqaga", style="danger"),
+    )
+    builder.adjust(1)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# ─── CONTACT REQUEST ────────────────────────────────────────
+
+def contact_request_keyboard(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Contact sharing request."""
+    texts = {
+        "uz": {"share": "📱 Raqam yuborish", "back": "⬅️ Orqaga"},
+        "ru": {"share": "📱 Отправить номер", "back": "⬅️ Назад"},
+        "en": {"share": "📱 Send phone", "back": "⬅️ Back"},
+    }
+    t = texts.get(lang, texts["uz"])
+    
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["share"], request_contact=True, style="primary"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["back"], style="danger"),
+    )
+    builder.adjust(1)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# ─── REGISTRATION RESTART ──────────────────────────────────
+
+def registration_restart_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Registration restart/back."""
+    texts = {
+        "uz": {"restart": "🔄 Boshidan boshlash", "back": "⬅️ Orqaga"},
+        "ru": {"restart": "🔄 Начать заново", "back": "⬅️ Назад"},
+        "en": {"restart": "🔄 Start over", "back": "⬅️ Back"},
+    }
+    t = texts.get(lang, texts["uz"])
+    
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["restart"], style="primary"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["back"], style="danger"),
+    )
+    builder.adjust(1)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# ─── CONFIRMATION (YES/NO) ──────────────────────────────────
+
+def confirm_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Yes/No confirmation."""
+    texts = {
+        "uz": {"yes": "✅ Ha", "no": "❌ Yo'q"},
+        "ru": {"yes": "✅ Да", "no": "❌ Нет"},
+        "en": {"yes": "✅ Yes", "no": "❌ No"},
+    }
+    t = texts.get(lang, texts["uz"])
+    
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["yes"], style="success"),
+        StyledKeyboardButton(text=t["no"], style="danger"),
+    )
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# ─── MAIN MENU (NOT_REGISTERED) ─────────────────────────────
+
+def main_menu(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Main menu for NOT_REGISTERED users."""
+    texts = {
+        "uz": {
+            "start": "📝 Register/Login",
+            "language": "🌐 Til/Language",
+            "about": "ℹ️ Biz haqimizda",
+            "guide": "📖 Qo'llanma",
+            "admin": "📨 Admin ga xabar",
+        },
+        "ru": {
+            "start": "📝 Регистрация/Вход",
+            "language": "🌐 Язык",
+            "about": "ℹ️ О нас",
+            "guide": "📖 Руководство",
+            "admin": "📨 Написать админу",
+        },
+        "en": {
+            "start": "📝 Register/Login",
+            "language": "🌐 Language",
+            "about": "ℹ️ About us",
+            "guide": "📖 Guide",
+            "admin": "📨 Message admin",
+        },
+    }
+    t = texts.get(lang, texts["uz"])
+    
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["start"], style="primary"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["language"], style="success"),
+        StyledKeyboardButton(text=t["about"], style="success"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["guide"], style="success"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["admin"], style="danger"),
+    )
+    builder.adjust(2, 1)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# ─── ADMIN CONTACT ──────────────────────────────────────────
+
+def admin_contact_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Admin contact session (send message + back)."""
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text="⬅️ Orqaga", style="danger"),
+    )
+    builder.adjust(1)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# ─── SPECIAL: REMOVE KEYBOARD ──────────────────────────────
 
 remove_keyboard = ReplyKeyboardRemove()

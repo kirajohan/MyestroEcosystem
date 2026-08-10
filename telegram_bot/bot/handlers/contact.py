@@ -13,7 +13,7 @@ from aiogram.fsm.context import FSMContext
 from typing import Optional
 from bot.states.registration import AuthFSM, RegisteredSection, StartSection
 from bot.keyboards.reply import (
-    remove_keyboard, registered_menu_keyboard,
+    remove_keyboard, registered_menu_kb,
 )
 from bot.utils.i18n import get_text
 from bot.config import settings
@@ -85,7 +85,7 @@ async def _do_login(message: types.Message, state: FSMContext, user_info: dict, 
     )
     await message.answer(
         get_text("registered.welcome_new", lang, name=user_info.get("full_name", "")),
-        reply_markup=registered_menu_keyboard(lang),
+        reply_markup=registered_menu_kb(lang),
     )
 
 

@@ -5,7 +5,7 @@ interface BadgeProps {
 
 const variants = {
   default: 'bg-gray-100 text-gray-800',
-  admin: 'bg-orange-100 text-orange-800',
+  admin: 'bg-primary-100 text-primary-900',
   user: 'bg-gray-100 text-gray-800',
   active: 'bg-green-100 text-green-800',
   blocked: 'bg-red-100 text-red-800',
