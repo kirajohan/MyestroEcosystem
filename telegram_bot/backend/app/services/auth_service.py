@@ -43,20 +43,30 @@ def register_user(db: DBSession, user_data: dict) -> User:
     phone = normalize_phone(user_data.get("phone")) or user_data.get("phone")
     telegram_id = user_data.get("telegram_id")
 
+    # Check if telegram_id already exists — UPDATE instead of ERROR
+    if telegram_id:
+        existing_tg = db.query(User).filter(User.telegram_id == telegram_id).first()
+        if existing_tg:
+            # Update existing user
+            existing_tg.email = email
+            existing_tg.full_name = user_data["full_name"]
+            existing_tg.phone = phone
+            existing_tg.cefr_level = user_data.get("cefr_level", existing_tg.cefr_level or "A1")
+            existing_tg.lang = user_data.get("lang", existing_tg.lang or "uz")
+            if user_data.get("password"):
+                existing_tg.password_hash = hash_password(user_data["password"])
+            db.commit()
+            db.refresh(existing_tg)
+            return existing_tg
+
     existing_email = db.query(User).filter(User.email == email).first()
     if existing_email:
         raise ConflictException("Email already registered")
 
-    # ⚠️ YANGI: avval bu ikkisi umuman tekshirilmagan edi.
     if phone:
         existing_phone = db.query(User).filter(User.phone == phone).first()
         if existing_phone:
             raise ConflictException("Phone already registered")
-
-    if telegram_id:
-        existing_tg = db.query(User).filter(User.telegram_id == telegram_id).first()
-        if existing_tg:
-            raise ConflictException("Telegram account already registered")
 
     user = User(
         email=email,

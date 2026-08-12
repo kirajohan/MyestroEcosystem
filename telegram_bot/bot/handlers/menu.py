@@ -368,7 +368,7 @@ async def msg_video(message: types.Message, state: FSMContext):
     text += "\n".join([f"{i+1}. {item['title']}" for i, item in enumerate(items)])
     text += f"\n\n(Jami: {total} ta)"
     
-    await message.answer(text, parse_mode="HTML")
+    await message.answer(text, parse_mode="MarkdownV2")
 
 
 @router.message(or_f(
@@ -390,7 +390,7 @@ async def msg_file(message: types.Message, state: FSMContext):
     text += "\n".join([f"{i+1}. {item['title']}" for i, item in enumerate(items)])
     text += f"\n\n(Jami: {total} ta)"
     
-    await message.answer(text, parse_mode="HTML")
+    await message.answer(text, parse_mode="MarkdownV2")
 
 
 # ══════════════════════════════════════════════════════════════

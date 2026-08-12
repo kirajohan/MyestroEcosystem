@@ -1,396 +1,238 @@
-"""Auth handler — Unified Register/Login flow.
-
-Flow:
-1. 📝 Register/Login → Telefon raqam so'raydi (contact share yoki text)
-2. Contact share → DB tekshir → found: avto-login | not found: registratsiya
-3. Text (phone/email) → DB tekshir → found: parol so'ra | not found: registratsiya
-4. Registratsiya: Ism → Email → Parol → Confirm → avto-login
-"""
-
-import re
-from typing import Optional
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
-from bot.states.registration import AuthFSM, RegisteredSection, StartSection
+
+from bot.states.registration import RegistrationFSM
 from bot.keyboards.reply import (
-    remove_keyboard, confirm_kb , contact_request_keyboard,
+    contact_request_keyboard,
     registered_menu_kb,
+    confirm_kb as confirm_reply_kb,
+)
+from bot.keyboards.inline  import (
+    cefr_level_selection,
+    confirm_kb,
 )
 from bot.utils.i18n import get_text
-from bot.config import settings
-import httpx
+# Backend API orqali ro'yxatdan o'tkazish funksiyasi
 
 router = Router()
 
-# Backend API
-CHECK_PHONE_URL = f"{settings.API_BASE_URL}/auth/check-phone"
-CHECK_EMAIL_URL = f"{settings.API_BASE_URL}/auth/check-email"
-PHONE_LOGIN_URL = f"{settings.API_BASE_URL}/auth/phone-login"
-EMAIL_LOGIN_URL = f"{settings.API_BASE_URL}/auth/login"
-REGISTER_INIT_URL = f"{settings.API_BASE_URL}/auth/register-init"
-
-
-# ══════════════════════════════════════════════════════════════
-# START AUTH FLOW
-# ══════════════════════════════════════════════════════════════
-
-@router.message(F.text.in_([
-    "📝 Register/Login", "📝 Регистрация/Вход", "📝 Register/Login",
-]))
-async def start_auth(message: types.Message, state: FSMContext):
-    """Start unified auth flow — ask for phone number."""
+# ==============================================================================
+# 1-BOSQICH: REGISTER TUGMASI BOSILGANDA -> PHONE SO'RASH
+# ==============================================================================
+@router.message(F.text.in_(["📝 Register", "📝 Ro'yxatdan o'tish", "📝 Регистрация"]))
+async def start_registration(message: types.Message, state: FSMContext):
+    """Foydalanuvchi Ro'yxatdan o'tish tugmasini bossa, kontakt yuborishni so'raydi."""
     user_data = await state.get_data()
     lang = user_data.get("lang", "uz")
-    await state.set_state(AuthFSM.requesting_contact)
-    await state.update_data(_flow=None)
-
+    
+    await state.set_state(RegistrationFSM.waiting_phone)
     await message.answer(
-        get_text("auth.phone_request", lang),
-        reply_markup=contact_request_keyboard(),
+        get_text("register.ask_phone", lang),
+        reply_markup=contact_request_keyboard(lang)  # request_contact=True tugmasi
     )
 
-
-# ══════════════════════════════════════════════════════════════
-# TEXT INPUT (Phone or Email)
-# ══════════════════════════════════════════════════════════════
-
-# NOTE: Contact share handler is in contact.py (AuthFSM.requesting_contact)
-
-@router.message(AuthFSM.requesting_contact)
-async def handle_phone_or_email(message: types.Message, state: FSMContext):
-    """Handle text input: phone number or email."""
-    text = message.text.strip()
+# ==============================================================================
+# 2-BOSQICH: TELEFON KONTAKTINI QABUL QILISH VA XAVFSIZLIK TEKSHIRUVI
+# ==============================================================================
+@router.message(RegistrationFSM.waiting_phone)
+async def handle_phone(message: types.Message, state: FSMContext):
+    """Telegram Contact obyektini qabul qiladi va ID tengligini tekshiradi."""
     user_data = await state.get_data()
     lang = user_data.get("lang", "uz")
 
-    # Determine if it's phone or email
-    phone = _parse_phone(text)
-    email = _parse_email(text)
-
-    if phone:
-        # It's a phone number
-        exists, user_info = await _check_phone(phone)
-        if exists:
-            # Ask for password
-            await state.update_data(
-                _flow="login",
-                login_credential=phone,
-                credential_type="phone",
-            )
-            await state.set_state(AuthFSM.waiting_password)
+    # 1. Agar foydalanuvchi tugmani bosmay, matn yozib yuborgan bo'lsa:
+    if not message.contact:
+        # Foydalanuvchi "⬅️ Orqaga" tugmasini bosgani mumkin
+        if message.text and message.text.startswith("⬅️"):
+            # Ro'yxatdan o'tishni bekor qilish va asosiy menyuga qaytish
+            from bot.keyboards.reply import main_menu_kb
+            await state.clear()
             await message.answer(
-                get_text("login.ask_password", lang),
-                reply_markup=remove_keyboard,
+                get_text("register.cancelled", lang),
+                reply_markup=main_menu_kb(lang)
             )
-        else:
-            # Not found → register with phone
-            await state.update_data(register_phone=phone, _flow="register")
-            await state.set_state(AuthFSM.waiting_name)
-            await message.answer(
-                get_text("auth.phone_not_found", lang),
-                reply_markup=remove_keyboard,
-            )
-            await message.answer(
-                get_text("register.ask_name", lang),
-                reply_markup=remove_keyboard,
-            )
-    elif email:
-        # It's an email
-        exists, user_info = await _check_email(email)
-        if exists:
-            # Ask for password
-            await state.update_data(
-                _flow="login",
-                login_credential=email,
-                credential_type="email",
-            )
-            await state.set_state(AuthFSM.waiting_password)
-            await message.answer(
-                get_text("login.ask_password", lang),
-                reply_markup=remove_keyboard,
-            )
-        else:
-            # Not found → register with email
-            await state.update_data(register_email=email, _flow="register")
-            await state.set_state(AuthFSM.waiting_name)
-            await message.answer(
-                get_text("auth.email_not_found", lang),
-                reply_markup=remove_keyboard,
-            )
-            await message.answer(
-                get_text("register.ask_name", lang),
-                reply_markup=remove_keyboard,
-            )
-    else:
-        # Invalid input
+            return
         await message.answer(
-            get_text("auth.invalid_phone_or_email", lang),
-            reply_markup=contact_request_keyboard(),
+            get_text("register.must_use_contact_button", lang),
+            reply_markup=contact_request_keyboard(lang)
         )
+        return
 
-
-# ══════════════════════════════════════════════════════════════
-# LOGIN PASSWORD
-# ══════════════════════════════════════════════════════════════
-
-@router.message(AuthFSM.waiting_password)
-async def handle_login_password(message: types.Message, state: FSMContext):
-    """Handle password for login."""
-    password = message.text.strip()
-    user_data = await state.get_data()
-    lang = user_data.get("lang", "uz")
-    credential = user_data.get("login_credential", "")
-    credential_type = user_data.get("credential_type", "")
-
-    if credential_type == "phone":
-        success, user_info, tokens = await _login_by_phone(
-            message.from_user.id, credential, password
-        )
-    elif credential_type == "email":
-        success, user_info, tokens = await _login_by_email(credential, password)
-    else:
-        success = False
-        user_info = {}
-        tokens = None
-
-    if success:
-        await _do_login(message, state, user_info, credential, tokens)
-    else:
+    # 2. XAVFSIZLIK TEKSHIRUVI: Yuborilgan kontakt ushbu foydalanuvchining o'zinikimi?
+    if message.contact.user_id != message.from_user.id:
         await message.answer(
-            get_text("login.wrong_password", lang),
-            reply_markup=remove_keyboard,
+            "⚠️ Bu sizning raqamingiz emas! Iltimos, pastdagi tugmani bosing.",
+            reply_markup=contact_request_keyboard(lang)
         )
-        await state.set_state(StartSection.main_menu)
+        return
 
+    # Telefon raqamini formatlab saqlaymiz
+    phone = message.contact.phone_number
+    if not phone.startswith("+"):
+        phone = f"+{phone}"
 
-# ══════════════════════════════════════════════════════════════
-# REGISTRATION FLOW
-# ══════════════════════════════════════════════════════════════
+    await state.update_data(register_phone=phone)
+    await state.set_state(RegistrationFSM.waiting_name)
 
-@router.message(AuthFSM.waiting_name)
+    # Keyingi bosqich: Ism so'rash
+    await message.answer(
+        get_text("register.ask_name", lang),
+        reply_markup=types.ReplyKeyboardRemove()  # Tugmani olib tashlaymiz
+    )
+
+# ==============================================================================
+# 3-BOSQICH: ISMNI QABUL QILISH -> LEVEL SO'RASH
+# ==============================================================================
+@router.message(RegistrationFSM.waiting_name)
 async def handle_name(message: types.Message, state: FSMContext):
-    """Handle name input."""
-    name = message.text.strip()
+    """Ismni qabul qiladi va Ingliz tili darajasini (Level) so'raydi."""
     user_data = await state.get_data()
     lang = user_data.get("lang", "uz")
+
+    name = message.text.strip() if message.text else ""
 
     if len(name) < 2 or len(name) > 100:
-        await message.answer(get_text("register.ask_name", lang))
+        await message.answer(get_text("register.invalid_name", lang))
         return
 
     await state.update_data(register_name=name)
+    await state.set_state(RegistrationFSM.waiting_level)
 
-    # If email was already provided (e.g., user typed email to start), skip email step
-    if user_data.get("register_email"):
-        await state.set_state(AuthFSM.waiting_password_new)
-        await message.answer(
-            get_text("register.ask_password", lang),
-            reply_markup=remove_keyboard,
-        )
-    else:
-        await state.set_state(AuthFSM.waiting_email)
-        await message.answer(
-            get_text("register.ask_email", lang),
-            reply_markup=remove_keyboard,
-        )
-
-
-@router.message(AuthFSM.waiting_email)
-async def handle_email(message: types.Message, state: FSMContext):
-    """Handle email input."""
-    email = message.text.strip()
-    user_data = await state.get_data()
-    lang = user_data.get("lang", "uz")
-
-    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    if not re.match(email_pattern, email):
-        await message.answer(get_text("register.invalid_email", lang))
-        return
-
-    await state.update_data(register_email=email)
-    await state.set_state(AuthFSM.waiting_password_new)
-
+    # Keyingi bosqich: Level (Daraja) tanlash tugmalarini chiqarish
     await message.answer(
-        get_text("register.ask_password", lang),
-        reply_markup=remove_keyboard,
+        get_text("register.ask_level", lang),
+        reply_markup=cefr_level_selection(lang)  # A1, A2, B1, B2, C1, C2 tugmalari
     )
 
+# ==============================================================================
+# 4-BOSQICH: LEVEL DARAJANING QABUL QILINISHI (Inline va Text uchun)
+# ==============================================================================
+@router.callback_query(RegistrationFSM.waiting_level, F.data.startswith("level_"))
+async def handle_level_callback(callback: types.CallbackQuery, state: FSMContext):
+    """Inline tugma orqali Level tanlanganda."""
+    level = callback.data.split("_")[1]  # masalan: level_B2 -> B2
+    await callback.answer()
+    await _save_level_and_ask_confirm(callback.message, state, level, is_edit=True)
 
-@router.message(AuthFSM.waiting_password_new)
-async def handle_password_new(message: types.Message, state: FSMContext):
-    """Handle password creation."""
-    password = message.text.strip()
+@router.message(RegistrationFSM.waiting_level)
+async def handle_level_text(message: types.Message, state: FSMContext):
+    """Foydalanuvchi matn shaklida darajani yozganda (Masalan: B2)."""
+    level = message.text.strip().upper() if message.text else ""
+    valid_levels = ["A0", "A1", "A2", "B1", "B2", "C1", "C2"]
+    
+    if level not in valid_levels:
+        user_data = await state.get_data()
+        lang = user_data.get("lang", "uz")
+        await message.answer(
+            get_text("register.invalid_level", lang),
+            reply_markup=cefr_level_selection(lang)
+        )
+        return
+
+    await _save_level_and_ask_confirm(message, state, level, is_edit=False)
+
+async def _save_level_and_ask_confirm(message: types.Message, state: FSMContext, level: str, is_edit: bool = False):
+    """Level'ni saqlab, yakuniy tasdiqlash oynasini ko'rsatuvchi yordamchi funksiya."""
+    await state.update_data(register_level=level)
+    await state.set_state(RegistrationFSM.waiting_confirmation)
+
     user_data = await state.get_data()
     lang = user_data.get("lang", "uz")
 
-    if len(password) < 8:
-        await message.answer(get_text("register.invalid_password", lang))
-        return
-
-    await state.update_data(register_password=password)
-    await state.set_state(AuthFSM.waiting_confirm_password)
-
-    await message.answer(
-        get_text("register.ask_confirm_password", lang),
-        reply_markup=remove_keyboard,
-    )
-
-
-@router.message(AuthFSM.waiting_confirm_password)
-async def handle_confirm_password(message: types.Message, state: FSMContext):
-    """Handle password confirmation."""
-    confirm = message.text.strip()
-    user_data = await state.get_data()
-    lang = user_data.get("lang", "uz")
-    password = user_data.get("register_password", "")
-
-    if confirm != password:
-        await message.answer(get_text("register.password_mismatch", lang))
-        return
-
-    await state.set_state(AuthFSM.confirmation)
-
-    name = user_data.get("register_name", "—")
-    email = user_data.get("register_email", "—")
     phone = user_data.get("register_phone", "—")
+    name = user_data.get("register_name", "—")
 
-    await message.answer(
-        get_text("register.confirm", lang, name=name, email=email, phone=phone),
-        reply_markup=confirm_kb (lang),
-    )
+    text = get_text("register.confirm_info", lang, name=name, phone=phone, level=level)
+    kb = confirm_reply_kb(lang)  # ✅ Ha / ❌ Yo'q REPLY tugmalari
 
+    if is_edit:
+        # Telegram API cheklovi tufayli: Inline message ga ReplyKeyboard qo'yib bo'lmaydi,
+        # shuning uchun eski inline xabarni o'chirib, yangi reply message yuboramiz.
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        await message.answer(text, reply_markup=kb)
+    else:
+        await message.answer(text, reply_markup=kb)
 
-@router.message(AuthFSM.confirmation)
+# ==============================================================================
+# 5-BOSQICH: CONFIRMATION (TASDIQLASH) -> DB GA SAQLASH -> registered_menu_kb
+# ==============================================================================
+@router.message(RegistrationFSM.waiting_confirmation)
 async def handle_confirmation(message: types.Message, state: FSMContext):
-    """Handle confirmation — submit or restart."""
-    text = message.text.strip()
+    """Ma'lumotlarni tasdiqlaydi, DB ga saqlaydi va Asosiy Menyoga o'tkazadi."""
+    text = message.text.strip() if message.text else ""
     user_data = await state.get_data()
-    lang = _get_lang(user_data)
+    lang = user_data.get("lang", "uz")
 
-    confirm_texts = ["✅ Ha", "✅ Да", "✅ Yes"]  # uz, ru, en
-    restart_texts = ["❌ Yo'q", "❌ Нет", "❌ No"]  # uz, ru, en
+    confirm_texts = ["✅ Ha", "✅ Да", "✅ Yes"]
+    restart_texts = ["❌ Yo'q", "❌ Нет", "❌ No"]
 
     if text in confirm_texts:
         name = user_data.get("register_name", "")
-        email = user_data.get("register_email", "")
-        password = user_data.get("register_password", "")
         phone = user_data.get("register_phone", "")
+        level = user_data.get("register_level", "")
+        telegram_id = message.from_user.id
 
-        tokens, user_info = await _register_user(
-            message.from_user.id, name, email, password, phone,
+        # Backend API / DB ga saqlash so'rovi
+        success = await register_user_in_db(
+            telegram_id=telegram_id,
+            name=name,
+            phone=phone,
+            level=level,
+            lang=lang
         )
-        if tokens:
-            await _do_login(message, state, user_info, phone, tokens)
+
+        if success:
+            # Ro'yxatdan o'tish muvaffaqiyatli tugadi: State tozalanadi
+            await state.clear()
+            
+            await message.answer(
+                get_text("register.success_welcome", lang),
+                reply_markup=registered_menu_kb(lang)  # Ro'yxatdan o'tganlar menyusi!
+            )
         else:
             await message.answer(
-                get_text("error", lang),
-                reply_markup=remove_keyboard,
+                get_text("error.server_error", lang),
+                reply_markup=types.ReplyKeyboardRemove()
             )
-            await state.set_state(StartSection.main_menu)
 
     elif text in restart_texts:
+        # Rad etilgan taqdirda ma'lumotlar tozalanadi va qayta telefon so'rash bosqichiga qaytariladi
         await state.update_data(
             register_name=None,
-            register_email=None,
-            register_password=None,
             register_phone=None,
+            register_level=None
         )
-        await state.set_state(AuthFSM.waiting_name)
+        await state.set_state(RegistrationFSM.waiting_phone)
         await message.answer(
-            get_text("register.ask_name", lang),
-            reply_markup=remove_keyboard,
+            get_text("register.ask_phone", lang),
+            reply_markup=contact_request_keyboard(lang)
         )
     else:
-        name = user_data.get("register_name", "—")
-        email = user_data.get("register_email", "—")
-        phone = user_data.get("register_phone", "—")
         await message.answer(
-            get_text("register.confirm", lang, name=name, email=email, phone=phone),
-            reply_markup=confirm_kb (lang),
+            get_text("register.choose_yes_or_no", lang),
+            reply_markup=confirm_reply_kb(lang)
         )
 
 
-# ══════════════════════════════════════════════════════════════
-# BACKEND HELPERS
-# ══════════════════════════════════════════════════════════════
 
-async def _check_phone(phone: str) -> tuple[bool, dict]:
-    """Check if phone exists in DB."""
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.post(
-                CHECK_PHONE_URL,
-                json={"phone": phone},
-            )
-            if response.status_code == 200:
-                data = response.json()
-                return data.get("exists", False), data.get("user", {})
-    except Exception as e:
-        print(f"[CHECK PHONE ERROR] {e}")
-    return False, {}
+import httpx
+from typing import Optional
+from bot.config import settings
 
-
-async def _check_email(email: str) -> tuple[bool, dict]:
-    """Check if email exists in DB."""
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(
-                f"{CHECK_EMAIL_URL}",
-                params={"email": email},
-            )
-            if response.status_code == 200:
-                data = response.json()
-                return data.get("exists", False), data.get("user", {})
-    except Exception as e:
-        print(f"[CHECK EMAIL ERROR] {e}")
-    return False, {}
-
-
-async def _login_by_phone(telegram_id: int, phone: str, password: str = None) -> tuple[bool, dict, Optional[dict]]:
-    """Login by phone. If password provided, verify it too."""
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            payload = {"telegram_id": telegram_id, "phone": phone}
-            if password:
-                payload["password"] = password
-            response = await client.post(
-                PHONE_LOGIN_URL,
-                json=payload,
-            )
-            if response.status_code == 200:
-                data = response.json()
-                tokens = {
-                    "access_token": data.get("access_token"),
-                    "refresh_token": data.get("refresh_token"),
-                }
-                return True, data.get("user", {}), tokens
-    except Exception as e:
-        print(f"[PHONE LOGIN ERROR] {e}")
-    return False, {}, None
-
-
-async def _login_by_email(email: str, password: str) -> tuple[bool, dict, Optional[dict]]:
-    """Login by email+password."""
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(
-                EMAIL_LOGIN_URL,
-                json={"email": email, "password": password},
-            )
-            if response.status_code == 200:
-                data = response.json()
-                tokens = {
-                    "access_token": data.get("access_token"),
-                    "refresh_token": data.get("refresh_token"),
-                }
-                return True, data.get("user", {}), tokens
-    except Exception as e:
-        print(f"[EMAIL LOGIN ERROR] {e}")
-    return False, {}, None
-
+# API URL
+REGISTER_INIT_URL = f"{settings.API_BASE_URL}/api/auth/register"
 
 async def _register_user(
-    telegram_id: int, name: str, email: str, password: str, phone: str = "",
+    telegram_id: int, 
+    name: str, 
+    email: str, 
+    password: str, 
+    phone: str = "",
+    level: str = "",
+    lang: str = "uz",
 ) -> tuple[Optional[dict], dict]:
     """Register new user via backend API."""
     try:
@@ -400,6 +242,8 @@ async def _register_user(
             "email": email,
             "password": password,
             "phone": phone,
+            "level": level,
+            "language": lang,
         }
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
@@ -419,69 +263,31 @@ async def _register_user(
     return None, {}
 
 
-async def _do_login(message: types.Message, state: FSMContext, user_info: dict, phone: str, tokens: Optional[dict] = None):
-    """Complete login and show registered menu."""
-    user_data = await state.get_data()
-    lang = user_data.get("lang", "uz")
+async def register_user_in_db(
+    telegram_id: int,
+    name: str,
+    phone: str,
+    level: str,
+    lang: str = "uz"
+) -> bool:
+    """
+    Handler tomonidan ishlatiladigan helper funksiya.
+    Email/Parol telegram foydalanuvchisidan so'ralmagani sababli avtomatik generatsiya qilinadi.
+    Muvaffaqiyatli o'tsa True, aks holda False qaytaradi.
+    """
+    # Backend email va password talab qilsa, zaxira qiymatlar yaratiladi:
+    email = f"user_{telegram_id}@myestro.local"
+    password = f"tg_pass_{telegram_id}"
 
-    update_data = {
-        "registration_complete": True,
-        "user_id": user_info.get("id"),
-        "full_name": user_info.get("full_name", ""),
-        "email": user_info.get("email", ""),
-        "phone": user_info.get("phone", phone),
-    }
-    if tokens:
-        update_data["access_token"] = tokens.get("access_token")
-        update_data["refresh_token"] = tokens.get("refresh_token")
-
-    await state.set_state(RegisteredSection.main_menu)
-    await state.update_data(**update_data)
-    await message.answer(
-        get_text("login.success", lang, name=user_info.get("full_name", "")),
-        reply_markup=remove_keyboard,
+    tokens, user_info = await _register_user(
+        telegram_id=telegram_id,
+        name=name,
+        email=email,
+        password=password,
+        phone=phone,
+        level=level,
+        lang=lang,
     )
-    await message.answer(
-        get_text("registered.welcome_new", lang, name=user_info.get("full_name", "")),
-        reply_markup=registered_menu_kb(lang),
-    )
-    
-    # Phase 2: Show channel join message
-    if settings.CHANNEL_ID and settings.CHANNEL_USERNAME:
-        await message.answer(
-            f"📢 <b>Yangiliklarga a'zo bo'lish</b>\n\n"
-            f"Barcha darslik yangiliklarini, taklif va eksklyuziv ta'limlarga faqat kanalda chiqadi!\n\n"
-            f"🔗 <a href='https://t.me/{settings.CHANNEL_USERNAME}'>Kanalga a'zo bo'lish</a>"
-        )
 
-
-def _get_lang(data: dict) -> str:
-    return data.get("lang", "uz")
-
-
-def _parse_phone(text: str) -> Optional[str]:
-    """Parse phone number from text. Returns normalized phone or None."""
-    text = text.strip()
-    # Preserve leading + if present
-    has_plus = text.startswith('+')
-    digits = re.sub(r'\D', '', text)
-    # Check if it looks like a phone number (at least 9 digits)
-    if len(digits) >= 9:
-        if has_plus or digits.startswith('998'):
-            # Already has country code or is Uzbekistan
-            if not digits.startswith('+'):
-                digits = '+' + digits
-        else:
-            # Assume Uzbek number without country code
-            digits = '+998' + digits
-        return digits
-    return None
-
-
-def _parse_email(text: str) -> Optional[str]:
-    """Parse email from text."""
-    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    if re.match(email_pattern, text):
-        return text
-    return None
-
+    # Agar tokenlar qaytgan bo'lsa ro'yxatdan o'tish muvaffaqiyatli hisoblanadi
+    return tokens is not None

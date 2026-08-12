@@ -24,7 +24,6 @@ async def global_error_handler(event: ErrorEvent, state: FSMContext = None):
         traceback.format_exc(),
     )
 
-    # Try to get user info
     user_id = None
     chat_id = None
     lang = "uz"

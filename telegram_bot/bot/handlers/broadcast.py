@@ -59,28 +59,28 @@ async def broadcast_listener(bot: Bot):
                             await bot.send_message(
                                 chat_id=user_id,
                                 text=message,
-                                parse_mode="HTML"
+                                parse_mode="MarkdownV2"
                             )
                         elif media_type == "photo":
                             await bot.send_photo(
                                 chat_id=user_id,
                                 photo=media_url,
                                 caption=message,
-                                parse_mode="HTML"
+                                parse_mode="MarkdownV2"
                             )
                         elif media_type == "video":
                             await bot.send_video(
                                 chat_id=user_id,
                                 video=media_url,
                                 caption=message,
-                                parse_mode="HTML"
+                                parse_mode="MarkdownV2"
                             )
                         elif media_type == "document":
                             await bot.send_document(
                                 chat_id=user_id,
                                 document=media_url,
                                 caption=message,
-                                parse_mode="HTML"
+                                parse_mode="MarkdownV2"
                             )
                         
                         sent_count += 1

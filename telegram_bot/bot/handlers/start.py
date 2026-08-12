@@ -6,13 +6,12 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from backend.app.models.user import User
+from app.models.user import User
 from bot.keyboards.reply import (
     main_menu,
     registered_menu_kb
 )
 from bot.utils.i18n import get_text
-from bot.utils.helpers import get_async_db
 
 router = Router()
 
@@ -29,7 +28,7 @@ async def start_handler(
     Flow:
     1. Clear FSM state
     2. Check database:
-       - If registered: show registered_menu_keyboard
+       - If registered: show registered_menu_kb
        - If unregistered: show main_menu_keyboard + welcome
     """
     
@@ -67,18 +66,17 @@ async def start_handler(
         # Get registered menu keyboard
         keyboard = registered_menu_kb(lang=user_lang)
         
-        # Send response
+        # Send response without MarkdownV2 to avoid parsing errors
         await message.answer(
             welcome_text,
-            parse_mode="MarkdownV2",
             reply_markup=keyboard
         )
     else:
         # ❌ UNREGISTERED USER
         welcome_text = (
-            "👋 *Assalomu alaykum! Myestro AI yordamchiga xush kelibsiz!*\n\n"
-            "Myestro — bu ingliz tilini o'rganish uchun AI-powered bepul platforma.\n"
-            "AI Teacher bilan suhbatlashing, imtihon topshiring va bilimingizni oshiring!\n\n"
+            "👋 *Assalomu alaykum\\! Myestro AI yordamchiga xush kelibsiz\\!*\n\n"
+            "Myestro — bu ingliz tilini o'rganish uchun AI\\-powered bepul platforma\\.\n"
+            "AI Teacher bilan suhbatlashing, imtihon topshiring va bilimingizni oshiring\\!\n\n"
             "🇺🇿 Iltimos, tilni tanlang:\n"
             "🇷🇺 Пожалуйста, выберите язык:\n"
             "🇬🇧 Please choose a language:"
@@ -87,9 +85,8 @@ async def start_handler(
         # Get main menu keyboard
         keyboard = main_menu(lang="uz")  # Default
         
-        # Send response
+        # Send response without MarkdownV2 for unregistered user
         await message.answer(
             welcome_text,
-            parse_mode="MarkdownV2",
             reply_markup=keyboard
         )

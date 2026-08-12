@@ -38,7 +38,7 @@ async def cmd_start_ai(message: types.Message, state: FSMContext):
     await message.answer(
         f"{get_text('ai.welcome', lang)}\n\n"
         "💬 Menga savollaringizni yo'llang, men sizga javob beraman.",
-        parse_mode="HTML"
+        parse_mode="MarkdownV2"
     )
 
 

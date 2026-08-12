@@ -11,5 +11,5 @@ async def handle_voice(message: types.Message):
     await message.answer(
         "❌ <b>Afsuski, faqat matn xabarlarni qabul qila olaman.</b>\n\n"
         "Iltimos, matnli formatda yozing yoki ↩️ <b>Orqaga</b> bosing.",
-        parse_mode="HTML",
+        parse_mode="MarkdownV2",
     )

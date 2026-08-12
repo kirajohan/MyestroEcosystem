@@ -78,9 +78,9 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
     builder.adjust(1)
 
     if from_callback:
-        await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+        await message.answer(text, reply_markup=builder.as_markup(), parse_mode="MarkdownV2")
     else:
-        await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+        await message.answer(text, reply_markup=builder.as_markup(), parse_mode="MarkdownV2")
 
 
 @router.callback_query(F.data == "menu_profile")
@@ -173,7 +173,7 @@ async def profile_edit_field(callback: types.CallbackQuery, state: FSMContext):
 
     # For CEFR, show inline keyboard
     if field == "cefr":
-        from bot.keyboards.inline import cefr_level_selection
+        from bot.keyboards.inline  import cefr_level_selection
         await callback.message.edit_text(prompt, reply_markup=cefr_level_selection())
     else:
         await callback.message.edit_text(prompt)

@@ -109,12 +109,8 @@ async def _stream_answer(
         # Exclude states where AI should NOT respond
         StartSection.language_selection,
         StartSection.main_menu,
-        RegistrationFSM.phone_request,
-        RegistrationFSM.phone_verified,
         RegistrationFSM.waiting_name,
-        RegistrationFSM.waiting_birthdate,
         RegistrationFSM.waiting_level,
-        RegistrationFSM.confirmation,
         AuthFSM.requesting_contact,
         AuthFSM.waiting_password,
         AuthFSM.waiting_name,

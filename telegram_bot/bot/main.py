@@ -12,7 +12,7 @@ if _app_root not in sys.path:
 if _telegram_bot_root not in sys.path:
     sys.path.insert(0, _telegram_bot_root)
 
-from bot.handlers import academy, admin, ai_agent, ai_chat, contact, document, errors, menu, photo, profile, referral, register, registration, reminders, start, sticker, video, broadcast, inbox
+from bot.handlers import academy, admin, ai_agent, ai_chat, contact, document, errors, menu, photo, profile, referral, register, reminders, start, sticker, video, broadcast, inbox
 
 from aiogram import Bot, Dispatcher , Router
 from aiogram.client.default import DefaultBotProperties
@@ -26,6 +26,7 @@ from bot.handlers import (
 from bot.middlewares.ai_guard import AIGuardMiddleware
 from bot.middlewares.channel_check import ChannelCheckMiddleware
 from bot.middlewares.bot_guard import BotGuardMiddleware
+from bot.middlewares.db_session import DbSessionMiddleware
 from bot.utils.ai_client import shutdown_ai_client
 from bot.services.ai_service import ai_service
 from bot.services.broadcast_worker import BroadcastWorker
@@ -78,7 +79,8 @@ async def main():
     # Set admin IDs (from env or hardcoded for testing)
     bot.admin_ids = []
 
-    dp = Dispatcher(storage=storage)
+    # Register session middleware first (before any handlers, so session is available)
+    dp.update.middleware(DbSessionMiddleware())
 
     dp.include_router(errors.router)
     dp.include_router(start.router)
@@ -88,7 +90,6 @@ async def main():
     dp.include_router(menu.router)
     dp.include_router(ai_chat.router)
     dp.include_router(ai_agent.router)
-    dp.include_router(registration.router)
     dp.include_router(inbox.router)
     dp.include_router(voice.router)
     dp.include_router(reminders.router)

@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     BOT_TOKEN: str = ""
     TELEGRAM_CONTENT_BASE: str = ""  # e.g. -1001234567890
 
+    # Channel (for inbox subscription check)
+    CHANNEL_ID: str = ""  # e.g. -1001234567890
+    CHANNEL_USERNAME: str = ""  # e.g. testmyestro
+    CHANNEL_URL: str = ""  # e.g. https://t.me/testmyestro
+
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:3002,http://localhost:8002"
 

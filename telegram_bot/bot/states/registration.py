@@ -26,14 +26,10 @@ class StartSection(StatesGroup):
 
 
 class RegistrationFSM(StatesGroup):
-    """Eski Registration FSM (backward compatibility)."""
-    phone_request = State()            # Telefon raqam so'rash
-    phone_verified = State()           # DB tekshirildi
-    waiting_name = State()             # Ism-Familiya kiritish
-    waiting_birthdate = State()        # Tug'ilgan kun (optional)
-    waiting_level = State()            # CEFR level tanlash
-    confirmation = State()             # Tasdiqlash
-
+    waiting_phone = State()        # Telefon kontaktini kutish
+    waiting_name = State()         # Ism kutish
+    waiting_level = State()        # Ingliz tili darajasini kutish
+    waiting_confirmation = State() #
 
 class AuthFSM(StatesGroup):
     """Bitta Auth FSM — Register/Login bitta oqim."""

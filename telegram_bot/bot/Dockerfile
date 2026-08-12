@@ -15,12 +15,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy shared module from telegram_bot root
 COPY shared/ ./shared/
 
+# Copy entire backend directory
+COPY backend/ ./backend/
+
 # Copy bot directory contents (everything from bot/) to /app/bot/
 COPY bot/ ./bot/
 
-# Copy knowledge_base if it exists (it's inside bot/)
-# Already included above, but being explicit
-# COPY bot/knowledge_base/ ./knowledge_base/
+# Set PYTHONPATH to include both backend and current directory
+ENV PYTHONPATH=/app:/app/backend
 
 # Run bot
 CMD ["python", "-m", "bot.main"]

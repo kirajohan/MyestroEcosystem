@@ -16,7 +16,7 @@ from app.core.exceptions import UnauthorizedException, ConflictException
 from app.schemas.phone import normalize_phone
 import redis as redis_lib
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 def get_redis() -> Redis:

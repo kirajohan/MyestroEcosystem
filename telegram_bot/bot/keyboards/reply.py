@@ -212,21 +212,21 @@ def main_menu(lang: str = "uz") -> ReplyKeyboardMarkup:
     """Main menu for NOT_REGISTERED users."""
     texts = {
         "uz": {
-            "start": "📝 Register/Login",
+            "start": "📝 Register",
             "language": "🌐 Til/Language",
             "about": "ℹ️ Biz haqimizda",
             "guide": "📖 Qo'llanma",
             "admin": "📨 Admin ga xabar",
         },
         "ru": {
-            "start": "📝 Регистрация/Вход",
+            "start": "📝 Регистрация",
             "language": "🌐 Язык",
             "about": "ℹ️ О нас",
             "guide": "📖 Руководство",
             "admin": "📨 Написать админу",
         },
         "en": {
-            "start": "📝 Register/Login",
+            "start": "📝 Register",
             "language": "🌐 Language",
             "about": "ℹ️ About us",
             "guide": "📖 Guide",
@@ -251,6 +251,10 @@ def main_menu(lang: str = "uz") -> ReplyKeyboardMarkup:
     )
     builder.adjust(2, 1)
     return builder.as_markup(resize_keyboard=True)
+
+
+# Alias for import in register.py
+main_menu_kb = main_menu
 
 
 # ─── ADMIN CONTACT ──────────────────────────────────────────

@@ -159,7 +159,7 @@ class BroadcastWorker:
 
         try:
             if message_type == "text" or not media_url:
-                await self.bot.send_message(chat_id=user_id, text=text, parse_mode="HTML")
+                await self.bot.send_message(chat_id=user_id, text=text, parse_mode="MarkdownV2")
                 return True
 
             # Keshda file_id bo'lsa o'shani, bo'lmasa to'g'ridan-to'g'ri public URL'ni ishlatamiz.
@@ -167,20 +167,20 @@ class BroadcastWorker:
             media_source = self._media_cache.get(cache_key, media_url)
 
             if message_type == "photo":
-                msg = await self.bot.send_photo(chat_id=user_id, photo=media_source, caption=text, parse_mode="HTML")
+                msg = await self.bot.send_photo(chat_id=user_id, photo=media_source, caption=text, parse_mode="MarkdownV2")
                 if cache_key not in self._media_cache and msg.photo:
                     self._media_cache[cache_key] = msg.photo[-1].file_id
             elif message_type == "video":
-                msg = await self.bot.send_video(chat_id=user_id, video=media_source, caption=text, parse_mode="HTML")
+                msg = await self.bot.send_video(chat_id=user_id, video=media_source, caption=text, parse_mode="MarkdownV2")
                 if cache_key not in self._media_cache and msg.video:
                     self._media_cache[cache_key] = msg.video.file_id
             elif message_type == "document":
-                msg = await self.bot.send_document(chat_id=user_id, document=media_source, caption=text, parse_mode="HTML")
+                msg = await self.bot.send_document(chat_id=user_id, document=media_source, caption=text, parse_mode="MarkdownV2")
                 if cache_key not in self._media_cache and msg.document:
                     self._media_cache[cache_key] = msg.document.file_id
             else:
                 logger.warning("Noma'lum message_type: %s, matn sifatida yuborildi", message_type)
-                await self.bot.send_message(chat_id=user_id, text=text, parse_mode="HTML")
+                await self.bot.send_message(chat_id=user_id, text=text, parse_mode="MarkdownV2")
             return True
 
         except TelegramForbiddenError:

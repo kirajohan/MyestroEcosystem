@@ -66,7 +66,7 @@ def guide_kb(lang: str = "uz") -> InlineKeyboardMarkup:
 
 # ─── CEFR LEVEL SELECTION ────────────────────────────────────
 
-def cefr_level_selection() -> InlineKeyboardMarkup:
+def cefr_level_selection(lang: str = "uz") -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     levels = ["A0", "A1", "A2", "B1", "B2", "C1", "C2"]
     for level in levels:
@@ -253,4 +253,3 @@ def register_login_kb(lang: str = "uz") -> InlineKeyboardMarkup:
     builder.button(text=t["email"], callback_data="login_email")
     builder.adjust(1)
     return builder.as_markup()
-

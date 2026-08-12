@@ -81,12 +81,12 @@ class ChannelCheckMiddleware(BaseMiddleware):
                 f"❌ <b>Kanalga a'zo bo'lishingiz kerak!</b>\n\n"
                 f"🔗 <a href='https://t.me/{settings.CHANNEL_USERNAME}'>Kanalga a'zo bo'lish</a>\n\n"
                 "A'zo bo'lganidan keyin yana urinib ko'ring.",
-                parse_mode="HTML"
+                parse_mode="MarkdownV2"
             )
         elif isinstance(event, CallbackQuery):
             await event.answer(
                 f"❌ Kanalga a'zo bo'lishingiz kerak: https://t.me/{settings.CHANNEL_USERNAME}",
-                parse_mode="HTML",
+                parse_mode="MarkdownV2",
                 show_alert=True
             )
 
