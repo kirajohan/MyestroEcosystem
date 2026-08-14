@@ -25,17 +25,36 @@ def authenticate_user(db: DBSession, email: str, password: str) -> User:
 
 
 def authenticate_admin(db: DBSession, email: str, password: str) -> dict:
-    from app.core.security import create_access_token
+    from app.core.security import create_access_token, hash_password
+    
     user = db.query(User).filter(User.email == email, User.is_active == True).first()
     if not user or not user.password_hash:
         raise UnauthorizedException("Invalid email or password")
-    if not verify_password(password, user.password_hash):
-        raise UnauthorizedException("Invalid email or password")
+
+    # --- УМНАЯ ПРОВЕРКА И АВТО-ИСПРАВЛЕНИЕ ПАРОЛЕЙ ---
+    # Хэши bcrypt всегда начинаются с $ (например, $2b$12$...)
+    if not user.password_hash.startswith("$"):
+        # Если пароль в базе не начинается с $, значит это обычный текст
+        if user.password_hash == password:
+            # Пароль верный! Хэшируем его и сохраняем, чтобы починить базу навсегда
+            user.password_hash = hash_password(password)
+            db.commit()
+            db.refresh(user)
+        else:
+            raise UnauthorizedException("Invalid email or password")
+    else:
+        # Если в базе нормальный хэш, проверяем стандартным способом
+        if not verify_password(password, user.password_hash):
+            raise UnauthorizedException("Invalid email or password")
+    # -------------------------------------------------
+
     if user.role not in ["admin", "superadmin"]:
         raise ForbiddenException("Admin access required")
+
     # Generate JWT access token for admin panel
     access_token = create_access_token(user.id, user.email, user.role)
     return {"user": user, "access_token": access_token}
+
 
 
 def register_user(db: DBSession, user_data: dict) -> User:
@@ -62,7 +81,6 @@ def register_user(db: DBSession, user_data: dict) -> User:
     existing_email = db.query(User).filter(User.email == email).first()
     if existing_email:
         raise ConflictException("Email already registered")
-
     if phone:
         existing_phone = db.query(User).filter(User.phone == phone).first()
         if existing_phone:

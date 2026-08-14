@@ -38,7 +38,7 @@ async def cmd_start_ai(message: types.Message, state: FSMContext):
     await message.answer(
         f"{get_text('ai.welcome', lang)}\n\n"
         "💬 Menga savollaringizni yo'llang, men sizga javob beraman.",
-        parse_mode="MarkdownV2"
+        parse_mode="HTML"
     )
 
 
@@ -91,19 +91,24 @@ async def handle_ai_message_with_memory(message: Message, state: FSMContext):
             tokens = response_data.tokens_used
             time_ms = response_data.processing_time_ms
         
+        # ✅ YANGI: Header qo'shish (emoji + bold name)
+        header = f"🤖 <b>Myestro AI</b>\n\n"
+        
         # Add footer with metadata
-        footer = f"\n\n_Model: {model_used} | Time: {time_ms}ms_"
+        footer = f"\n\n<i>Model: {model_used} | Time: {time_ms}ms</i>"
+        
+        # ✅ TUZATILDI: Header + response + footer
+        full_response = header + response_text + footer
         
         # Send response (chunk if too long)
-        full_response = response_text + footer
         if len(full_response) > 4096:
             # Split into chunks of 4000 chars
             chunks = [full_response[i:i+4000] for i in range(0, len(full_response), 4000)]
             for chunk in chunks:
-                await message.answer(chunk, parse_mode="Markdown")
+                await message.answer(chunk, parse_mode="HTML")
                 await asyncio.sleep(0.5)  # Rate limiting
         else:
-            await message.answer(full_response, parse_mode="Markdown")
+            await message.answer(full_response, parse_mode="HTML")
         
         logger.info(f"Response sent to user {user_id}")
         

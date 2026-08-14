@@ -5,6 +5,7 @@ from aiogram import Router, types
 from aiogram.types import ErrorEvent
 from aiogram.fsm.context import FSMContext
 from bot.utils.i18n import get_text
+from bot.utils.markdown import escape_md
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ async def global_error_handler(event: ErrorEvent, state: FSMContext = None):
             if bot:
                 await bot.send_message(
                     chat_id=chat_id,
-                    text=error_message,
+                    text=escape_md(error_message),
                 )
         except Exception:
             logger.exception("Failed to send error message to user")

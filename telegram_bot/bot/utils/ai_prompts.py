@@ -53,26 +53,38 @@ LANGUAGE_MATCH_RULE = (
     "Exception: short English example phrases/words being taught or corrected "
     "may stay in English even if the surrounding explanation is in another language."
 )
-
 TELEGRAM_HTML_FORMAT_RULE = (
-    "\n\n=== OUTPUT FORMAT (STRICT) ===\n"
-    "Your response will be sent to Telegram with parse_mode=HTML. "
-    "Format your reply using ONLY these Telegram-supported HTML tags: "
-    "<b>bold</b>, <i>italic</i>, <u>underline</u>, <s>strikethrough</s>, "
-    "<code>inline code</code>, <pre>code block</pre>, "
-    "<a href=\"URL\">link</a>, <blockquote>quote</blockquote>. "
-    "Do NOT use Markdown syntax (no **, no __, no ``` fences, no # headers). "
-    "Always properly OPEN and CLOSE every tag you use — never leave a tag unclosed. "
-    "Escape literal '<', '>' and '&' characters that are not part of a tag as "
-    "&lt; &gt; &amp;. "
-    "Use <b> for key vocabulary/rules and <code> for example sentences to make "
-    "the message easy to scan."
+    "\n\n=== TELEGRAM HTML OUTPUT FORMAT (STRICT RULES) ===\n"
+    "Your response WILL BE PARSED AS HTML by the Telegram Bot API (parse_mode=HTML).\n"
+    "Strictly adhere to the following tag usage, formatting, and escaping rules:\n\n"
+
+    "1. ALLOWED HTML TAGS & WHEN TO USE THEM:\n"
+    "   - <b>Bold text</b> : Use for main section titles, key grammar concepts, rule names, and primary focus words.\n"
+    "   - <i>Italic text</i> : Use for native language translations (e.g. Uzbek), pronunciations, subtle emphasis, and sub-notes.\n"
+    "   - <code>Inline code</code> : Use for target-language vocabulary, isolated single words, short phrases, commands, or key variables.\n"
+    "   - <pre><code class=\"language-python\">Code block</code></pre> : Use for multi-line example sentences, structured dialogues, table-like text, or code snippets.\n"
+    "   - <blockquote>Quote block</blockquote> : Use for any english sentences , grammar rules, warning notes, key takeaways, or callout tips.\n"
+    "   - <blockquote expandable>Collapsible quote</blockquote> : Use for detailed background explanations, secondary reference material, or long notes that can be collapsed.\n"
+    "   - <tg-spoiler>Spoiler text</tg-spoiler> : Use for quiz answers, test keys, hidden hints, or exercise solutions.\n"
+    "   - <u>Underline</u> : Use for highlighting specific target parts in a sentence or key exceptions.\n"
+    "   - <s>Strikethrough</s> : Use for INCORRECT grammar examples or common mistakes to avoid.\n"
+    "   - <a href=\"URL\">Link text</a> : Use ONLY for valid web links.\n\n"
+
+    "2. STRICT SYNTAX & ESCAPING RULES (CRITICAL):\n"
+    "   - NO MARKDOWN AT ALL: Never use Markdown formatting like **, __, #, *, ```, or [text](url). Use ONLY HTML tags.\n"
+    "   - CHARACTER ESCAPING: Always escape literal '<', '>', and '&' characters as &lt;, &gt;, and &amp; (unless they are part of a valid HTML tag).\n"
+    "   - PROPER TAG CLOSING & NESTING: Always open and close every tag properly. Tags must be nested strictly in order (e.g. <b><i>correct</i></b>, NOT <b><i>wrong</b></i>).\n"
+    "   - NO UNSUPPORTED TAGS: Do NOT use unsupported HTML tags like <div>, <span> (except tg-spoiler), <p>, <br>, <h1>-<h6>, <ul>, <li>. Use double line breaks for paragraph spacing.\n\n"
+
+    "3. VISUAL LAYOUT & READABILITY:\n"
+    "   - Use emojis (e.g. 📌, 💡, 📝, 🎯, ❌, ✅ ...) as bullet points instead of list tags.\n"
+    "   - Maintain clear line breaks between sections to ensure high readability on mobile screens."
 )
 
 LENGTH_RULE = (
     "\n\n=== LENGTH RULE (STRICT) ===\n"
-    "Keep your entire reply between 100 and 200 words. "
-    "Never go below 100 or above 200 words."
+    "Keep your entire reply between 100 and 1500 words. "
+    "Never go below 100 or above 1500 words."
 )
 
 

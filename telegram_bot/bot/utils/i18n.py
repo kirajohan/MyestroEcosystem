@@ -193,6 +193,52 @@ TRANSLATIONS = {
             "❌ <b>Parollar mos kelmaydi</b>\n\n"
             "Iltimos, bir xil parolni ikki marta kiriting."
         ),
+        "register.ask_level": (
+            "📚 <b>Ingliz tili darajangizni tanlang</b>:\n\n"
+            "Quyidagi tugmalardan birini tanlang yoki darajani yozing "
+            "(masalan: <code>B2</code>)."
+        ),
+        "register.invalid_name": (
+            "❌ <b>Noto'g'ri ism</b>\n\n"
+            "Iltimos, ism-familiyangizni 2 dan 100 tagacha belgida kiriting."
+        ),
+        "register.invalid_level": (
+            "❌ <b>Noto'g'ri daraja</b>\n\n"
+            "Iltimos, quyidagilardan birini tanlang yoki yozing: "
+            "<code>A0, A1, A2, B1, B2, C1, C2</code>"
+        ),
+        "register.confirm_info": (
+            "📋 <b>Ma'lumotlaringizni tasdiqlang:</b>\n\n"
+            "👤 <b>Ism:</b> {name}\n"
+            "📞 <b>Telefon:</b> {phone}\n"
+            "📊 <b>Daraja:</b> {level}\n\n"
+            "Agar ma'lumotlar to'g'ri bo'lsa, <b>«✅ Ha»</b> tugmasini bosing."
+        ),
+        "register.already_registered": (
+            "✅ <b>Siz allaqachon ro'yxatdan o'tgansiz!</b>\n\n"
+            "Asosiy menyudan foydalanishda davom eting."
+        ),
+        "register.cancelled": (
+            "🚫 <b>Ro'yxatdan o'tish bekor qilindi.</b>\n\n"
+            "Quyidagi menyulardan birini tanlang."
+        ),
+        "register.must_use_contact_button": (
+            "⚠️ <b>Telefon raqamingizni ulashish uchun quyidagi tugmadan foydalaning:</b>\n\n"
+            "«📱 Raqam yuborish» tugmasini bosing."
+        ),
+        "register.not_your_contact": (
+            "⚠️ <b>Bu sizning raqamingiz emas!</b>\n\n"
+            "Iltimos, o'z telefon raqamingizni yuboring "
+            "yoki «⬅️ Orqaga» tugmasini bosing."
+        ),
+        "register.success_welcome": (
+            "🎉 <b>Tabriklaymiz! Siz muvaffaqiyatli ro'yxatdan o'tdingiz!</b>\n\n"
+            "Endi barcha funksiyalardan foydalanishingiz mumkin.\n"
+            "👇 <b>Asosiy menyu:</b>"
+        ),
+        "register.choose_yes_or_no": (
+            "⚠️ <b>Iltimos, «✅ Ha» yoki «❌ Yo'q» tugmalaridan birini tanlang.</b>"
+        ),
 
         # ═══════════════════════════════════════════════════════════
         #  AUTH (login/register shared)
@@ -747,6 +793,52 @@ TRANSLATIONS = {
             "❌ <b>Пароли не совпадают</b>\n\n"
             "Пожалуйста, введите один и тот же пароль дважды."
         ),
+        "register.ask_level": (
+            "📚 <b>Выберите ваш уровень английского языка</b>:\n\n"
+            "Выберите один из вариантов ниже или введите уровень "
+            "(например: <code>B2</code>)."
+        ),
+        "register.invalid_name": (
+            "❌ <b>Неверное имя</b>\n\n"
+            "Пожалуйста, введите имя и фамилию (от 2 до 100 символов)."
+        ),
+        "register.invalid_level": (
+            "❌ <b>Неверный уровень</b>\n\n"
+            "Пожалуйста, выберите или введите один из уровней: "
+            "<code>A0, A1, A2, B1, B2, C1, C2</code>"
+        ),
+        "register.confirm_info": (
+            "📋 <b>Подтвердите ваши данные:</b>\n\n"
+            "👤 <b>Имя:</b> {name}\n"
+            "📞 <b>Телефон:</b> {phone}\n"
+            "📊 <b>Уровень:</b> {level}\n\n"
+            "Если данные верны, нажмите <b>«✅ Да»</b>."
+        ),
+        "register.already_registered": (
+            "✅ <b>Вы уже зарегистрированы!</b>\n\n"
+            "Продолжайте использовать главное меню."
+        ),
+        "register.cancelled": (
+            "🚫 <b>Регистрация отменена.</b>\n\n"
+            "Выберите один из пунктов меню ниже."
+        ),
+        "register.must_use_contact_button": (
+            "⚠️ <b>Чтобы поделиться номером, воспользуйтесь кнопкой ниже:</b>\n\n"
+            "Нажмите <b>«📱 Отправить номер»</b>."
+        ),
+        "register.not_your_contact": (
+            "⚠️ <b>Это не ваш номер!</b>\n\n"
+            "Пожалуйста, отправьте свой номер телефона "
+            "или нажмите <b>«⬅️ Назад»</b>."
+        ),
+        "register.success_welcome": (
+            "🎉 <b>Поздравляем! Вы успешно зарегистрировались!</b>\n\n"
+            "Теперь вам доступны все функции.\n"
+            "👇 <b>Главное меню:</b>"
+        ),
+        "register.choose_yes_or_no": (
+            "⚠️ <b>Пожалуйста, выберите «✅ Да» или «❌ Нет».</b>"
+        ),
 
         # ═══════════════════════════════════════════════════════════
         #  AUTH (login/register shared)
@@ -1296,6 +1388,52 @@ TRANSLATIONS = {
         "register.password_mismatch": (
             "❌ <b>Passwords do not match</b>\n\n"
             "Please enter the same password twice."
+        ),
+        "register.ask_level": (
+            "📚 <b>Select your English level</b>:\n\n"
+            "Choose one of the options below or type your level "
+            "(e.g.: <code>B2</code>)."
+        ),
+        "register.invalid_name": (
+            "❌ <b>Invalid name</b>\n\n"
+            "Please enter your full name (2 to 100 characters)."
+        ),
+        "register.invalid_level": (
+            "❌ <b>Invalid level</b>\n\n"
+            "Please select or type one of the levels: "
+            "<code>A0, A1, A2, B1, B2, C1, C2</code>"
+        ),
+        "register.confirm_info": (
+            "📋 <b>Confirm your details:</b>\n\n"
+            "👤 <b>Name:</b> {name}\n"
+            "📞 <b>Phone:</b> {phone}\n"
+            "📊 <b>Level:</b> {level}\n\n"
+            "If everything is correct, press <b>«✅ Yes»</b>."
+        ),
+        "register.already_registered": (
+            "✅ <b>You are already registered!</b>\n\n"
+            "Continue using the main menu."
+        ),
+        "register.cancelled": (
+            "🚫 <b>Registration cancelled.</b>\n\n"
+            "Choose one of the menu options below."
+        ),
+        "register.must_use_contact_button": (
+            "⚠️ <b>To share your number, use the button below:</b>\n\n"
+            "Press <b>«📱 Send number»</b>."
+        ),
+        "register.not_your_contact": (
+            "⚠️ <b>This is not your number!</b>\n\n"
+            "Please send your own phone number "
+            "or press <b>«⬅️ Back»</b>."
+        ),
+        "register.success_welcome": (
+            "🎉 <b>Congratulations! You have successfully registered!</b>\n\n"
+            "All features are now available to you.\n"
+            "👇 <b>Main Menu:</b>"
+        ),
+        "register.choose_yes_or_no": (
+            "⚠️ <b>Please choose «✅ Yes» or «❌ No».</b>"
         ),
 
         # ═══════════════════════════════════════════════════════════

@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const backendResp = await fetch(`${API_BASE_URL}/auth/admin-login`, {
+    const backendResp = await fetch(`${API_BASE_URL}/api/auth/admin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),

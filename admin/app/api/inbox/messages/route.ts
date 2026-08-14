@@ -7,18 +7,24 @@ const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
+    const is_read = searchParams.get('is_read');
     const limit = searchParams.get('limit') || '50';
     const offset = searchParams.get('offset') || '0';
 
-    let url = `${API_BASE_URL}/inbox/messages?limit=${limit}&offset=${offset}`;
-    if (status) {
-      url += `&status=${status}`;
+    let url = `${API_BASE_URL}/admin-messages?limit=${limit}&offset=${offset}`;
+    if (is_read) {
+      url += `&is_read=${is_read}`;
     }
+
+    // Forward the Authorization header from the incoming request
+    const authHeader = request.headers.get('authorization');
 
     const backendResp = await fetch(url, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
     });
 
     if (!backendResp.ok) {

@@ -8,62 +8,41 @@ import toast from 'react-hot-toast';
 
 // Icons (lucide-react)
 import { MessageCircle, Send, Trash2, Archive, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 interface Message {
   id: number;
-  user_id: number;
-  user_name: string;
-  subject: string;
-  user_message: string;
-  admin_reply: string | null;
-  status: 'new' | 'read' | 'replied' | 'closed';
+  user_id: number | null;
+  user_telegram_id: number | null;
+  user_name: string | null;
+  content_type: string;
+  text: string | null;
+  file_id: string | null;
   is_read: boolean;
+  is_replied: boolean;
+  admin_reply: string | null;
   created_at: string;
-  updated_at: string;
-}
-
-interface HistoryItem {
-  id: number;
-  sender_id: number;
-  sender_name: string;
-  message_text: string;
-  message_type: 'user_message' | 'admin_reply';
-  created_at: string;
-}
-
-interface MessageThread {
-  message: Message;
-  history: HistoryItem[];
 }
 
 export default function InboxPage() {
   const [selectedMessage, setSelectedMessage] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
-  const [filter, setFilter] = useState<'all' | 'new' | 'replied' | 'closed'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'replied'>('all');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const { token } = useAuth();
 
   // Fetch inbox messages
   const { data: messages = [], isLoading: isLoadingMessages, refetch } = useQuery({
     queryKey: ['inbox-messages', filter],
     queryFn: async () => {
-      const url = `/api/inbox/messages${filter !== 'all' ? `?status=${filter}` : ''}`;
-      const res = await fetch(url);
+      const url = `/api/inbox/messages${filter !== 'all' ? `?is_read=${filter === 'unread' ? 'false' : 'true'}` : ''}`;
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) throw new Error('Failed to fetch messages');
       return res.json() as Promise<Message[]>;
     },
-  });
-
-  // Fetch selected message thread
-  const { data: thread, isLoading: isLoadingThread } = useQuery({
-    queryKey: ['inbox-thread', selectedMessage],
-    queryFn: async () => {
-      if (!selectedMessage) return null;
-      const res = await fetch(`/api/inbox/messages/${selectedMessage}`);
-      if (!res.ok) throw new Error('Failed to fetch thread');
-      return res.json() as Promise<MessageThread>;
-    },
-    enabled: !!selectedMessage,
   });
 
   // Send reply mutation
@@ -73,7 +52,10 @@ export default function InboxPage() {
 
       const res = await fetch(`/api/inbox/messages/${selectedMessage}/reply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ reply }),
       });
 
@@ -84,10 +66,6 @@ export default function InboxPage() {
       toast.success('✅ Javob yuborildi!');
       setReplyText('');
       refetch(); // Refresh list
-      // Refetch thread to show updated status
-      if (selectedMessage) {
-        queryClient.invalidateQueries({ queryKey: ['inbox-thread', selectedMessage] });
-      }
     },
     onError: () => {
       toast.error('❌ Javob yuborilmadi');
@@ -97,7 +75,10 @@ export default function InboxPage() {
   // Delete message mutation
   const { mutate: deleteMessage } = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/inbox/messages/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/inbox/messages/${id}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) throw new Error('Failed to delete');
       return res.json();
     },
@@ -111,16 +92,14 @@ export default function InboxPage() {
     },
   });
 
-  // Update message status
-  const { mutate: updateStatus } = useMutation({
-    mutationFn: async (status: string) => {
-      if (!selectedMessage) return;
-      const res = await fetch(`/api/inbox/messages/${selectedMessage}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+  // Mark as read mutation
+  const { mutate: markRead } = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/inbox/messages/${id}/read`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!res.ok) throw new Error('Failed to update');
+      if (!res.ok) throw new Error('Failed to mark read');
       return res.json();
     },
     onSuccess: () => {
@@ -131,35 +110,29 @@ export default function InboxPage() {
   // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [thread]);
+  }, [selectedMessage]);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'new':
-        return <AlertCircle className="w-4 h-4 text-red-500" />;
-      case 'read':
-        return <Clock className="w-4 h-4 text-yellow-500" />;
-      case 'replied':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'closed':
-        return <Archive className="w-4 h-4 text-gray-500" />;
-      default:
-        return null;
-    }
+  const getStatusIcon = (msg: Message) => {
+    if (msg.is_replied) return <CheckCircle className="w-4 h-4 text-green-500" />;
+    if (msg.is_read) return <Clock className="w-4 h-4 text-yellow-500" />;
+    return <AlertCircle className="w-4 h-4 text-red-500" />;
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'new':
-        return 'Yangi';
-      case 'read':
-        return 'Oqildi';
-      case 'replied':
-        return 'Javob Berildi';
-      case 'closed':
-        return 'Yopildi';
-      default:
-        return status;
+  const getStatusLabel = (msg: Message) => {
+    if (msg.is_replied) return 'Javob Berildi';
+    if (msg.is_read) return 'Oqildi';
+    return 'Yangi';
+  };
+
+  const getContentPreview = (msg: Message) => {
+    if (msg.text) return msg.text;
+    switch (msg.content_type) {
+      case 'photo': return '📷 Rasm';
+      case 'voice': return '🎤 Ovozli xabar';
+      case 'document': return '📄 Fayl';
+      case 'video': return '🎬 Video';
+      case 'sticker': return '😀 Stiker';
+      default: return 'Xabar';
     }
   };
 
@@ -175,7 +148,7 @@ export default function InboxPage() {
 
           {/* Filter */}
           <div className="flex gap-2 flex-wrap">
-            {(['all', 'new', 'replied', 'closed'] as const).map((f) => (
+            {(['all', 'unread', 'replied'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -185,7 +158,7 @@ export default function InboxPage() {
                     : 'bg-gray-100 text-gray-700 hover:bg-dark-100'
                 }`}
               >
-                {f === 'all' ? 'Hamma' : getStatusLabel(f)}
+                {f === 'all' ? 'Hamma' : f === 'unread' ? 'Yangi' : 'Javob Berilgan'}
               </button>
             ))}
           </div>
@@ -204,7 +177,10 @@ export default function InboxPage() {
             {messages.map((msg) => (
               <button
                 key={msg.id}
-                onClick={() => setSelectedMessage(msg.id)}
+                onClick={() => {
+                  setSelectedMessage(msg.id);
+                  if (!msg.is_read) markRead(msg.id);
+                }}
                 className={`w-full text-left p-4 hover:bg-dark-100/50 transition ${
                   selectedMessage === msg.id ? 'bg-primary-50 border-l-4 border-primary' : ''
                 }`}
@@ -212,20 +188,17 @@ export default function InboxPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm text-gray-900 truncate">
-                      {msg.user_name}
-                    </div>
-                    <div className="text-xs text-gray-500 truncate">
-                      {msg.subject || 'Mavzusiz'}
+                      {msg.user_name || `User ${msg.user_telegram_id || ''}`}
                     </div>
                     <div className="text-sm text-gray-700 truncate mt-1">
-                      {msg.user_message}
+                      {getContentPreview(msg)}
                     </div>
                     <div className="text-xs text-gray-400 mt-2">
                       {format(new Date(msg.created_at), 'PPp', { locale: uz })}
                     </div>
                   </div>
                   <div className="flex-shrink-0">
-                    {getStatusIcon(msg.status)}
+                    {getStatusIcon(msg)}
                   </div>
                 </div>
 
@@ -240,104 +213,93 @@ export default function InboxPage() {
 
       {/* Message Detail & Reply */}
       <div className="flex-1 flex flex-col bg-white">
-        {selectedMessage && thread ? (
-          <>
-            {/* Header */}
-            <div className="border-b p-4 flex items-center justify-between">
-              <div className="flex-1">
-                <h3 className="text-lg font-bold">{thread.message.user_name}</h3>
-                <p className="text-sm text-gray-500">{thread.message.subject}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 text-sm px-3 py-1 bg-gray-100 rounded">
-                  {getStatusIcon(thread.message.status)}
-                  {getStatusLabel(thread.message.status)}
-                </span>
-                <button
-                  onClick={() => deleteMessage(selectedMessage)}
-                  className="p-2 hover:bg-gray-100 rounded"
-                  title="Ochirish"
-                >
-                  <Trash2 className="w-5 h-5 text-red-500" />
-                </button>
-              </div>
-            </div>
-
-            {/* Chat History */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Initial message */}
-              <div className="bg-gray-100 rounded-lg p-4">
-                <div className="text-xs text-gray-500 mb-2">
-                  {format(new Date(thread.message.created_at), 'PPp', { locale: uz })}
+        {selectedMessage ? (
+          (() => {
+            const msg = messages.find(m => m.id === selectedMessage);
+            if (!msg) return (
+              <div className="flex-1 flex items-center justify-center text-gray-500">
+                <div className="text-center">
+                  <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                  <p>Xabar topilmadi</p>
                 </div>
-                <div className="text-gray-800">{thread.message.user_message}</div>
               </div>
-
-              {/* History */}
-              {thread.history.map((item) => (
-                <div
-                  key={item.id}
-                  className={`rounded-lg p-4 ${
-                    item.message_type === 'user_message'
-                      ? 'bg-gray-100 text-gray-800'
-                      : 'bg-primary-100 text-primary-900'
-                  }`}
-                >
-                  <div className="text-xs text-gray-600 mb-1 font-semibold">
-                    {item.sender_name}
+            );
+            return (
+              <>
+                {/* Header */}
+                <div className="border-b p-4 flex items-center justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold">{msg.user_name || `User ${msg.user_telegram_id || ''}`}</h3>
+                    <p className="text-sm text-gray-500">{getContentPreview(msg)}</p>
                   </div>
-                  <div className="text-xs text-gray-500 mb-2">
-                    {format(new Date(item.created_at), 'PPp', { locale: uz })}
-                  </div>
-                  <div>{item.message_text}</div>
-                </div>
-              ))}
-
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Reply Box */}
-            {thread.message.status !== 'closed' && (
-              <div className="border-t p-4 bg-gray-50">
-                <div className="flex gap-2">
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Javob yozing..."
-                    className="flex-1 p-3 border rounded resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-                    rows={3}
-                    disabled={isSending}
-                  />
-                  <button
-                    onClick={() => sendReply(replyText)}
-                    disabled={!replyText.trim() || isSending}
-                    className="px-4 py-3 bg-primary text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    {isSending ? 'Yuborilmoqda...' : 'Yuborish'}
-                  </button>
-                </div>
-
-                {/* Status Options */}
-                {thread.message.status === 'replied' && (
-                  <div className="mt-3 flex gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 text-sm px-3 py-1 bg-gray-100 rounded">
+                      {getStatusIcon(msg)}
+                      {getStatusLabel(msg)}
+                    </span>
                     <button
-                      onClick={() => updateStatus('closed')}
-                      className="text-sm px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded"
+                      onClick={() => deleteMessage(selectedMessage)}
+                      className="p-2 hover:bg-gray-100 rounded"
+                      title="Ochirish"
                     >
-                      ✓ Yopish
+                      <Trash2 className="w-5 h-5 text-red-500" />
                     </button>
                   </div>
-                )}
-              </div>
-            )}
+                </div>
 
-            {thread.message.status === 'closed' && (
-              <div className="border-t p-4 bg-gray-50 text-center text-gray-500">
-                🔒 Bu xabar yopilgan
-              </div>
-            )}
-          </>
+                {/* Message Content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="bg-gray-100 rounded-lg p-4">
+                    <div className="text-xs text-gray-500 mb-2">
+                      {format(new Date(msg.created_at), 'PPp', { locale: uz })}
+                    </div>
+                    {msg.text ? (
+                      <div className="text-gray-800">{msg.text}</div>
+                    ) : (
+                      <div className="text-gray-500 italic">
+                        {msg.content_type === 'photo' && '📷 Rasm yuborilgan'}
+                        {msg.content_type === 'voice' && '🎤 Ovozli xabar yuborilgan'}
+                        {msg.content_type === 'document' && '📄 Fayl yuborilgan'}
+                        {msg.content_type === 'video' && '🎬 Video yuborilgan'}
+                        {msg.content_type === 'sticker' && '😀 Stiker yuborilgan'}
+                      </div>
+                    )}
+                  </div>
+
+                  {msg.admin_reply && (
+                    <div className="bg-primary-100 text-primary-900 rounded-lg p-4">
+                      <div className="text-xs text-gray-600 mb-1 font-semibold">Admin javobi</div>
+                      <div>{msg.admin_reply}</div>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Reply Box */}
+                <div className="border-t p-4 bg-gray-50">
+                  <div className="flex gap-2">
+                    <textarea
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="Javob yozing..."
+                      className="flex-1 p-3 border rounded resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                      rows={3}
+                      disabled={isSending}
+                    />
+                    <button
+                      onClick={() => sendReply(replyText)}
+                      disabled={!replyText.trim() || isSending}
+                      className="px-4 py-3 bg-primary text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      {isSending ? 'Yuborilmoqda...' : 'Yuborish'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            );
+          })()
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500">
             <div className="text-center">

@@ -93,6 +93,44 @@ class AIMemoryService:
         return count
     
     # ═══════════════════════════════════════════════════════════════════
+    # THREAD MANAGEMENT (FIX: thread_id NULL xatosini oldini olish)
+    # ═══════════════════════════════════════════════════════════════════
+    
+    async def _get_or_create_thread(self, user_id: int) -> ConversationThread:
+        """
+        Get the active conversation thread for a user, or create a new one.
+        This fixes the 'thread_id NULL' database error.
+        """
+        # Try to find an existing active thread
+        stmt = select(ConversationThread).where(
+            and_(
+                ConversationThread.user_id == user_id,
+                ConversationThread.is_active == True
+            )
+        ).order_by(desc(ConversationThread.created_at)).limit(1)
+        
+        result = await self.db.execute(stmt)
+        thread = result.scalar_one_or_none()
+        
+        if thread:
+            logger.debug(f"Using existing thread {thread.id} for user {user_id}")
+            return thread
+        
+        # Create new thread if none exists
+        logger.info(f"Creating new conversation thread for user {user_id}")
+        new_thread = ConversationThread(
+            user_id=user_id,
+            title="AI Chat",
+            is_active=True,
+            cefr_level="A1"
+        )
+        self.db.add(new_thread)
+        await self.db.commit()
+        await self.db.refresh(new_thread)
+        
+        return new_thread
+    
+    # ═══════════════════════════════════════════════════════════════════
     # REDIS CACHE OPERATIONS
     # ═══════════════════════════════════════════════════════════════════
     
@@ -144,11 +182,15 @@ class AIMemoryService:
         try:
             summary_key = self._get_summary_key(session_id)
             summary = await self.redis.get(summary_key)
-            return summary.decode() if summary else None
+            if not summary:
+                return None
+            
+            # ✅ FIX: Agar bytes bo'lsa decode qiladi, agar string bo'lsa to'g'ridan-to'g'ri qaytaradi
+            return summary.decode() if isinstance(summary, bytes) else summary
         except Exception as e:
             logger.error(f"Error retrieving summary from Redis: {e}")
             return None
-    
+        
     # ═══════════════════════════════════════════════════════════════════
     # MESSAGE HISTORY BUILDING
     # ═══════════════════════════════════════════════════════════════════
@@ -158,11 +200,7 @@ class AIMemoryService:
         session_id: UUID,
         limit: int = MAX_MEMORY_MESSAGES
     ) -> List[ChatMessage]:
-        """
-        Get chat history: first check Redis cache, then PostgreSQL.
-        
-        Returns last `limit` messages in chronological order.
-        """
+        """Get chat history: first check Redis cache, then PostgreSQL."""
         
         # 1. Try Redis cache (fast path)
         redis_messages = await self._get_redis_messages(session_id)
@@ -200,14 +238,7 @@ class AIMemoryService:
         system_prompt: Optional[str] = None,
         use_summary: bool = True
     ) -> ChatHistory:
-        """
-        Build full chat context for OpenRouter API.
-        
-        1. Get last 10 messages from history
-        2. Generate summary if > 15 messages exist
-        3. Construct system prompt with summary
-        4. Return ChatHistory ready for API
-        """
+        """Build full chat context for OpenRouter API."""
         
         # Get message count to determine if we need summary
         stmt = select(Message).where(Message.session_id == session_id)
@@ -224,7 +255,7 @@ class AIMemoryService:
             logger.debug(f"Session has {total_message_count} messages, generating summary...")
             summary = await self._generate_or_get_summary(
                 session_id,
-                all_messages_db[-SLIDING_WINDOW_SIZE:]  # Last 12
+                all_messages_db[-SLIDING_WINDOW_SIZE:]
             )
         
         # Build system prompt with summary
@@ -254,7 +285,7 @@ class AIMemoryService:
         
         # Build summary request
         convo_text = "\n".join([
-            f"{m.role}: {m.content[:200]}"  # First 200 chars
+            f"{m.role}: {m.content[:200]}"
             for m in recent_messages
         ])
         
@@ -288,10 +319,10 @@ Conversation:
     def _build_system_prompt(self, summary: Optional[str] = None) -> str:
         """Build system prompt with optional summary."""
         base_prompt = """You are Myestro Teacher, an AI English tutor specializing in:
-- Teaching English from A1 to C2 levels
-- IELTS, TOEFL, CEFR exam preparation
-- Practical conversation and grammar correction
-- Vocabulary and pronunciation improvement
+        - Teaching English from A1 to C2 levels
+        - IELTS, TOEFL, CEFR exam preparation
+        - Practical conversation and grammar correction
+        - Vocabulary and pronunciation improvement
 
 Provide clear, supportive, and educational responses. Correct mistakes gently."""
         
@@ -301,9 +332,8 @@ Provide clear, supportive, and educational responses. Correct mistakes gently.""
         return base_prompt
     
     # ═══════════════════════════════════════════════════════════════════
-    # QUERY & RESPONSE HANDLING
+    # QUERY & RESPONSE HANDLING (BARCHA XATOLAR TUZATILGAN)
     # ═══════════════════════════════════════════════════════════════════
-    
     async def query_with_memory(
         self,
         user_id: int,
@@ -315,22 +345,17 @@ Provide clear, supportive, and educational responses. Correct mistakes gently.""
     ) -> ChatQueryWithMemoryResponse:
         """
         Main method: Query AI with full memory context.
-        
-        Steps:
-        1. Get or create session
-        2. Build context with history
-        3. Query OpenRouter
-        4. Save to Redis + PostgreSQL
-        5. Return response with metadata
         """
-        
         start_time = time.time()
         
         # 1. Get or create session
         session = await self.get_or_create_session(user_id)
         logger.info(f"Using session {session.session_id} for user {user_id}")
         
-        # 2. Build context
+        # 2. Get or create thread (FIX: thread_id NULL xatosini oldini olish)
+        thread = await self._get_or_create_thread(user_id)
+        
+        # 3. Build context
         chat_history = await self.build_context_for_query(
             session.session_id,
             user_message,
@@ -340,40 +365,64 @@ Provide clear, supportive, and educational responses. Correct mistakes gently.""
         context_message_count = len(chat_history.messages)
         logger.debug(f"Built context with {context_message_count} messages")
         
-        # 3. Query AI
-        ai_response = await ask_ai(
-            prompt=user_message,
-            chat_history=chat_history.messages,
-            system_prompt=chat_history.system_prompt,
-            model=model,
-            temperature=temperature,
-            max_tokens=max_tokens
-        )
+        # 🔍 DEBUG: Chat history ni log qilish
+        logger.info(f"=== DEBUG: Chat History ===")
+        logger.info(f"Total messages in history: {len(chat_history.messages)}")
+        for idx, msg in enumerate(chat_history.messages):
+            logger.info(f"Message {idx + 1}: role={msg.role}, content={msg.content[:100]}...")
+        logger.info(f"=== END DEBUG ===")
         
-        processing_time = int((time.time() - start_time) * 1000)  # ms
+        # 4. FIX: Convert Pydantic ChatMessage objects to dicts before sending to AI
+        chat_history_dicts = [
+            {"role": msg.role, "content": msg.content} 
+            for msg in chat_history.messages
+        ]
         
-        # 4. Save messages to storage
+        # 🔍 DEBUG: Dict formatini ham log qilish
+        logger.info(f"Sending to AI: {len(chat_history_dicts)} messages in chat_history")
+        
+        # 5. Query AI (with fixed chat_history format)
+        try:
+            ai_response = await ask_ai(
+                prompt=user_message,
+                chat_history=chat_history_dicts,  # ✅ Endi dict formatida
+                system_prompt=chat_history.system_prompt,
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+        except Exception as e:
+            logger.error(f"AI query failed: {e}")
+            ai_response = "Kechirasiz, AI javob bera olmayapti. Iltimos, keyinroq urinib ko'ring."
+        
+        processing_time = int((time.time() - start_time) * 1000)
+        
+        # 6. Save messages to storage (with valid thread_id)
         await self._save_messages_to_storage(
             session_id=session.session_id,
-            thread_id=None,  # Could be added if needed
+            thread_id=thread.id,  # ✅ Endi NULL emas
             user_id=user_id,
             user_message=user_message,
             ai_response=ai_response,
             model_used=model or "gpt-4o-mini",
-            tokens_used=None,  # OpenRouter doesn't return this easily
+            tokens_used=None,
             processing_time_ms=processing_time
         )
         
+        # 7. FIX: Refresh session object to prevent MissingGreenlet error
+        await self.db.refresh(session)
+        
         # Update session activity
         session.last_activity_at = datetime.utcnow()
-        session.message_count += 2  # User + Assistant
+        session.message_count += 2
         await self.db.commit()
+        await self.db.refresh(session)
         
         # Update Redis cache
         updated_history = await self.get_chat_history(session.session_id)
         await self._save_to_redis(session.session_id, updated_history)
         
-        # 5. Return response
+        # 8. Return response
         return ChatQueryWithMemoryResponse(
             response=ai_response,
             session_id=session.session_id,
@@ -382,7 +431,7 @@ Provide clear, supportive, and educational responses. Correct mistakes gently.""
             processing_time_ms=processing_time,
             context_messages_count=context_message_count
         )
-    
+        
     async def _save_messages_to_storage(
         self,
         session_id: UUID,

@@ -14,6 +14,7 @@ from bot.keyboards.reply import (
 from bot.config import settings, API_BASE_URL
 import httpx
 from bot.utils.i18n import get_text
+from bot.states.registrations_filter import IsRegistered, IsNotRegistered
 
 router = Router()
 
@@ -47,12 +48,15 @@ async def fetch_content_list(content_type: str, page: int = 1):
 
 
 # ══════════════════════════════════════════════════════════════
-# LANGUAGE SELECTION (from /start)
+# LANGUAGE SELECTION (from /start) — ONLY UNREGISTERED
 # ══════════════════════════════════════════════════════════════
 
-@router.message(F.text.in_(["🇺🇿 O'zbek", "🇷🇺 Русский", "🇬🇧 English"]))
+@router.message(
+    F.text.in_(["🇺🇿 O'zbek", "🇷🇺 Русский", "🇬🇧 English"]),
+    StateFilter(StartSection.main_menu),  # <-- BU QO'SHILDI
+)
 async def language_selected(message: types.Message, state: FSMContext):
-    """Language selection — reply keyboard button."""
+    """Language selection — reply keyboard button (FIRST TIME ONLY)."""
     lang_map = {
         "🇺🇿 O'zbek": "uz",
         "🇷🇺 Русский": "ru",
@@ -67,6 +71,40 @@ async def language_selected(message: types.Message, state: FSMContext):
         reply_markup=main_menu(lang),
     )
 
+
+# ══════════════════════════════════════════════════════════════
+# LANGUAGE CHANGE (from Settings) — REGISTERED OR UNREGISTERED
+# ══════════════════════════════════════════════════════════════
+
+@router.message(
+    F.text.in_(["🇺🇿 O'zbek", "🇷🇺 Русский", "🇬🇧 English"]),
+    StateFilter(MenuSection.language_selection),  # <-- BU QO'SHILDI
+)
+async def change_language_reply(message: types.Message, state: FSMContext):
+    """Language switch dari menu."""
+    lang_map = {
+        "🇺🇿 O'zbek": "uz",
+        "🇷🇺 Русский": "ru",
+        "🇬🇧 English": "en",
+    }
+    new_lang = lang_map.get(message.text, "uz")
+    await state.update_data(lang=new_lang)
+
+    user_data = await state.get_data()
+    registration_complete = user_data.get("registration_complete", False)
+
+    if registration_complete:
+        await state.set_state(RegisteredSection.main_menu)
+        await message.answer(
+            get_text("start.language_changed", new_lang),
+            reply_markup=registered_menu_kb(new_lang),
+        )
+    else:
+        await state.set_state(StartSection.main_menu)
+        await message.answer(
+            get_text("start.language_changed", new_lang),
+            reply_markup=main_menu(new_lang),
+        )
 
 # ══════════════════════════════════════════════════════════════
 # MAIN MENU — ABOUT US (NOT_REGISTERED)
@@ -163,19 +201,15 @@ async def guide_ai(message: types.Message, state: FSMContext):
 # MAIN MENU — LANGUAGE
 # ══════════════════════════════════════════════════════════════
 
-@router.message(or_f(
-    F.text.in_(["🌐 Til/Language", "🌐 Язык", "🌐 Language"]),
-    Command("language"),
-))
-async def cmd_language(message: types.Message, state: FSMContext):
-    """Language selection."""
+@router.message(F.text.in_(["🌐 Til o'zgartirish", "🌐 Сменить язык", "🌐 Change Language"]))
+async def settings_language_reply(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     lang = _get_lang(user_data)
-    await state.set_state(MenuSection.language_selection)
+    await state.set_state(MenuSection.language_selection)  # <-- State o'zgaradi
 
     await message.answer(
         get_text("language.prompt", lang),
-        reply_markup=language_selection(include_back=True),
+        reply_markup=language_switch_kb(lang),
     )
 
 
@@ -253,22 +287,18 @@ async def back_to_main_menu_reply(message: types.Message, state: FSMContext):
 # REGISTERED USER — MENU ITEMS
 # ══════════════════════════════════════════════════════════════
 
-@router.message(or_f(
-    F.text.in_(["👤 Profil", "👤 Профиль", "👤 Profile"]),
-    Command("profile"),
-))
-async def msg_profile(message: types.Message, state: FSMContext):
-    """User profile."""
-    from bot.handlers.profile import show_profile
-    await show_profile(message, state, from_callback=False)
+from bot.states.registration import IsRegisteredFilter
 
-
-@router.message(or_f(
-    F.text.in_(["⚙️ Sozlamalar", "⚙️ Настройки", "⚙️ Settings"]),
-    Command("settings"),
-))
+# Registered user commandalari uchun:
+@router.message(
+    IsRegistered(),
+    or_f(
+        F.text.in_(["⚙️ Sozlamalar", "⚙️ Настройки", "⚙️ Settings"]),
+        Command("settings"),
+    ),
+)
 async def msg_settings(message: types.Message, state: FSMContext):
-    """Settings menu."""
+    """Settings menu — ONLY REGISTERED."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     await state.set_state(MenuSection.settings)
@@ -277,6 +307,30 @@ async def msg_settings(message: types.Message, state: FSMContext):
         get_text("settings.title", lang),
         reply_markup=settings_kb(lang),
     )
+
+
+@router.message(
+    IsRegistered(),
+    or_f(
+        F.text.in_(["👤 Profil", "👤 Профиль", "👤 Profile"]),
+        Command("profile"),
+    ),
+)
+async def msg_profile(message: types.Message, state: FSMContext):
+    """User profile — ONLY REGISTERED."""
+    from bot.handlers.profile import show_profile
+    await show_profile(message, state, from_callback=False)
+
+
+# Unregistered user uchun:
+@router.message(
+    Command("register"),
+    IsRegisteredFilter(is_registered=False),
+)
+async def msg_register(message: types.Message, state: FSMContext):
+    """Register - ONLY for unregistered users."""
+    from bot.handlers.register import start_registration
+    await start_registration(message, state)
 
 
 # ═══ SETTINGS — SUBMENU ═════════════════════════════════════
@@ -292,37 +346,66 @@ async def settings_language_reply(message: types.Message, state: FSMContext):
         reply_markup=language_switch_kb(lang),
     )
 
-
 @router.message(F.text.in_(["🤖 AI ON/OFF", "🤖 AI ВКЛ/ВЫКЛ", "🤖 AI Yoqish/O'chirish"]))
 async def settings_ai_toggle_reply(message: types.Message, state: FSMContext):
     """Toggle AI ON/OFF."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     ai_enabled = user_data.get("ai_enabled", True)
-    user_id = user_data.get("telegram_id") or message.from_user.id
+    
+    # DEBUG: State ma'lumotlarini ko'rsatish
+    print(f"[AI TOGGLE] Current state data: {user_data}")
+    print(f"[AI TOGGLE] Current ai_enabled: {ai_enabled}")
+    
+    # Database user ID ni olish
+    db_user_id = user_data.get("id")
+    telegram_id = message.from_user.id
+    
+    if not db_user_id:
+        await message.answer(
+            get_text("error.user_not_found", lang),
+            reply_markup=settings_kb(lang),
+        )
+        return
 
     # Toggle status
     new_status = not ai_enabled
+    print(f"[AI TOGGLE] Toggling from {ai_enabled} to {new_status}")
 
     # Sync with Backend
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
+            # API endpoint ni tekshiring
+            endpoint = f"{API_BASE_URL}/sync/users/{db_user_id}/ai-toggle"
+            print(f"[AI TOGGLE] Calling endpoint: {endpoint}")
+            
             resp = await client.put(
-                f"{API_BASE_URL}/sync/users/{user_id}/ai-toggle",
+                endpoint,
                 json={"ai_enabled": new_status},
             )
+            
+            print(f"[AI TOGGLE] Response status: {resp.status_code}")
+            print(f"[AI TOGGLE] Response body: {resp.text}")
+            
             if resp.status_code != 200:
                 new_status = ai_enabled  # Revert
-                await message.answer(get_text("error.sync", lang))
+                await message.answer(
+                    get_text("error.sync", lang),
+                    reply_markup=settings_kb(lang),
+                )
                 return
     except Exception as e:
         print(f"[AI TOGGLE ERROR] {e}")
         new_status = ai_enabled
-        await message.answer(get_text("error.sync", lang))
+        await message.answer(
+            get_text("error.sync", lang),
+            reply_markup=settings_kb(lang),
+        )
         return
 
     # Update state
     await state.update_data(ai_enabled=new_status)
+    print(f"[AI TOGGLE] State updated: ai_enabled={new_status}")
 
     # Notify
     status_text = get_text("ai.enabled" if new_status else "ai.disabled", lang)
@@ -330,7 +413,6 @@ async def settings_ai_toggle_reply(message: types.Message, state: FSMContext):
         f"✅ {status_text}",
         reply_markup=settings_kb(lang),
     )
-
 
 @router.message(F.text.in_(["🚪 Log Out", "🚪 Выйти", "🚪 Chiqish"]))
 async def settings_logout_reply(message: types.Message, state: FSMContext):
@@ -349,50 +431,57 @@ async def settings_logout_reply(message: types.Message, state: FSMContext):
 # REGISTERED USER — ACADEMY (Video/File)
 # ══════════════════════════════════════════════════════════════
 
-@router.message(or_f(
-    F.text.in_(["🎬 Video Darslik", "🎬 Видеоурок", "🎬 Video Lesson"]),
-    Command("video"),
-))
+@router.message(
+    IsRegistered(),
+    or_f(
+        F.text.in_(["🎬 Video Darslik", "🎬 Видеоурок", "🎬 Video Lesson"]),
+        Command("video"),
+    ),
+)
 async def msg_video(message: types.Message, state: FSMContext):
     """Video lessons list."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
-    
+
     items, total = await fetch_content_list("video", 1)
-    
+
     if not items:
         await message.answer(get_text("video.not_found", lang))
         return
 
-    text = "🎬 <b>Video Darsliklar</b>\n\n"
-    text += "\n".join([f"{i+1}. {item['title']}" for i, item in enumerate(items)])
-    text += f"\n\n(Jami: {total} ta)"
-    
-    await message.answer(text, parse_mode="MarkdownV2")
+    # ✅ escape_html YO'Q — oddiy text
+    lines = [f"{i+1}. {item['title']}" for i, item in enumerate(items)]
+    text = "🎬 <b>Video Darsliklar</b>\n\n" + "\n".join(lines) + f"\n\n(Jami: {total} ta)"
 
+    await message.answer(text, parse_mode="HTML")
 
-@router.message(or_f(
-    F.text.in_(["📁 File Darsliklar", "📁 Файлы уроков", "📁 File Lessons"]),
-    Command("file"),
-))
+    pass
+
+@router.message(
+    IsRegistered(),
+    or_f(
+        F.text.in_(["📁 File Darsliklar", "📁 Файлы уроков", "📁 File Lessons"]),
+        Command("file"),
+    ),
+)
 async def msg_file(message: types.Message, state: FSMContext):
     """File lessons list."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
-    
+
     items, total = await fetch_content_list("file", 1)
-    
+
     if not items:
         await message.answer(get_text("file.not_found", lang))
         return
 
-    text = "📁 <b>File Darsliklar</b>\n\n"
-    text += "\n".join([f"{i+1}. {item['title']}" for i, item in enumerate(items)])
-    text += f"\n\n(Jami: {total} ta)"
-    
-    await message.answer(text, parse_mode="MarkdownV2")
+    # ✅ escape_html YO'Q — oddiy text
+    lines = [f"{i+1}. {item['title']}" for i, item in enumerate(items)]
+    text = "📁 <b>File Darsliklar</b>\n\n" + "\n".join(lines) + f"\n\n(Jami: {total} ta)"
 
+    await message.answer(text, parse_mode="HTML")
 
+    pass
 # ══════════════════════════════════════════════════════════════
 # REGISTRATION — CONFIRMATION
 # ══════════════════════════════════════════════════════════════
@@ -512,3 +601,61 @@ async def handle_admin_contact_text(message: types.Message, state: FSMContext):
             get_text("admin.sent", lang),
             reply_markup=admin_contact_kb(lang),
         )
+
+    # ══════════════════════════════════════════════════════════════
+# 🚫 FALLBACK BLOCKERS (ENG OXIRIDA BO'LISHI SHART!)
+# ══════════════════════════════════════════════════════════════
+
+@router.message(Command("settings"))
+async def settings_blocked(message: types.Message, state: FSMContext):
+    """Unregistered user /settings qilganda."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    await message.answer(
+        get_text("error.register_first", lang),
+        reply_markup=main_menu(lang),
+    )
+
+
+@router.message(Command("profile"))
+async def profile_blocked(message: types.Message, state: FSMContext):
+    """Unregistered user /profile qilganda."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    await message.answer(
+        get_text("error.register_first", lang),
+        reply_markup=main_menu(lang),
+    )
+
+
+@router.message(Command("video"))
+async def video_blocked(message: types.Message, state: FSMContext):
+    """Unregistered user /video qilganda."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    await message.answer(
+        get_text("error.register_first", lang),
+        reply_markup=main_menu(lang),
+    )
+
+
+@router.message(Command("file"))
+async def file_blocked(message: types.Message, state: FSMContext):
+    """Unregistered user /file qilganda."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    await message.answer(
+        get_text("error.register_first", lang),
+        reply_markup=main_menu(lang),
+    )
+
+
+@router.message(Command("register"))
+async def register_blocked(message: types.Message, state: FSMContext):
+    """Registered user /register qilganda."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    await message.answer(
+        get_text("error.already_registered", lang),
+        reply_markup=registered_menu_kb(lang),
+    )

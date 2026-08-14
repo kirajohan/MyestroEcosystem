@@ -10,7 +10,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 import uuid
-
+from datetime import datetime, timezone
 
 class AIMemorySession(Base):
     """User's AI chat session with context and history tracking."""
@@ -61,8 +61,18 @@ class AIMemorySession(Base):
     )
     
     def is_expired(self) -> bool:
-        """Check if session has expired."""
-        return datetime.utcnow() >= self.expires_at
+        if not self.expires_at:
+            return False
+
+        # Timezone-aware vaqt olish (UTC)
+        now = datetime.now(timezone.utc)
+        
+        expires_at = self.expires_at
+        # Agar self.expires_at timezone-naive bo'lib qolsa, uni ham aware qilamiz
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+        return now >= expires_at
     
     @staticmethod
     def create_new(user_id: int, language: str = "uz", cefr_level: str = None) -> "AIMemorySession":

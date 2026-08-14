@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from app.database import get_redis
 
 from app.models.user import User
 from app.database import get_db
@@ -175,24 +176,18 @@ async def get_message_thread(
         "history": [h.model_dump() for h in history_items],
     }
 
-
 @router.post("/messages/{message_id}/reply")
 async def send_reply(
     message_id: int,
     payload: AdminReply,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
+    redis=Depends(get_redis),  # Redis dependency qo'shing
 ):
-    """Send admin reply to user (admin only).
-    
-    Reply will be:
-    1. Stored in inbox_message_history
-    2. Sent to user via Telegram with HTML formatting
-    3. Message status updated to 'replied'
-    """
+    """Send admin reply to user (admin only)."""
     from app.models import InboxMessage, InboxMessageHistory
+    import json
     
-    # Get inbox message
     msg = db.execute(
         select(InboxMessage).where(InboxMessage.id == message_id)
     ).scalar_one_or_none()
@@ -218,9 +213,20 @@ async def send_reply(
         
         db.commit()
         
-        # 3. Send to user via Telegram (background task would be ideal)
-        # For now, queue it for the bot to process
-        logger.info(f"Admin {admin.id} replied to message {message_id}")
+        # 3. Queue for bot to send via Telegram
+        queue_payload = {
+            "inbox_message_id": message_id,
+            "telegram_id": msg.user.telegram_id,  # User telegram ID
+            "text": payload.reply,
+            "admin_name": admin.full_name,
+        }
+        
+        await redis.lpush(
+            "inbox:admin_replies",
+            json.dumps(queue_payload)
+        )
+        
+        logger.info(f"Admin {admin.id} replied to message {message_id}, queued for delivery")
         
         return {
             "status": "sent",
@@ -231,9 +237,11 @@ async def send_reply(
         
     except Exception as e:
         logger.error(f"Failed to send reply: {e}")
+        db.rollback()
         raise HTTPException(status_code=500, detail="Failed to send reply")
 
 
+    
 @router.patch("/messages/{message_id}/status")
 async def update_message_status(
     message_id: int,

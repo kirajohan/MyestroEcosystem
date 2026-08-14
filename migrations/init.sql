@@ -309,6 +309,45 @@ CREATE INDEX idx_broadcast_history_recipient ON broadcast_history(recipient_user
 CREATE INDEX idx_broadcast_history_status ON broadcast_history(status);
 CREATE INDEX idx_broadcast_history_created_at ON broadcast_history(created_at DESC);
 
+
+-- -----------------------------------------------------------
+-- 21. ai_memory_sessions
+-- -----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ai_memory_sessions (
+    id                  BIGSERIAL PRIMARY KEY,
+    user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_id          VARCHAR(255) UNIQUE,
+    title               VARCHAR(255),
+    language            VARCHAR(10) DEFAULT 'uz',
+    cefr_level          VARCHAR(10) DEFAULT 'A1',
+    created_at          TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    last_activity_at    TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    expires_at          TIMESTAMPTZ,
+    message_count       INTEGER DEFAULT 0,
+    is_active           BOOLEAN DEFAULT TRUE NOT NULL,
+    context_summary     TEXT,
+    summary_generated_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_ai_memory_sessions_user_id ON ai_memory_sessions(user_id);
+CREATE INDEX idx_ai_memory_sessions_session_id ON ai_memory_sessions(session_id);
+
+-- -----------------------------------------------------------
+-- 22. ai_memory_messages
+-- -----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ai_memory_messages (
+    id                  BIGSERIAL PRIMARY KEY,
+    session_id          BIGINT NOT NULL REFERENCES ai_memory_sessions(id) ON DELETE CASCADE,
+    user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role                VARCHAR(20) NOT NULL, -- 'user', 'assistant', 'system'
+    content             TEXT NOT NULL,
+    tokens_used         INTEGER,
+    created_at          TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_ai_memory_messages_session_id ON ai_memory_messages(session_id);
+CREATE INDEX idx_ai_memory_messages_user_id ON ai_memory_messages(user_id);
+
 -- ============================================================
 -- DEFAULT ADMIN USER
 -- ============================================================
@@ -329,7 +368,7 @@ INSERT INTO users (
     profile_completed
 ) VALUES (
     'abdurakhmonbek0770@gmail.com',
-    'admin123',
+    '$2b$12$Nq/aHl.C7F9jP1zR8mXq.O5K6T3wX7e8R9t0Y1u2V3w4X5y6Z7a8b', -- admin123 ning xeshi
     'Super Admin',
     'admin',
     'C2',

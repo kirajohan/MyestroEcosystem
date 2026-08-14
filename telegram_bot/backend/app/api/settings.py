@@ -152,6 +152,18 @@ async def get_setting(
     setting = db.query(SystemSetting).filter(SystemSetting.key == setting_key).first()
     
     if not setting:
+        # Return default value for known settings instead of 404
+        defaults = {
+            "BOT_ENABLED": "true",
+            "AI_ENABLED": "true",
+            "ai_global_enabled": "true",
+        }
+        if setting_key in defaults:
+            return {
+                "value": defaults[setting_key],
+                "description": f"Default value for {setting_key}",
+                "updated_at": None,
+            }
         raise HTTPException(status_code=404, detail="Setting not found")
     
     result = {

@@ -67,7 +67,7 @@ def guide_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
         "en": {"bot": "🤖 About Bot", "ai": "🧠 About AI", "faq": "❓ FAQ"},
     }
     t = texts.get(lang, texts["uz"])
-    
+
     builder = ReplyKeyboardBuilder()
     builder.add(
         StyledKeyboardButton(text=t["bot"], style="primary"),
@@ -106,7 +106,7 @@ def registered_menu_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
     }
     items = texts.get(lang, texts["uz"])
     styles = ["primary", "primary", "success", "danger", "success", "success"]
-    
+
     builder = ReplyKeyboardBuilder()
     for text, style in zip(items, styles):
         builder.add(
@@ -126,7 +126,7 @@ def settings_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
         "en": {"lang": "🌐 Change Language", "ai": "🤖 AI ON/OFF", "logout": "🚪 Log Out"},
     }
     t = texts.get(lang, texts["uz"])
-    
+
     builder = ReplyKeyboardBuilder()
     builder.add(
         StyledKeyboardButton(text=t["lang"], style="primary"),
@@ -152,7 +152,7 @@ def contact_request_keyboard(lang: str = "uz") -> ReplyKeyboardMarkup:
         "en": {"share": "📱 Send phone", "back": "⬅️ Back"},
     }
     t = texts.get(lang, texts["uz"])
-    
+
     builder = ReplyKeyboardBuilder()
     builder.add(
         StyledKeyboardButton(text=t["share"], request_contact=True, style="primary"),
@@ -174,7 +174,7 @@ def registration_restart_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
         "en": {"restart": "🔄 Start over", "back": "⬅️ Back"},
     }
     t = texts.get(lang, texts["uz"])
-    
+
     builder = ReplyKeyboardBuilder()
     builder.add(
         StyledKeyboardButton(text=t["restart"], style="primary"),
@@ -196,7 +196,7 @@ def confirm_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
         "en": {"yes": "✅ Yes", "no": "❌ No"},
     }
     t = texts.get(lang, texts["uz"])
-    
+
     builder = ReplyKeyboardBuilder()
     builder.add(
         StyledKeyboardButton(text=t["yes"], style="success"),
@@ -234,7 +234,7 @@ def main_menu(lang: str = "uz") -> ReplyKeyboardMarkup:
         },
     }
     t = texts.get(lang, texts["uz"])
-    
+
     builder = ReplyKeyboardBuilder()
     builder.add(
         StyledKeyboardButton(text=t["start"], style="primary"),
@@ -266,6 +266,82 @@ def admin_contact_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
         StyledKeyboardButton(text="⬅️ Orqaga", style="danger"),
     )
     builder.adjust(1)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# ─── PROFILE KEYBOARDS ──────────────────────────────────────
+
+def profile_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Profile screen keyboard: Edit + Back."""
+    texts = {
+        "uz": {"edit": "✏️ Tahrirlash", "back": "⬅️ Orqaga"},
+        "ru": {"edit": "✏️ Редактировать", "back": "⬅️ Назад"},
+        "en": {"edit": "✏️ Edit", "back": "⬅️ Back"},
+    }
+    t = texts.get(lang, texts["uz"])
+
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["edit"], style="primary"),
+        StyledKeyboardButton(text=t["back"], style="danger"),
+    )
+    builder.adjust(1)
+    return builder.as_markup(resize_keyboard=True)
+
+
+def profile_edit_fields_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Profile edit field selection keyboard."""
+    texts = {
+        "uz": {
+            "name": "📝 Ism",
+            "cefr": "📊 CEFR Level",
+            "back": "⬅️ Orqaga",
+        },
+        "ru": {
+            "name": "📝 Имя",
+            "cefr": "📊 CEFR Level",
+            "back": "⬅️ Назад",
+        },
+        "en": {
+            "name": "📝 Name",
+            "cefr": "📊 CEFR Level",
+            "back": "⬅️ Back",
+        },
+    }
+    t = texts.get(lang, texts["uz"])
+
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["name"], style="primary"),
+        StyledKeyboardButton(text=t["cefr"], style="success"),
+        StyledKeyboardButton(text=t["back"], style="danger"),
+    )
+    builder.adjust(1)
+    return builder.as_markup(resize_keyboard=True)
+
+
+def cefr_level_selection_with_back(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """CEFR level selection with back button."""
+    back_texts = {
+        "uz": "⬅️ Orqaga",
+        "ru": "⬅️ Назад",
+        "en": "⬅️ Back",
+    }
+    back_text = back_texts.get(lang, back_texts["uz"])
+
+    builder = ReplyKeyboardBuilder()
+
+    levels = ["A0", "A1", "A2", "B1", "B2", "C1", "C2"]
+    for level in levels:
+        builder.add(
+            StyledKeyboardButton(text=level, style="primary"),
+        )
+
+    builder.add(
+        StyledKeyboardButton(text=back_text, style="danger"),
+    )
+
+    builder.adjust(3, 3, 2)
     return builder.as_markup(resize_keyboard=True)
 
 

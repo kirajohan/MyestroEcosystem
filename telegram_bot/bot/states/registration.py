@@ -9,6 +9,21 @@ Flow:
 """
 
 from aiogram.fsm.state import State, StatesGroup
+# bot/filters/registration.py
+from aiogram.filters import BaseFilter
+from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
+
+class IsRegisteredFilter(BaseFilter):
+    """Filter for registered users only."""
+    def __init__(self, is_registered: bool):
+        self.is_registered = is_registered
+
+    async def __call__(self, message: Message, state: FSMContext) -> bool:
+        user_data = await state.get_data()
+        registration_complete = user_data.get("registration_complete", False)
+        return registration_complete == self.is_registered
+
 
 
 class RegistrationStates(StatesGroup):

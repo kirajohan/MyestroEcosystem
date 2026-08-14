@@ -1,4 +1,4 @@
-"""AI Agent handler — process text messages via OpenRouter.
+"""AI Agent handler — process text messages via OpenRouter with Memory.
 
 This handler is for REGISTERED users only.
 Unregistered users are handled by text.py (fallback AI teacher).
@@ -7,6 +7,7 @@ Unregistered users are handled by text.py (fallback AI teacher).
 import asyncio
 import io
 import time
+import logging
 from typing import Optional
 from aiogram import Router, F
 from aiogram.types import Message
@@ -14,6 +15,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 from bot.config import settings
 from bot.utils.ai_client import ask_ai, stream_ask_ai
+from bot.utils.ai_memory_client import AIMemoryClient
 from bot.utils.ai_prompts import build_system_prompt
 from bot.utils.i18n import get_text
 from bot.states.registration import (
@@ -21,7 +23,6 @@ from bot.states.registration import (
 )
 from bot.handlers.profile import ProfileEditFSM
 
-import logging
 router = Router()
 logger = logging.getLogger(__name__)
 
@@ -52,11 +53,9 @@ async def _stream_answer(
     user_prompt: str,
 ) -> str:
     """Send thinking placeholder, stream AI chunks, and edit the message."""
-    # Show thinking placeholder
     think_text = get_text("ai.thinking", lang)
     sent = await message.answer(think_text)
 
-    # Background typing refresh
     stop_typing = asyncio.Event()
     typing_task = asyncio.create_task(_typing_refresh_task(sent, stop_typing))
 
@@ -73,27 +72,90 @@ async def _stream_answer(
             now = time.monotonic()
             if (now - last_edit >= STREAM_EDIT_INTERVAL) or len(buffer) >= STREAM_BUFFER_MAX:
                 preview = think_text if not buffer else buffer
-                # Truncate on Telegram 4096 char safety
                 if len(preview) > MAX_TEXT_LENGTH:
                     preview = preview[: MAX_TEXT_LENGTH - 3] + "..."
                 try:
                     await sent.edit_text(preview)
                 except Exception:
-                    # Ignore rate limit or unchanged content errors during streaming
                     pass
                 last_edit = now
                 buffer = ""
 
-        # Final edit with full text
         final_text = full_text if full_text else get_text("ai.error", lang)
         if len(final_text) > MAX_TEXT_LENGTH:
             final_text = final_text[: MAX_TEXT_LENGTH - 3] + "..."
         try:
             await sent.edit_text(final_text)
         except Exception:
-            # fallback: send as new message if editing failed
             await message.answer(final_text)
         return full_text
+    finally:
+        stop_typing.set()
+        try:
+            await typing_task
+        except asyncio.CancelledError:
+            pass
+
+
+async def _answer_with_memory(
+    message: Message,
+    lang: str,
+    system_prompt: Optional[str],
+    user_prompt: str,
+) -> str:
+    """Send thinking placeholder, query AI with memory system, and edit message with formatted HTML response."""
+    think_text = get_text("ai.thinking", lang)
+    sent = await message.answer(think_text)
+
+    stop_typing = asyncio.Event()
+    typing_task = asyncio.create_task(_typing_refresh_task(sent, stop_typing))
+
+    try:
+        ai_memory_client = AIMemoryClient(
+            backend_url=settings.BACKEND_URL,
+            http_client=None
+        )
+
+        response_data = await ai_memory_client.query_with_memory(
+            user_id=message.from_user.id,
+            message=user_prompt,
+            system_prompt=system_prompt,
+            model=None
+        )
+
+        if isinstance(response_data, dict):
+            response_text = response_data.get("response", get_text("ai.error", lang))
+            model_used = response_data.get("model_used", "unknown")
+            time_ms = response_data.get("processing_time_ms", 0)
+        else:
+            response_text = getattr(response_data, "response", get_text("ai.error", lang))
+            model_used = getattr(response_data, "model_used", "unknown")
+            time_ms = getattr(response_data, "processing_time_ms", 0)
+
+        # Header va Footer HTML formatida
+        header = "🤖 <b>Myestro AI</b>\n\n"
+        footer = f"\n\n<i>Model: {model_used} | Time: {time_ms}ms</i>"
+        full_response = header + response_text + footer
+
+        if len(full_response) > MAX_TEXT_LENGTH:
+            await sent.edit_text(full_response[:MAX_TEXT_LENGTH], parse_mode="HTML")
+            remaining = full_response[MAX_TEXT_LENGTH:]
+            chunks = [remaining[i:i + MAX_TEXT_LENGTH] for i in range(0, len(remaining), MAX_TEXT_LENGTH)]
+            for chunk in chunks:
+                await message.answer(chunk, parse_mode="HTML")
+                await asyncio.sleep(0.5)
+        else:
+            await sent.edit_text(full_response, parse_mode="HTML")
+
+        return response_text
+
+    except Exception as e:
+        logger.exception("[AI AGENT MEMORY ERROR]")
+        try:
+            await sent.edit_text(get_text("ai.error", lang))
+        except Exception:
+            await message.answer(get_text("ai.error", lang))
+        return ""
     finally:
         stop_typing.set()
         try:
@@ -131,14 +193,12 @@ async def _stream_answer(
     )
 )
 async def ai_agent_text_handler(message: Message, state: FSMContext):
-    """Handle text messages for registered users — AI Teacher."""
+    """Handle text messages for registered users — AI Teacher with Memory."""
     user_data = await state.get_data()
 
-    # Debug log entry
     print(f"[AI_HANDLER] start: user={message.from_user.id} text='{(message.text or '')[:80]}'")
     logger.info(f"[AI_HANDLER] start: user={message.from_user.id}")
 
-    # Allow both registered and unregistered users — RegistrationMiddleware controls flow
     lang = user_data.get("lang", "uz")
     cefr_level = user_data.get("cefr_level", "A1")
     user_message = message.text.strip()
@@ -153,10 +213,8 @@ async def ai_agent_text_handler(message: Message, state: FSMContext):
     try:
         system_prompt = build_system_prompt(lang, cefr_level)
 
-        # Prefer streaming for UX; non-streaming fallback via ask_ai is not used here
-        # because stream_ask_ai already handles non-stream text via its fallback path.
-        logger.debug("[AI_HANDLER] Calling _stream_answer()")
-        await _stream_answer(
+        logger.debug("[AI_HANDLER] Calling _answer_with_memory()")
+        await _answer_with_memory(
             message=message,
             lang=lang,
             system_prompt=system_prompt,

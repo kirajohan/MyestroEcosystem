@@ -87,7 +87,6 @@ class BotGuardMiddleware(BaseMiddleware):
                     await event.answer(
                         "🛑 <b>Bot hozircha ta'mirlanmoqda.</b>\n\n"
                         "Iltimos, keyin qayta urinib ko'ring.",
-                        parse_mode="MarkdownV2"
                     )
                 elif isinstance(event, CallbackQuery):
                     await event.answer(

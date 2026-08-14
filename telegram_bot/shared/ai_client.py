@@ -49,7 +49,6 @@ def _build_messages(
     messages.append({"role": "user", "content": prompt})
     return messages
 
-
 async def ask_ai(
     prompt: str,
     chat_history: Optional[List[Dict[str, str]]] = None,
@@ -62,12 +61,17 @@ async def ask_ai(
     openrouter_api_key: str,
     stream: bool = False,
 ) -> Union[str, AsyncGenerator[str, None]]:
-    """Send prompt to OpenRouter with fallback models and connection pooling.
-
-    If stream=True, returns an async generator that yields text chunks.
-    If stream=False (default), returns the full response string.
-    """
+    """Send prompt to OpenRouter with fallback models and connection pooling."""
     messages = _build_messages(prompt, chat_history, system_prompt)
+    
+    # 🔍 DEBUG: OpenRouter ga yuborilayotgan to'liq payloadni log qilish
+    logger.info(f"=== DEBUG: OpenRouter Request ===")
+    logger.info(f"Model: {model}")
+    logger.info(f"Messages count: {len(messages)}")
+    for idx, msg in enumerate(messages):
+        logger.info(f"Message {idx + 1}: role={msg.get('role')}, content={msg.get('content', '')[:200]}...")
+    logger.info(f"=== END DEBUG ===")
+    
     models_to_try = [model] if model else FALLBACK_MODELS
     client = get_ai_client()
 
@@ -84,30 +88,36 @@ async def ask_ai(
 
     for m in models_to_try:
         try:
+            payload = {
+                "model": m,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+            
+            # 🔍 DEBUG: To'liq JSON payloadni log qilish
+            logger.info(f"Sending to OpenRouter (model={m}): {json.dumps(payload, ensure_ascii=False)[:500]}")
+            
             resp = await client.post(
                 f"{openrouter_base_url}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {openrouter_api_key}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "model": m,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                },
+                json=payload,
             )
+            
             if resp.status_code == 200:
                 data = resp.json()
                 return data["choices"][0]["message"]["content"]
             else:
-                logger.warning(f"Model {m} failed: {resp.status_code}")
+                # 🔍 DEBUG: Error response ni ham log qilish
+                logger.warning(f"Model {m} failed: {resp.status_code} - Response: {resp.text[:200]}")
         except Exception as e:
             logger.warning(f"Model {m} error: {e}")
 
     logger.error("All AI models failed — returning fallback message")
     return "Hozirda texnik ishlar ketyapti. Iltimos, birozdan so'ng qayta urining."
-
 
 async def _ask_ai_stream(
     messages: List[Dict[str, str]],

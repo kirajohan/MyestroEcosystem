@@ -68,7 +68,15 @@ async def main():
     # Store in bot context (for handlers)
     dp["ai_memory_client"] = ai_memory_client
     dp["http_client"] = http_client
+
     
+    from bot.workers.inbox_delivery import inbox_delivery_worker
+
+    async def on_startup(bot: Bot, redis):
+        """Start background workers."""
+        # Start inbox delivery worker
+        asyncio.create_task(inbox_delivery_worker(bot, redis))
+        logger.info("🚀 Inbox delivery worker started")
 
     # Bot instance
     bot = Bot(

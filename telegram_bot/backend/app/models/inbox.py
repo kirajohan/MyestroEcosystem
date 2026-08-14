@@ -30,6 +30,7 @@ class InboxMessage(Base):
         onupdate=func.now(),
     )
 
+# InboxMessage modeliga user relationship qo'shing
     user = relationship("User", foreign_keys=[user_id])
     admin = relationship("User", foreign_keys=[admin_id])
     history = relationship(

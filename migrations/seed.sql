@@ -1,6 +1,8 @@
 -- Seed data for System Settings
 INSERT INTO system_settings (key, value) VALUES
-('ai_global_enabled', 'true')
+('ai_global_enabled', 'true'),
+('BOT_ENABLED', 'true'),
+('AI_ENABLED', 'true')
 ON CONFLICT (key) DO NOTHING;
 
 -- Seed data for Knowledge Base

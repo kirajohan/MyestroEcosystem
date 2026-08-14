@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
+function getAuthHeader(request: NextRequest): Record<string, string> {
+  const authHeader = request.headers.get('authorization');
+  return authHeader ? { Authorization: authHeader } : {};
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string[] } }
@@ -10,10 +15,13 @@ export async function GET(
     const [messageId, subPath] = params.id;
 
     if (!subPath) {
-      // GET /api/inbox/messages/{id} — get thread
-      const backendResp = await fetch(`${API_BASE_URL}/inbox/messages/${messageId}`, {
+      // GET /api/inbox/messages/{id} — get single message
+      const backendResp = await fetch(`${API_BASE_URL}/admin-messages/${messageId}`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(_request),
+        },
       });
 
       if (!backendResp.ok) {
@@ -57,9 +65,12 @@ export async function POST(
         );
       }
 
-      const backendResp = await fetch(`${API_BASE_URL}/inbox/messages/${messageId}/reply`, {
+      const backendResp = await fetch(`${API_BASE_URL}/admin-messages/${messageId}/reply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(request),
+        },
         body: JSON.stringify({ reply: reply.trim() }),
       });
 
@@ -75,39 +86,14 @@ export async function POST(
       return NextResponse.json(data, { status: 200 });
     }
 
-    return NextResponse.json({ detail: 'Not found' }, { status: 404 });
-  } catch (error: any) {
-    console.error('Inbox reply POST error:', error);
-    return NextResponse.json(
-      { detail: error?.message || "Noma'lum xato" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string[] } }
-) {
-  try {
-    const [messageId, subPath] = params.id;
-
-    if (subPath === 'status') {
-      // PATCH /api/inbox/messages/{id}/status — update status
-      const body = await request.json();
-      const { status: newStatus } = body;
-
-      if (!newStatus || !['new', 'read', 'replied', 'closed'].includes(newStatus)) {
-        return NextResponse.json(
-          { detail: 'Noto\'g\'ri status qiymati' },
-          { status: 400 }
-        );
-      }
-
-      const backendResp = await fetch(`${API_BASE_URL}/inbox/messages/${messageId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+    if (subPath === 'read') {
+      // POST /api/inbox/messages/{id}/read — mark as read
+      const backendResp = await fetch(`${API_BASE_URL}/admin-messages/${messageId}/read`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(request),
+        },
       });
 
       if (!backendResp.ok) {
@@ -124,7 +110,7 @@ export async function PATCH(
 
     return NextResponse.json({ detail: 'Not found' }, { status: 404 });
   } catch (error: any) {
-    console.error('Inbox status PATCH error:', error);
+    console.error('Inbox POST error:', error);
     return NextResponse.json(
       { detail: error?.message || "Noma'lum xato" },
       { status: 500 }
@@ -133,7 +119,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string[] } }
 ) {
   try {
@@ -141,8 +127,12 @@ export async function DELETE(
 
     if (!subPath) {
       // DELETE /api/inbox/messages/{id} — delete message
-      const backendResp = await fetch(`${API_BASE_URL}/inbox/messages/${messageId}`, {
+      const backendResp = await fetch(`${API_BASE_URL}/admin-messages/${messageId}`, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(request),
+        },
       });
 
       if (!backendResp.ok) {
