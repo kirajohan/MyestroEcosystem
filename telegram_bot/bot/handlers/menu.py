@@ -1,16 +1,19 @@
 from aiogram import Router, types, F
 from aiogram.filters import StateFilter, Command, or_f
 from aiogram.fsm.context import FSMContext
-from bot.states.registration import (
-    StartSection, RegistrationFSM, MenuSection, RegisteredSection,
-)
 from bot.keyboards.reply import (
     language_selection, main_menu, registered_menu_kb,
     contact_request_keyboard, remove_keyboard,
     cefr_level_selection, settings_kb, guide_kb, about_us_kb,
     language_switch_kb, confirm_kb, admin_contact_kb,
     registration_restart_kb,
+    content_submenu_kb,  # ⭐ YANGI
 )
+from bot.states.registration import (
+    StartSection, RegistrationFSM, MenuSection, RegisteredSection,
+    QuizSection,  # ⭐ YANGI
+)
+
 from bot.config import settings, API_BASE_URL
 import httpx
 from bot.utils.i18n import get_text
@@ -333,6 +336,50 @@ async def msg_register(message: types.Message, state: FSMContext):
     await start_registration(message, state)
 
 
+
+# ══════════════════════════════════════════════════════════════
+# REGISTERED USER — TEST'S (English QUIZ)
+# ══════════════════════════════════════════════════════════════
+
+@router.message(
+    IsRegistered(),
+    F.text.in_(["🧪 Test's (English QUIZ)", "🧪 Тесты (English QUIZ)"]),
+)
+async def msg_quiz_start(message: types.Message, state: FSMContext):
+    """🧪 Test's bosilganda — CEFR daraja tanlash."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+
+    await state.set_state(QuizSection.cefr_selection)
+
+    await message.answer(
+        get_text("quiz.select_cefr", lang),  # "Qaysi darajada test?"
+        reply_markup=cefr_level_selection(),  # ✅ allaqachon bor keyboard
+    )
+
+
+@router.message(
+    QuizSection.cefr_selection,
+    F.text.in_(["A0", "A1", "A2", "B1", "B2", "C1", "C2"]),
+)
+async def msg_quiz_cefr_selected(message: types.Message, state: FSMContext):
+    """CEFR daraja tanlandi — testlar ro'yxati (inline keyboard)."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    cefr_level = message.text
+
+    await state.update_data(quiz_cefr=cefr_level)
+    await state.set_state(QuizSection.quiz_list)
+
+    # Keyingi qadamda: Backend API dan testlarni olib, inline keyboard chiqaramiz
+    await message.answer(
+        f"📊 <b>{cefr_level}</b> darajasidagi testlar yuklanmoqda...",
+        parse_mode="HTML",
+    )
+    # TODO: fetch_quiz_list(cefr_level) chaqirib, inline pagination keyboard chiqarish
+
+
+
 # ═══ SETTINGS — SUBMENU ═════════════════════════════════════
 
 @router.message(F.text.in_(["🌐 Til o'zgartirish", "🌐 Сменить язык", "🌐 Change Language"]))
@@ -428,8 +475,24 @@ async def settings_logout_reply(message: types.Message, state: FSMContext):
 
 
 # ══════════════════════════════════════════════════════════════
-# REGISTERED USER — ACADEMY (Video/File)
+# REGISTERED USER — CONTENT SUBMENU (📚 Darsliklar)
 # ══════════════════════════════════════════════════════════════
+
+@router.message(
+    IsRegistered(),
+    F.text.in_(["📚 Darsliklar", "📚 Учебные материалы", "📚 Lessons"]),
+)
+async def msg_content_submenu(message: types.Message, state: FSMContext):
+    """📚 Darsliklar bosilganda — submenu chiqadi (Video + File)."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+
+    await message.answer(
+        get_text("content.select_type", lang),  # "Qaysi turdagi darslik?"
+        reply_markup=content_submenu_kb(lang),
+    )
+
+
 
 @router.message(
     IsRegistered(),
@@ -648,7 +711,17 @@ async def file_blocked(message: types.Message, state: FSMContext):
         get_text("error.register_first", lang),
         reply_markup=main_menu(lang),
     )
-
+    
+# Test's — unregistered user uchun blok (mavjud pattern bo'yicha)
+@router.message(Command("quiz"))
+async def quiz_blocked(message: types.Message, state: FSMContext):
+    """Unregistered user /quiz qilganda."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    await message.answer(
+        get_text("error.register_first", lang),
+        reply_markup=main_menu(lang),
+    )
 
 @router.message(Command("register"))
 async def register_blocked(message: types.Message, state: FSMContext):

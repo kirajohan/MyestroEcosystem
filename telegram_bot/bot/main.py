@@ -14,7 +14,7 @@ if _telegram_bot_root not in sys.path:
 
 from bot.handlers import academy, admin, ai_agent, ai_chat, contact, document, errors, menu, photo, profile, referral, register, reminders, start, sticker, video, broadcast, inbox
 
-from aiogram import Bot, Dispatcher , Router
+from aiogram import Bot, Dispatcher, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -32,11 +32,12 @@ from bot.services.ai_service import ai_service
 from bot.services.broadcast_worker import BroadcastWorker
 from aiogram.fsm.storage.redis import RedisStorage
 from bot.utils.ai_memory_client import AIMemoryClient
+from bot.workers.inbox_delivery import inbox_delivery_worker
+from redis.asyncio import Redis
 
 
 logging.basicConfig(level=settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
-
 
 
 async def main():
@@ -68,15 +69,6 @@ async def main():
     # Store in bot context (for handlers)
     dp["ai_memory_client"] = ai_memory_client
     dp["http_client"] = http_client
-
-    
-    from bot.workers.inbox_delivery import inbox_delivery_worker
-
-    async def on_startup(bot: Bot, redis):
-        """Start background workers."""
-        # Start inbox delivery worker
-        asyncio.create_task(inbox_delivery_worker(bot, redis))
-        logger.info("🚀 Inbox delivery worker started")
 
     # Bot instance
     bot = Bot(
@@ -128,11 +120,17 @@ async def main():
         logger.warning(f"WARN: AI health check ERROR: {e}")
 
     logger.info("Bot started polling...")
-    # Start BroadcastWorker (Redis queue consumer)
-    from redis.asyncio import Redis
+    
+    # Redis client for workers
     redis_client = Redis.from_url(settings.REDIS_URL, decode_responses=False)
+    
+    # Start BroadcastWorker (Redis queue consumer)
     broadcast_worker = BroadcastWorker(bot, redis_client)
     broadcast_task = asyncio.create_task(broadcast_worker.start())
+    
+    # Start Inbox delivery worker (Redis queue consumer for admin replies)
+    inbox_task = asyncio.create_task(inbox_delivery_worker(bot, redis_client))
+    logger.info("🚀 Inbox delivery worker started")
     
     try:
         await dp.start_polling(bot)
@@ -140,6 +138,8 @@ async def main():
         broadcast_worker.stop()
         if broadcast_task and not broadcast_task.done():
             broadcast_task.cancel()
+        if inbox_task and not inbox_task.done():
+            inbox_task.cancel()
         await shutdown_ai_client()
         logger.info("AI client shut down.")
 

@@ -14,20 +14,56 @@ from aiogram.fsm.context import FSMContext
 from bot.config import API_BASE_URL
 import httpx
 
-
 import logging
 logger = logging.getLogger(__name__)
-# ... existing imports ...
 
-# Define navigation texts that should ALWAYS work regardless of AI status
-# Add all main menu button texts here (match your bot_texts CMS values)
+
+# ══════════════════════════════════════════════════════════════
+# NAVIGATION WHITELIST
+# Tugmalar va commandalar — AI holatidan qat'i nazar ishlaydi
+# ══════════════════════════════════════════════════════════════
+
 NAVIGATION_WHITELIST = {
-    "👤 Profil", "⚙️ Sozlamalar", "⚙️ Настройки", "⚙️ Settings", "📖 Qo'llanma", "🌐 Til o'zgartirish", "🌐 Сменить язык", "🌐 Change Language","🎬 Video Darslik", "🎬 Видеоурок", "🎬 Video Lesson","🤖 Bot bo'yicha", "🤖 О боте", "🤖 About Bot"
-    "🏠 Bosh menyu", "⬅️ Orqaga", "⬅️ Назад", "⬅️ Back", "⬅️ Orqaga qaytish", "❌ Bekor qilish","🤖 AI ON/OFF", "🤖 AI ВКЛ/ВЫКЛ", "🤖 AI Yoqish/O'chirish","🚪 Log Out", "🚪 Выйти", "🚪 Chiqish","📨 Admin ga xabar", "📨 Написать админу", "📨 Message admin",
-    "📖 Qo'llanma", "📖 Руководство", "📖 Guide", "🧠 AI bo'yicha", "🧠 Об AI", "🧠 About AI", "/start", "/menu", "/profile", "/settings", "/help" ,'/video',
-    "🌐 Til o'zgartirish", "🌐 Сменить язык", "🌐 Change Language","🎬 Video Darslik", "🎬 Видеоурок", "🎬 Video Lesson","📁 File Darsliklar", "📁 Файлы уроков", "📁 File Lessons"
-    "✅ Ha", "✅ Да", "✅ Yes","❌ Yo'q", "❌ Нет", "❌ No", "/file", "register","/profile"
+    # ─── ASOSIY MENYU (Registered) ──────────────────────
+    "👤 Profil", "👤 Профиль", "👤 Profile",
+    "⚙️ Sozlamalar", "⚙️ Настройки", "⚙️ Settings",
+    "📖 Qo'llanma", "📖 Руководство", "📖 Guide",
+    "📨 Admin ga xabar", "📨 Написать админу", "📨 Message admin",
+    "📚 Darsliklar", "📚 Учебные материалы", "📚 Lessons",              # ⭐ YANGI
+    "🧪 Test's (English QUIZ)", "🧪 Тесты (English QUIZ)",              # ⭐ YANGI
+
+    # ─── SUBMENU: Sozlamalar ───────────────────────────
+    "🌐 Til o'zgartirish", "🌐 Сменить язык", "🌐 Change Language",
+    "🤖 AI ON/OFF", "🤖 AI ВКЛ/ВЫКЛ", "🤖 AI Yoqish/O'chirish",
+    "🚪 Log Out", "🚪 Выйти", "🚪 Chiqish",
+
+    # ─── SUBMENU: Qo'llanma / About ───────────────────
+    "🤖 Bot bo'yicha", "🤖 О боте", "🤖 About Bot",
+    "🧠 AI bo'yicha", "🧠 Об AI", "🧠 About AI",
+    "🔗 Havolalar", "🔗 Ссылки", "🔗 Links",
+    "🌐 Ecosystem Haqida", "🌐 Об экосистеме", "🌐 About Ecosystem",
+    "❓ FAQ", "❓ ЧаВО",
+
+    # ─── SUBMENU: Darsliklar (content_submenu_kb) ─────
+    "🎬 Video Darslik", "🎬 Видеоурок", "🎬 Video Lesson",
+    "📁 File Darsliklar", "📁 Файлы уроков", "📁 File Lessons",
+
+    # ─── SUBMENU: Test's — CEFR darajalar ──────────────
+    "A0", "A1", "A2", "B1", "B2", "C1", "C2",                           # ⭐ YANGI
+
+    # ─── UNIVERSAL: Back / Cancel / Yes/No ─────────────
+    "🏠 Bosh menyu", "🏠 Главное меню", "🏠 Home",
+    "⬅️ Orqaga", "⬅️ Назад", "⬅️ Back", "⬅️ Orqaga qaytish",
+    "❌ Bekor qilish", "❌ Отмена", "❌ Cancel",
+    "✅ Ha", "✅ Да", "✅ Yes",
+    "❌ Yo'q", "❌ Нет", "❌ No",
+
+    # ─── COMMANDS ──────────────────────────────────────
+    "/start", "/menu", "/profile", "/settings", "/help",
+    "/video", "/file", "/quiz", "/register",                               # ⭐ /quiz YANGI
+    "register",
 }
+
 
 class AIGuardMiddleware(BaseMiddleware):
     async def __call__(
@@ -42,7 +78,7 @@ class AIGuardMiddleware(BaseMiddleware):
         if event.content_type not in {"text", "voice"}:
             return await handler(event, data)
 
-        # ✅ FIX: Allow navigation buttons and commands to pass through
+        # ✅ Navigation tugmalari va commandalar — doim o'tadi
         text = (event.text or "").strip()
         if text in NAVIGATION_WHITELIST or text.startswith("/"):
             return await handler(event, data)
@@ -57,11 +93,9 @@ class AIGuardMiddleware(BaseMiddleware):
         if not registration_complete:
             return await handler(event, data)
 
-        # ✅ FIX: Only block if user is NOT in an AI-related FSM state
-        # This prevents blocking settings toggles or other non-AI text inputs
+        # ✅ FIX: Faqat AI state'larda bo'lsa tekshir
         current_state = await state.get_state()
-        ai_states = {"AIChat:waiting_message", "AIAgent:conversation"}  # Adjust to your actual state names
+        ai_states = {"AIChat:waiting_message", "AIAgent:conversation"}
         if current_state and current_state not in ai_states:
             return await handler(event, data)
 
-        # ... rest of existing AI check logic (sync/user API call) ...

@@ -1,9 +1,14 @@
 """Admin messages API — inbox for user messages sent to admin."""
 
-from fastapi import APIRouter, Depends, Query
+import json
+import logging
 from typing import List, Optional
+
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session as DBSession
-from app.database import get_db
+from redis.asyncio import Redis
+
+from app.database import get_db, get_redis
 from app.models.admin_message import AdminMessage
 from app.models.user import User
 from app.schemas.admin_message import (
@@ -13,6 +18,8 @@ from app.schemas.admin_message import (
 )
 from app.core.exceptions import NotFoundException
 from app.core.deps import require_admin
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin-messages", tags=["admin_messages"])
 
@@ -56,23 +63,59 @@ def create_message(
     db.commit()
     db.refresh(msg)
     return msg
-
-
 @router.post("/{id}/reply", response_model=AdminMessageResponse)
-def reply_message(
+async def reply_message(
     id: int,
     data: AdminMessageReply,
     db: DBSession = Depends(get_db),
     admin: User = Depends(require_admin),
+    redis: Redis = Depends(get_redis),
 ):
     """Reply to an admin message (admin only)."""
     msg = db.query(AdminMessage).filter(AdminMessage.id == id).first()
     if not msg:
         raise NotFoundException(f"Message {id} not found")
+        
     msg.admin_reply = data.reply
     msg.is_replied = True
     db.commit()
     db.refresh(msg)
+
+    # ⬇️⬇️⬇️ TO'G'RILANGAN KOD ⬇️⬇️⬇️
+    telegram_id = None
+    
+    # 1-prioritet: To'g'ridan-to'g'ri user_telegram_id ni tekshiramiz
+    if msg.user_telegram_id:
+        telegram_id = msg.user_telegram_id
+        logger.info(f"✅ Telegram ID found directly: {telegram_id}")
+    # 2-prioritet: User jadvalidan qidiramiz
+    elif msg.user_id:
+        user = db.query(User).filter(User.id == msg.user_id).first()
+        if user and user.telegram_id:
+            telegram_id = user.telegram_id
+            logger.info(f"✅ Telegram ID found via User table: {telegram_id}")
+        else:
+            # 3-prioritet: Fallback sifatida user_id ni ishlatamiz
+            telegram_id = msg.user_id
+            logger.info(f"⚠️ Using user_id as fallback: {telegram_id}")
+    
+    if telegram_id:
+        payload = {
+            "telegram_id": int(telegram_id),
+            "text": data.reply,
+            "inbox_message_id": msg.id,
+            "admin_name": getattr(admin, 'full_name', getattr(admin, 'username', 'Admin'))
+        }
+        
+        try:
+            await redis.rpush("inbox:admin_replies", json.dumps(payload))
+            logger.info(f"✅ Admin reply pushed to Redis pfor Telegram ID {telegram_id}")
+        except Exception as e:
+            logger.error(f"❌ Redisga push qilishda xatolik: {e}")
+    else:
+        logger.warning(f"⚠️ Telegram ID umuman topilmadi (message {id}). user_id={msg.user_id}, user_telegram_id={msg.user_telegram_id}")
+    # ⬆️⬆️⬆️ KOD TUGADI ⬆️⬆️⬆️
+
     return msg
 
 

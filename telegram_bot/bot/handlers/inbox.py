@@ -12,6 +12,7 @@ from bot.utils.markdown import escape_md
 logger = logging.getLogger(__name__)
 router = Router()
 
+from app.models import InboxMessage
 
 class InboxState(StatesGroup):
     """User states for inbox interaction."""
@@ -21,7 +22,6 @@ class InboxState(StatesGroup):
 
 async def send_to_inbox(user_id: int, subject: str, message: str, db_session):
     """Store user message in inbox."""
-    from app.models import InboxMessage
     
     try:
         inbox_msg = InboxMessage(

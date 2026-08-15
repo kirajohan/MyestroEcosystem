@@ -95,17 +95,50 @@ def cefr_level_selection() -> ReplyKeyboardMarkup:
     return builder.as_markup(resize_keyboard=True)
 
 
+def content_submenu_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Darsliklar submenu — Video + File (bir joyda)."""
+    texts = {
+        "uz": {
+            "video": "🎬 Video Darslik",
+            "file": "📁 File Darsliklar",
+            "back": "⬅️ Orqaga",
+        },
+        "ru": {
+            "video": "🎬 Видеоурок",
+            "file": "📁 Файлы уроков",
+            "back": "⬅️ Назад",
+        },
+        "en": {
+            "video": "🎬 Video Lesson",
+            "file": "📁 File Lessons",
+            "back": "⬅️ Back",
+        },
+    }
+    t = texts.get(lang, texts["uz"])
+
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["video"], style="success"),
+        StyledKeyboardButton(text=t["file"], style="success"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["back"], style="danger"),
+    )
+    builder.adjust(2, 1)
+    return builder.as_markup(resize_keyboard=True)
+
 # ─── REGISTERED USER MAIN MENU ──────────────────────────────
 
 def registered_menu_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
     """Main menu for REGISTERED users."""
     texts = {
-        "uz": ["👤 Profil", "⚙️ Sozlamalar", "📖 Qo'llanma", "📨 Admin ga xabar", "🎬 Video Darslik", "📁 File Darsliklar"],
-        "ru": ["👤 Профиль", "⚙️ Настройки", "📖 Руководство", "📨 Написать админу", "🎬 Видеоурок", "📁 Файлы уроков"],
-        "en": ["👤 Profile", "⚙️ Settings", "📖 Guide", "📨 Message admin", "🎬 Video Lesson", "📁 File Lessons"],
+        "uz": ["👤 Profil", "⚙️ Sozlamalar", "📖 Qo'llanma", "📨 Admin ga xabar", "📚 Darsliklar", "🧪 Test's (English QUIZ)"],
+        "ru": ["👤 Профиль", "⚙️ Настройки", "📖 Руководство", "📨 Написать админу", "📚 Учебные материалы", "🧪 Тесты (English QUIZ)"],
+        "en": ["👤 Profile", "⚙️ Settings", "📖 Guide", "📨 Message admin", "📚 Lessons", "🧪 Test's (English QUIZ)"],
     }
     items = texts.get(lang, texts["uz"])
-    styles = ["primary", "primary", "success", "danger", "success", "success"]
+    # 5 ta qoladi (primary, primary, success, danger, success) + yangi Test's (primary)
+    styles = ["primary", "primary", "success", "danger", "success", "primary"]
 
     builder = ReplyKeyboardBuilder()
     for text, style in zip(items, styles):
@@ -114,7 +147,6 @@ def registered_menu_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
         )
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
-
 
 # ─── SETTINGS ────────────────────────────────────────────────
 

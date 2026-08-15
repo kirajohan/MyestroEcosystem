@@ -24,7 +24,12 @@ class IsRegisteredFilter(BaseFilter):
         registration_complete = user_data.get("registration_complete", False)
         return registration_complete == self.is_registered
 
-
+class QuizSection(StatesGroup):
+    """Test's (English QUIZ) — maxsus bo'lim, boshqalardan alohida."""
+    cefr_selection = State()    # CEFR daraja tanlash (reply keyboard)
+    quiz_list = State()         # Testlar ro'yxati (inline keyboard — pagination)
+    quiz_active = State()       # Test jarayoni (inline keyboard — javob berish)
+    quiz_results = State()      # Natijani ko'rsatish
 
 class RegistrationStates(StatesGroup):
     """Original registration states (kept for backward compatibility)."""
