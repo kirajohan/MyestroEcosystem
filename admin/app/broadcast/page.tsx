@@ -25,6 +25,23 @@ interface HistoryItem {
   created_at: string;
 }
 
+
+
+const sendBroadcast = async (payload: any) => {
+  const token = localStorage.getItem('access_token'); // ⬅️ Browser'dan olamiz
+  
+  const response = await fetch('/api/broadcast', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`, // ⬅️ Headerga qo'shamiz
+    },
+    body: JSON.stringify(payload),
+  });
+  
+  return response.json();
+};
+
 export default function BroadcastPage() {
   // Form state
   const [title, setTitle] = useState("");

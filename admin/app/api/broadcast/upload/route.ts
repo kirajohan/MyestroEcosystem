@@ -1,3 +1,5 @@
+// C:\Projects\MyestroEco\MyestroEco\admin\app\api\broadcast\[id]\route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
@@ -20,6 +22,7 @@ export async function POST(request: NextRequest) {
     const backendResp = await fetch(`${API_BASE_URL}/broadcast/upload-media`, {
       method: 'POST',
       body: backendFormData,
+
     });
 
     const data = await backendResp.json();

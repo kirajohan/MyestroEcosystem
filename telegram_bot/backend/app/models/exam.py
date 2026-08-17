@@ -32,6 +32,12 @@ class Exam(Base):
     is_sample = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True, nullable=False)
     attempt_limit = Column(Integer, default=1)
+    
+    # ⭐ YANGI — Test (QUIZ) uchun
+    is_published = Column(Boolean, default=False, nullable=False)
+    channel_post_id = Column(BigInteger, nullable=True)
+    published_at = Column(DateTime(timezone=True), nullable=True)
+    
     created_by = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

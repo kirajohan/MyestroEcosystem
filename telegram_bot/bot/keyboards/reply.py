@@ -30,8 +30,8 @@ def language_switch_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
     builder = ReplyKeyboardBuilder()
     builder.add(
         StyledKeyboardButton(text="🇺🇿 O'zbek", style="primary"),
-        StyledKeyboardButton(text="🇷🇺 Русский", style="primary"),
-        StyledKeyboardButton(text="🇬🇧 English", style="primary"),
+        StyledKeyboardButton(text="🇷🇺 Русский", style="danger"),
+        StyledKeyboardButton(text="🇬🇧 English", style="success"),
     )
     builder.add(
         StyledKeyboardButton(text="⬅️ Orqaga", style="danger"),
@@ -153,9 +153,9 @@ def registered_menu_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
 def settings_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
     """Settings submenu."""
     texts = {
-        "uz": {"lang": "🌐 Til o'zgartirish", "ai": "🤖 AI ON/OFF", "logout": "🚪 Log Out"},
-        "ru": {"lang": "🌐 Сменить язык", "ai": "🤖 AI ВКЛ/ВЫКЛ", "logout": "🚪 Выйти"},
-        "en": {"lang": "🌐 Change Language", "ai": "🤖 AI ON/OFF", "logout": "🚪 Log Out"},
+        "uz": {"lang": "🌐 Til o'zgartirish", "ai": "🤖 AI ON/OFF" },
+        "ru": {"lang": "🌐 Сменить язык", "ai": "🤖 AI ВКЛ/ВЫКЛ"},
+        "en": {"lang": "🌐 Change Language", "ai": "🤖 AI ON/OFF" },
     }
     t = texts.get(lang, texts["uz"])
 
@@ -170,7 +170,7 @@ def settings_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
     builder.add(
         StyledKeyboardButton(text="⬅️ Orqaga", style="danger"),
     )
-    builder.adjust(1)
+    builder.adjust(2,1)
     return builder.as_markup(resize_keyboard=True)
 
 
@@ -348,7 +348,7 @@ def profile_edit_fields_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
         StyledKeyboardButton(text=t["cefr"], style="success"),
         StyledKeyboardButton(text=t["back"], style="danger"),
     )
-    builder.adjust(1)
+    builder.adjust(2,1)
     return builder.as_markup(resize_keyboard=True)
 
 

@@ -1,3 +1,5 @@
+// C:\Projects\MyestroEco\MyestroEco\admin\app\api\tests\route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';

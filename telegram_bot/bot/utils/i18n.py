@@ -5,6 +5,52 @@ Key naming convention: section.subsection.element
 
 TRANSLATIONS = {
     "uz": {
+
+        # ═══════════════════════════════════════════════════════════
+        #  QUIZ (English QUIZ / Test's)
+        # ═══════════════════════════════════════════════════════════
+        "quiz.select_cefr": (
+            "🧪 <b>English QUIZ</b>\n\n"
+            "Bilimingizni sinab ko'ring! 🎯\n\n"
+            "Quyidagi CEFR darajalardan birini tanlang:\n\n"
+            "🟢 <b>A0–A2</b> — Boshlang'ich\n"
+            "🟡 <b>B1–B2</b> — O'rta\n"
+            "🔴 <b>C1–C2</b> — Yuqori\n\n"
+            "Darajani tanlang ⬇️"
+        ),
+        "quiz.no_exams": (
+            "❌ <b>{level}</b> darajasida testlar topilmadi\n\n"
+            "Boshqa darajani tanlang yoki orqaga qayting."
+        ),
+        "quiz.loading": (
+            "📊 <b>{level}</b> darajasidagi testlar yuklanmoqda...\n\n"
+            "⏳ Iltimos, biroz kuting."
+        ),
+        "quiz.select_test": (
+            "📊 <b>{level}</b> darajasidagi testlar:\n\n"
+            "Testni tanlang ⬇️"
+        ),
+        "quiz.starting": (
+            "🚀 <b>Test boshlanmoqda...</b>\n\n"
+            "Savollar yuklanmoqda."
+        ),
+        "quiz.question_title": (
+            "❓ <b>Savol {current}/{total}</b>"
+        ),
+        "quiz.finished": (
+            "✅ <b>Test yakunlandi!</b>\n\n"
+            "📊 <b>Natija:</b>\n"
+            "• To'g'ri javoblar: <b>{correct}/{total}</b>\n"
+            "• Foiz: <b>{percentage:.1f}%</b>\n"
+            "• Holat: <b>{status}</b>\n\n"
+            "🎯 <b>Umumiy ball:</b> {score}"
+        ),
+        "quiz.passed": "✅ O'TDINGIZ!",
+        "quiz.failed": "❌ O'TMADINGIZ",
+        "quiz.limit_reached": (
+            "⚠️ <b>Urinishlar limiti tugadi</b>\n\n"
+            "Bu testni yana topshirish uchun admin bilan bog'laning."
+        ),
         # ═══════════════════════════════════════════════════════════
         #  START
         # ═══════════════════════════════════════════════════════════
@@ -182,9 +228,9 @@ TRANSLATIONS = {
             "Endi barcha funksiyalardan foydalanishingiz mumkin:\n"
             "• 🤖 AI Teacher bilan suhbat\n"
             "• 📝 Imtihon topshirish\n"
- "• 📚 Video va file darsliklar\n\n"
-            "👇 <b>Asosiy menyu:</b>"
-        ),
+        "• 📚 Video va file darsliklar\n\n"
+                    "👇 <b>Asosiy menyu:</b>"
+                ),
         "register.ask_confirm_password": (
             "🔐 <b>Parolni tasdiqlang</b>\n\n"
             "Xavfsizlik maqsadida parolingizni qayta kiriting:"
@@ -324,9 +370,7 @@ TRANSLATIONS = {
             "✅ <b>Xabaringiz yuborildi!</b>\n\n"
             "Ticket ID: <code>{ticket_id}</code>\n\n"
             "Admin tez orada javob beradi. "
-            "Javobni <b>«Xabarlar»</b> bo'limidan kuzatishingiz mumkin."
         ),
-
         # ═══════════════════════════════════════════════════════════
         #  REGISTRATION (new user onboarding)
         # ═══════════════════════════════════════════════════════════
@@ -606,6 +650,51 @@ TRANSLATIONS = {
     },
     
     "ru": {
+        # ═══════════════════════════════════════════════════════════
+        #  QUIZ (English QUIZ / Test's)
+        # ═══════════════════════════════════════════════════════════
+        "quiz.select_cefr": (
+            "🧪 <b>English QUIZ</b>\n\n"
+            "Проверьте свои знания! 🎯\n\n"
+            "Выберите один из уровней CEFR ниже:\n\n"
+            "🟢 <b>A0–A2</b> — Начальный\n"
+            "🟡 <b>B1–B2</b> — Средний\n"
+            "🔴 <b>C1–C2</b> — Продвинутый\n\n"
+            "Выберите уровень ⬇️"
+        ),
+        "quiz.no_exams": (
+            "❌ Тесты для уровня <b>{level}</b> не найдены\n\n"
+            "Выберите другой уровень или вернитесь назад."
+        ),
+        "quiz.loading": (
+            "📊 Загрузка тестов для уровня <b>{level}</b>...\n\n"
+            "⏳ Пожалуйста, подождите."
+        ),
+        "quiz.select_test": (
+            "📊 Тесты для уровня <b>{level}</b>:\n\n"
+            "Выберите тест ⬇️"
+        ),
+        "quiz.starting": (
+            "🚀 <b>Тест начинается...</b>\n\n"
+            "Загружаем вопросы."
+        ),
+        "quiz.question_title": (
+            "❓ <b>Вопрос {current}/{total}</b>"
+        ),
+        "quiz.finished": (
+            "✅ <b>Тест завершён!</b>\n\n"
+            "📊 <b>Результат:</b>\n"
+            "• Правильных ответов: <b>{correct}/{total}</b>\n"
+            "• Процент: <b>{percentage:.1f}%</b>\n"
+            "• Статус: <b>{status}</b>\n\n"
+            "🎯 <b>Общий балл:</b> {score}"
+        ),
+        "quiz.passed": "✅ СДАНО!",
+        "quiz.failed": "❌ НЕ СДАНО",
+        "quiz.limit_reached": (
+            "⚠️ <b>Лимит попыток исчерпан</b>\n\n"
+            "Для повторной сдачи теста свяжитесь с администратором."
+        ),
         # ═══════════════════════════════════════════════════════════
         #  START
         # ═══════════════════════════════════════════════════════════
@@ -1203,6 +1292,51 @@ TRANSLATIONS = {
         "about_info": "ℹ️ Подробнее о нас",
     },
     "en": {
+        # ═══════════════════════════════════════════════════════════
+        #  QUIZ (English QUIZ / Test's)
+        # ═══════════════════════════════════════════════════════════
+        "quiz.select_cefr": (
+            "🧪 <b>English QUIZ</b>\n\n"
+            "Test your knowledge! 🎯\n\n"
+            "Choose one of the CEFR levels below:\n\n"
+            "🟢 <b>A0–A2</b> — Beginner\n"
+            "🟡 <b>B1–B2</b> — Intermediate\n"
+            "🔴 <b>C1–C2</b> — Advanced\n\n"
+            "Select your level ⬇️"
+        ),
+        "quiz.no_exams": (
+            "❌ No tests found for <b>{level}</b>\n\n"
+            "Choose another level or go back."
+        ),
+        "quiz.loading": (
+            "📊 Loading tests for <b>{level}</b>...\n\n"
+            "⏳ Please wait."
+        ),
+        "quiz.select_test": (
+            "📊 Tests for <b>{level}</b>:\n\n"
+            "Select a test ⬇️"
+        ),
+        "quiz.starting": (
+            "🚀 <b>Starting test...</b>\n\n"
+            "Loading questions."
+        ),
+        "quiz.question_title": (
+            "❓ <b>Question {current}/{total}</b>"
+        ),
+        "quiz.finished": (
+            "✅ <b>Test completed!</b>\n\n"
+            "📊 <b>Result:</b>\n"
+            "• Correct answers: <b>{correct}/{total}</b>\n"
+            "• Percentage: <b>{percentage:.1f}%</b>\n"
+            "• Status: <b>{status}</b>\n\n"
+            "🎯 <b>Total score:</b> {score}"
+        ),
+        "quiz.passed": "✅ PASSED!",
+        "quiz.failed": "❌ FAILED",
+        "quiz.limit_reached": (
+            "⚠️ <b>Attempt limit reached</b>\n\n"
+            "Contact admin to retake this test."
+        ),
         # ═══════════════════════════════════════════════════════════
         #  START
         # ═══════════════════════════════════════════════════════════

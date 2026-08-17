@@ -18,7 +18,7 @@ from bot.config import settings, API_BASE_URL
 import httpx
 from bot.utils.i18n import get_text
 from bot.states.registrations_filter import IsRegistered, IsNotRegistered
-
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 router = Router()
 
 # ══════════════════════════════════════════════════════════════
@@ -341,6 +341,9 @@ async def msg_register(message: types.Message, state: FSMContext):
 # REGISTERED USER — TEST'S (English QUIZ)
 # ══════════════════════════════════════════════════════════════
 
+# Import qismiga qo'shing (agar yo'q bo'lsa):
+from bot.keyboards.reply import cefr_level_selection_with_back
+
 @router.message(
     IsRegistered(),
     F.text.in_(["🧪 Test's (English QUIZ)", "🧪 Тесты (English QUIZ)"]),
@@ -353,31 +356,54 @@ async def msg_quiz_start(message: types.Message, state: FSMContext):
     await state.set_state(QuizSection.cefr_selection)
 
     await message.answer(
-        get_text("quiz.select_cefr", lang),  # "Qaysi darajada test?"
-        reply_markup=cefr_level_selection(),  # ✅ allaqachon bor keyboard
+        get_text("quiz.select_cefr", lang),
+        reply_markup=cefr_level_selection_with_back(lang),  # ✅ Orqaga tugmasi bilan
     )
-
 
 @router.message(
     QuizSection.cefr_selection,
     F.text.in_(["A0", "A1", "A2", "B1", "B2", "C1", "C2"]),
-)
+)   
 async def msg_quiz_cefr_selected(message: types.Message, state: FSMContext):
-    """CEFR daraja tanlandi — testlar ro'yxati (inline keyboard)."""
+    """CEFR daraja tanlandi — testlar ro'yxati."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     cefr_level = message.text
 
     await state.update_data(quiz_cefr=cefr_level)
-    await state.set_state(QuizSection.quiz_list)
 
-    # Keyingi qadamda: Backend API dan testlarni olib, inline keyboard chiqaramiz
-    await message.answer(
-        f"📊 <b>{cefr_level}</b> darajasidagi testlar yuklanmoqda...",
+    from bot.handlers.exam import fetch_public_exams, exam_list_inline_kb
+    
+    loading_msg = await message.answer(
+        get_text("quiz.loading", lang).format(level=cefr_level),
         parse_mode="HTML",
     )
-    # TODO: fetch_quiz_list(cefr_level) chaqirib, inline pagination keyboard chiqarish
-
+    
+    exams = await fetch_public_exams(cefr_level, limit=10, offset=0)
+    
+    if not exams:
+        # ✅ State'ni cefr_selection ga QAYTARISH
+        await state.set_state(QuizSection.cefr_selection)
+        
+        await loading_msg.edit_text(
+            get_text("quiz.no_exams", lang).format(level=cefr_level),
+            parse_mode="HTML",
+        )
+        # Keyboard'ni qayta ko'rsatish
+        await message.answer(
+            get_text("quiz.select_cefr", lang),
+            reply_markup=cefr_level_selection_with_back(lang),
+        )
+        return
+    
+    # Testlar topildi — quiz_list state'ga o'tish
+    await state.set_state(QuizSection.quiz_list)
+    
+    await loading_msg.edit_text(
+        get_text("quiz.select_test", lang).format(level=cefr_level),
+        parse_mode="HTML",
+        reply_markup=exam_list_inline_kb(exams, page=0, cefr_level=cefr_level)
+    )
 
 
 # ═══ SETTINGS — SUBMENU ═════════════════════════════════════
@@ -461,38 +487,73 @@ async def settings_ai_toggle_reply(message: types.Message, state: FSMContext):
         reply_markup=settings_kb(lang),
     )
 
-@router.message(F.text.in_(["🚪 Log Out", "🚪 Выйти", "🚪 Chiqish"]))
-async def settings_logout_reply(message: types.Message, state: FSMContext):
-    """Logout — clear state."""
-    user_data = await state.get_data()
-    lang = _get_lang(user_data)
-
-    await state.clear()
-    await message.answer(
-        get_text("settings.logout_done", lang),
-        reply_markup=main_menu(lang),
-    )
-
 
 # ══════════════════════════════════════════════════════════════
 # REGISTERED USER — CONTENT SUBMENU (📚 Darsliklar)
 # ══════════════════════════════════════════════════════════════
+from aiogram import Router, F, types
+from aiogram.filters import Command
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.context import FSMContext
+import httpx
+from aiogram.exceptions import TelegramBadRequest
 
-@router.message(
-    IsRegistered(),
-    F.text.in_(["📚 Darsliklar", "📚 Учебные материалы", "📚 Lessons"]),
-)
-async def msg_content_submenu(message: types.Message, state: FSMContext):
-    """📚 Darsliklar bosilganda — submenu chiqadi (Video + File)."""
-    user_data = await state.get_data()
-    lang = _get_lang(user_data)
+router = Router()
+ITEMS_PER_PAGE = 7 # Bitta sahifada 7 ta kontent ko'rsatiladi (Mobil ekranga juda qulay)
 
-    await message.answer(
-        get_text("content.select_type", lang),  # "Qaysi turdagi darslik?"
-        reply_markup=content_submenu_kb(lang),
-    )
+# --- YORDAMCHI FUNKSIYA ---
+async def get_content_keyboard(content_type: str, page: int, lang: str):
+    """Inline keyboard va paginatsiya yaratuvchi funksiya"""
+    items, total = await fetch_content_list(content_type, page)
+    
+    if not items:
+        return None, "❌ Kontent topilmadi."
 
+    builder = InlineKeyboardBuilder()
+    
+    # 1. Kontent tugmalari
+    for item in items:
+        title = item['title']
+        # Tugma matni juda uzun bo'lib ketmasligi uchun qisqartiramiz (Telegram uchun max 35-40 harf yaxshi)
+        if len(title) > 35:
+            title = title[:32] + "..."
+            
+        # DIQQAT: callback_data 64 byte dan oshmasligi kerak! Shuning uchun faqat ID ishlatamiz.
+        builder.button(
+            text=f"📺 {title}" if content_type == "video" else f"📄 {title}",
+            callback_data=f"cnt:sel:{item['id']}:{content_type}" # cnt:sel:12:video
+        )
+        
+    # 2. Paginatsiya (Sahifalash) tugmalari
+    total_pages = (total + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
+    
+    nav_buttons = []
+    if page > 1:
+        nav_buttons.append(types.InlineKeyboardButton(
+            text="⬅️ Oldingi", 
+            callback_data=f"cnt:pg:{content_type}:{page-1}"
+        ))
+        
+    nav_buttons.append(types.InlineKeyboardButton(
+        text=f"📍 {page} / {total_pages}", 
+        callback_data="ignore"
+    ))
+    
+    if page < total_pages:
+        nav_buttons.append(types.InlineKeyboardButton(
+            text="Keyingi ➡️", 
+            callback_data=f"cnt:pg:{content_type}:{page+1}"
+        ))
+        
+    if nav_buttons:
+        builder.row(*nav_buttons)
+        
+    # 3. Orqaga tugmasi
+    builder.row(types.InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="main_menu"))
+    
+    return builder.as_markup(), None
 
+# --- ASOSIY HANDLERLAR ---
 
 @router.message(
     IsRegistered(),
@@ -502,23 +563,20 @@ async def msg_content_submenu(message: types.Message, state: FSMContext):
     ),
 )
 async def msg_video(message: types.Message, state: FSMContext):
-    """Video lessons list."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
 
-    items, total = await fetch_content_list("video", 1)
-
-    if not items:
-        await message.answer(get_text("video.not_found", lang))
+    keyboard, error_text = await get_content_keyboard("video", page=1, lang=lang)
+    
+    if error_text:
+        await message.answer(error_text)
         return
 
-    # ✅ escape_html YO'Q — oddiy text
-    lines = [f"{i+1}. {item['title']}" for i, item in enumerate(items)]
-    text = "🎬 <b>Video Darsliklar</b>\n\n" + "\n".join(lines) + f"\n\n(Jami: {total} ta)"
-
-    await message.answer(text, parse_mode="HTML")
-
-    pass
+    await message.answer(
+        "🎬 <b>Video Darsliklar</b>\n\nQuyidagi ro'yxatdan kerakli videoni tanlang:",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
 
 @router.message(
     IsRegistered(),
@@ -528,21 +586,83 @@ async def msg_video(message: types.Message, state: FSMContext):
     ),
 )
 async def msg_file(message: types.Message, state: FSMContext):
-    """File lessons list."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
 
-    items, total = await fetch_content_list("file", 1)
-
-    if not items:
-        await message.answer(get_text("file.not_found", lang))
+    keyboard, error_text = await get_content_keyboard("file", page=1, lang=lang)
+    
+    if error_text:
+        await message.answer(error_text)
         return
 
-    # ✅ escape_html YO'Q — oddiy text
-    lines = [f"{i+1}. {item['title']}" for i, item in enumerate(items)]
-    text = "📁 <b>File Darsliklar</b>\n\n" + "\n".join(lines) + f"\n\n(Jami: {total} ta)"
+    await message.answer(
+        "📁 <b>File Darsliklar</b>\n\nQuyidagi ro'yxatdan kerakli faylni tanlang:",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
 
-    await message.answer(text, parse_mode="HTML")
+# --- PAGINATSIYA HANDLERI (Sahifalash) ---
+@router.callback_query(F.data.startswith("cnt:pg:"))
+async def process_content_pagination(callback: types.CallbackQuery, state: FSMContext):
+    # data formati: "cnt:pg:video:2"
+    _, _, content_type, page = callback.data.split(":")
+    page = int(page)
+    
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    
+    keyboard, error_text = await get_content_keyboard(content_type, page, lang)
+    
+    try:
+        if error_text:
+            await callback.message.edit_text(error_text)
+        else:
+            title = "🎬 <b>Video Darsliklar</b>" if content_type == "video" else "📁 <b>File Darsliklar</b>"
+            await callback.message.edit_text(
+                f"{title}\n\nQuyidagi ro'yxatdan keraklisini tanlang:",
+                reply_markup=keyboard,
+                parse_mode="HTML"
+            )
+    except TelegramBadRequest:
+        # Agar foydalanuvchi "Keyingi" ni 2 marta tez bossa yoki xabar o'chirilgan bo'lsa
+        pass
+        
+    await callback.answer()
+
+# --- KONTENTNI TANLASH VA YUBORISH HANDLERI ---
+@router.callback_query(F.data.startswith("cnt:sel:"))
+async def process_content_select(callback: types.CallbackQuery, state: FSMContext):
+    # data formati: "cnt:sel:123:video"
+    _, _, item_id, content_type = callback.data.split(":")
+    item_id = int(item_id)
+    
+    await callback.answer("⏳ Yuklanmoqda...")
+    
+    # Backenddan shu bitta itemni olish (fetch_single_content funksiyasini yozishingiz kerak)
+    # item = await fetch_single_content(item_id)
+    
+    # Hozircha taxminiy kod (Backendga /content/public/{id} qo'shganingizdan keyin):
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{API_BASE_URL}/content/public/{item_id}")
+            if resp.status_code == 200:
+                item = resp.json()
+                file_id = item.get("telegram_file_id")
+                title = item.get("title", "")
+                
+                if not file_id:
+                    await callback.message.answer("❌ Fayl topilmadi (file_id yo'q).")
+                    return
+                    
+                if content_type == "video":
+                    await callback.message.answer_video(video=file_id, caption=f"🎬 <b>{title}</b>", parse_mode="HTML")
+                else:
+                    await callback.message.answer_document(document=file_id, caption=f"📄 <b>{title}</b>", parse_mode="HTML")
+            else:
+                await callback.message.answer("❌ Kontentni yuklashda xatolik yuz berdi.")
+    except Exception as e:
+        print(f"[CONTENT SELECT ERROR] {e}")
+        await callback.message.answer("⚠️ Server bilan aloqa uzildi.")
 
     pass
 # ══════════════════════════════════════════════════════════════

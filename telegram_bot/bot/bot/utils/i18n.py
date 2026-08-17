@@ -182,7 +182,7 @@ TRANSLATIONS = {
             "Endi barcha funksiyalardan foydalanishingiz mumkin:\n"
             "• 🤖 AI Teacher bilan suhbat\n"
             "• 📝 Imtihon topshirish\n"
- "• 📚 Video va file darsliklar\n\n"
+            "• 📚 Video va file darsliklar\n\n"
             "👇 <b>Asosiy menyu:</b>"
         ),
         "register.ask_confirm_password": (
@@ -278,10 +278,17 @@ TRANSLATIONS = {
         "admin.sent": (
             "✅ <b>Xabaringiz yuborildi!</b>\n\n"
             "Ticket ID: <code>{ticket_id}</code>\n\n"
-            "Admin tez orada javob beradi. "
-            "Javobni <b>«Xabarlar»</b> bo'limidan kuzatishingiz mumkin."
+            "Admin tez orada javob beradi.\n"
+            "Holatni kuzatish uchun <b>«Xabarlar»</b> bo'limiga kiring."
+        ),
+        "admin.sent_inbox": (
+            "✅ <b>Xabaringiz yuborildi!</b>\n\n"
+            "Admin tez orada javob beradi."
         ),
 
+# ═══════════════════════════════════════════════════════════
+#  REGISTRATION (new user onboarding)
+# ═══════════════════════════════════════════════════════════
         # ═══════════════════════════════════════════════════════════
         #  REGISTRATION (new user onboarding)
         # ═══════════════════════════════════════════════════════════

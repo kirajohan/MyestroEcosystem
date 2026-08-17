@@ -14,7 +14,9 @@ class Settings(BaseSettings):
     API_BASE_URL: str = os.getenv("API_BASE_URL", "http://myestro-backend:8002")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     AI_TRIAL_LIMIT: int = int(os.getenv("AI_TRIAL_LIMIT", "3"))
-    
+    SECRET_KEY: str = "b376f24c1d2bfbaacfa9ef51027b74f40cb3aa9a8497aa50dd38c52c6bff5d07"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     # Bot Settings (Phase 2)
     BOT_GLOBAL_ENABLED: str = os.getenv("BOT_GLOBAL_ENABLED", "true")
     AI_GLOBAL_ENABLED: str = os.getenv("AI_GLOBAL_ENABLED", "true")

@@ -1,20 +1,28 @@
+// C:\Projects\MyestroEco\MyestroEco\admin\app\api\broadcast\[id]\route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Unauthorized: Token topilmadi' }, { status: 401 });
+    }
+
     const { id } = params;
     if (!id) {
       return NextResponse.json({ error: 'id majburiy' }, { status: 400 });
     }
 
-    // Forward to backend /broadcast/status/{id}
     const backendResp = await fetch(`${API_BASE_URL}/broadcast/status/${id}`, {
       method: 'GET',
+      headers: {
+        'Authorization': authHeader,
+      },
     });
 
     if (!backendResp.ok) {
@@ -27,9 +35,6 @@ export async function GET(
 
     const data = await backendResp.json();
 
-    // Convert backend response → admin BroadcastProgress format
-    //   backend: { broadcast_id, title, status, total, sent, failed, created_at }
-    //   admin:   { status, total, sent, failed }
     return NextResponse.json(
       {
         status: data.status || 'unknown',
@@ -40,6 +45,52 @@ export async function GET(
       },
       { status: 200 }
     );
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || "Noma'lum xato" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Unauthorized: Token topilmadi' }, { status: 401 });
+    }
+
+    const formData = await request.formData();
+    const file = formData.get('file');
+
+    if (!file || !(file instanceof Blob)) {
+      return NextResponse.json(
+        { error: 'Fayl talab qilinadi' },
+        { status: 400 }
+      );
+    }
+
+    const backendFormData = new FormData();
+    backendFormData.append('file', file);
+
+    const backendResp = await fetch(`${API_BASE_URL}/broadcast/upload-media`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+      },
+      body: backendFormData,
+    });
+
+    const data = await backendResp.json();
+
+    if (!backendResp.ok) {
+      return NextResponse.json(
+        { error: data.detail || 'Upload xatosi' },
+        { status: backendResp.status }
+      );
+    }
+
+    return NextResponse.json(data, { status: 200 });
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || "Noma'lum xato" },

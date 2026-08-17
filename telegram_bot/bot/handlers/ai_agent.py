@@ -19,9 +19,10 @@ from bot.utils.ai_memory_client import AIMemoryClient
 from bot.utils.ai_prompts import build_system_prompt
 from bot.utils.i18n import get_text
 from bot.states.registration import (
-    StartSection, RegistrationFSM, AuthFSM, RegisterFSM, LoginFSM, MenuSection, RegisteredSection
+    QuizSection ,    StartSection, RegistrationFSM, AuthFSM, RegisterFSM, LoginFSM, MenuSection, RegisteredSection,
 )
 from bot.handlers.profile import ProfileEditFSM
+QuizSection
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -190,7 +191,12 @@ async def _answer_with_memory(
         MenuSection.contact_admin,
         ProfileEditFSM.waiting_field,
         ProfileEditFSM.waiting_value,
-    )
+        QuizSection.cefr_selection,
+        QuizSection.quiz_list,
+        QuizSection.quiz_active,
+        QuizSection.quiz_results,
+    ),
+    F.text & ~F.text.startswith("/")
 )
 async def ai_agent_text_handler(message: Message, state: FSMContext):
     """Handle text messages for registered users — AI Teacher with Memory."""

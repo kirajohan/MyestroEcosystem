@@ -19,6 +19,14 @@ router = APIRouter(prefix="/content", tags=["content"])
 
 TELEGRAM_API = "https://api.telegram.org/bot"
 
+@router.get("/public/{id}", response_model=ContentItemResponse)
+def get_public_content(id: int, db: DBSession = Depends(get_db)):
+    """Bot uchun: Bitta kontentni ID orqali olish."""
+    item = db.query(ContentItem).filter(ContentItem.id == id, ContentItem.is_active == True).first()
+    if not item:
+        raise NotFoundException("Content not found")
+    return item
+
 
 @router.get("", response_model=List[ContentItemResponse])
 def list_content(
