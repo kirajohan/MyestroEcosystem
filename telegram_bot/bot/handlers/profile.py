@@ -6,7 +6,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.states.registration import MenuSection, RegisteredSection
 from bot.utils.i18n import get_text
-from bot.utils.markdown import escape_md
 from bot.config import API_BASE_URL
 from bot.keyboards.reply import (
     registered_menu_kb,
@@ -290,14 +289,14 @@ async def profile_edit_cefr(message: types.Message, state: FSMContext):
                 await state.set_state(RegisteredSection.main_menu)
 
                 await message.answer(
-                    f"❌ Xatolik: {escape_md(str(resp.status_code))}\n{escape_md(resp.text)}",
+                    f"❌ Xatolik: {str(resp.status_code)}\n{resp.text}",
                     reply_markup=registered_menu_kb(lang)
                 )
     except Exception as e:
         await state.set_state(RegisteredSection.main_menu)
 
         await message.answer(
-            f"❌ Xatolik: {escape_md(str(e))}",
+            f"❌ Xatolik: {str(e)}",
             reply_markup=registered_menu_kb(lang)
         )
 
@@ -408,13 +407,13 @@ async def profile_edit_value(message: types.Message, state: FSMContext):
                 await state.set_state(RegisteredSection.main_menu)
 
                 await message.answer(
-                    f"❌ Xatolik: {escape_md(str(resp.status_code))}\n{escape_md(resp.text)}",
+                    f"❌ Xatolik: {str(resp.status_code)}\n{resp.text}",
                     reply_markup=registered_menu_kb(lang),
                 )
     except Exception as e:
         await state.set_state(RegisteredSection.main_menu)
 
         await message.answer(
-            f"❌ Xatolik: {escape_md(str(e))}",
+            f"❌ Xatolik: {str(e)}",
             reply_markup=registered_menu_kb(lang),
         )

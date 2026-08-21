@@ -486,20 +486,31 @@ async def settings_ai_toggle_reply(message: types.Message, state: FSMContext):
         f"✅ {status_text}",
         reply_markup=settings_kb(lang),
     )
-
-
 # ══════════════════════════════════════════════════════════════
 # REGISTERED USER — CONTENT SUBMENU (📚 Darsliklar)
 # ══════════════════════════════════════════════════════════════
-from aiogram import Router, F, types
-from aiogram.filters import Command
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.fsm.context import FSMContext
-import httpx
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.utils.keyboard import InlineKeyboardBuilder  # ✅ InlineKeyboardBuilder shu yerdan keladi
+from aiogram.exceptions import TelegramBadRequest  
 
-router = Router()
-ITEMS_PER_PAGE = 7 # Bitta sahifada 7 ta kontent ko'rsatiladi (Mobil ekranga juda qulay)
+ITEMS_PER_PAGE = 7  # ✅ ITEMS_PER_PAGE shu yerda e'lon qilinadi
+LIMIT = 5
+
+# ⭐ 1-QADAM: Asosiy "📚 Darsliklar" tugmasi uchun handler (YANGI QO'SHILDI)
+@router.message(
+    IsRegistered(),
+    F.text.in_(["📚 Darsliklar", "📚 Учебные материалы", "📚 Lessons"]),
+)
+async def msg_content_submenu(message: types.Message, state: FSMContext):
+    """📚 Darsliklar bo'limi ochilganda Video va File tanlash menyusini ko'rsatadi."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    
+    await message.answer(
+        "📚 <b>O'quv materiallari</b>\n\nKerakli formatni tanlang:",
+        reply_markup=content_submenu_kb(lang),
+        parse_mode="HTML"
+    )
+
 
 # --- YORDAMCHI FUNKSIYA ---
 async def get_content_keyboard(content_type: str, page: int, lang: str):
@@ -514,14 +525,13 @@ async def get_content_keyboard(content_type: str, page: int, lang: str):
     # 1. Kontent tugmalari
     for item in items:
         title = item['title']
-        # Tugma matni juda uzun bo'lib ketmasligi uchun qisqartiramiz (Telegram uchun max 35-40 harf yaxshi)
+        # Tugma matni juda uzun bo'lib ketmasligi uchun qisqartiramiz
         if len(title) > 35:
             title = title[:32] + "..."
             
-        # DIQQAT: callback_data 64 byte dan oshmasligi kerak! Shuning uchun faqat ID ishlatamiz.
         builder.button(
             text=f"📺 {title}" if content_type == "video" else f"📄 {title}",
-            callback_data=f"cnt:sel:{item['id']}:{content_type}" # cnt:sel:12:video
+            callback_data=f"cnt:sel:{item['id']}:{content_type}"
         )
         
     # 2. Paginatsiya (Sahifalash) tugmalari
@@ -553,7 +563,8 @@ async def get_content_keyboard(content_type: str, page: int, lang: str):
     
     return builder.as_markup(), None
 
-# --- ASOSIY HANDLERLAR ---
+
+# --- ASOSIY HANDLERLAR (Video va File) ---
 
 @router.message(
     IsRegistered(),
@@ -578,6 +589,7 @@ async def msg_video(message: types.Message, state: FSMContext):
         parse_mode="HTML"
     )
 
+
 @router.message(
     IsRegistered(),
     or_f(
@@ -601,10 +613,10 @@ async def msg_file(message: types.Message, state: FSMContext):
         parse_mode="HTML"
     )
 
+
 # --- PAGINATSIYA HANDLERI (Sahifalash) ---
 @router.callback_query(F.data.startswith("cnt:pg:"))
 async def process_content_pagination(callback: types.CallbackQuery, state: FSMContext):
-    # data formati: "cnt:pg:video:2"
     _, _, content_type, page = callback.data.split(":")
     page = int(page)
     
@@ -624,24 +636,19 @@ async def process_content_pagination(callback: types.CallbackQuery, state: FSMCo
                 parse_mode="HTML"
             )
     except TelegramBadRequest:
-        # Agar foydalanuvchi "Keyingi" ni 2 marta tez bossa yoki xabar o'chirilgan bo'lsa
         pass
         
     await callback.answer()
 
+
 # --- KONTENTNI TANLASH VA YUBORISH HANDLERI ---
 @router.callback_query(F.data.startswith("cnt:sel:"))
 async def process_content_select(callback: types.CallbackQuery, state: FSMContext):
-    # data formati: "cnt:sel:123:video"
     _, _, item_id, content_type = callback.data.split(":")
     item_id = int(item_id)
     
     await callback.answer("⏳ Yuklanmoqda...")
     
-    # Backenddan shu bitta itemni olish (fetch_single_content funksiyasini yozishingiz kerak)
-    # item = await fetch_single_content(item_id)
-    
-    # Hozircha taxminiy kod (Backendga /content/public/{id} qo'shganingizdan keyin):
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(f"{API_BASE_URL}/content/public/{item_id}")
@@ -663,8 +670,7 @@ async def process_content_select(callback: types.CallbackQuery, state: FSMContex
     except Exception as e:
         print(f"[CONTENT SELECT ERROR] {e}")
         await callback.message.answer("⚠️ Server bilan aloqa uzildi.")
-
-    pass
+        
 # ══════════════════════════════════════════════════════════════
 # REGISTRATION — CONFIRMATION
 # ══════════════════════════════════════════════════════════════

@@ -7,7 +7,6 @@ from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.filters import Command, StateFilter
-from bot.utils.markdown import escape_md
 
 logger = logging.getLogger(__name__)
 router = Router()

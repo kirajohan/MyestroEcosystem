@@ -65,6 +65,9 @@ NAVIGATION_WHITELIST = {
 }
 
 
+import logging
+logger = logging.getLogger(__name__)
+
 class AIGuardMiddleware(BaseMiddleware):
     async def __call__(
         self,
@@ -78,24 +81,30 @@ class AIGuardMiddleware(BaseMiddleware):
         if event.content_type not in {"text", "voice"}:
             return await handler(event, data)
 
-        # ✅ Navigation tugmalari va commandalar — doim o'tadi
         text = (event.text or "").strip()
-        if text in NAVIGATION_WHITELIST or text.startswith("/"):
-            return await handler(event, data)
-
-        # ... existing registration check ...
         state: FSMContext = data.get("state")
-        user_data = {}
-        if state:
-            user_data = await state.get_data()
+        current_state = await state.get_state() if state else None
 
-        registration_complete = user_data.get("registration_complete", False)
-        if not registration_complete:
+        # 🚨 MUHIM DEBUG LOG: Matnning aniq ko'rinishini (repr) va holatni chiqaramiz
+        logger.warning(f"🔍 AIGuard DEBUG: Text='{text}' | Repr={repr(text)} | State={current_state}")
+
+        # 1. Whitelist yoki Command tekshiruvi
+        if text in NAVIGATION_WHITELIST or text.startswith("/"):
+            logger.warning(f"✅ WHITELIST TOPILDI! AI chetlab o'tildi: {text}")
             return await handler(event, data)
 
-        # ✅ FIX: Faqat AI state'larda bo'lsa tekshir
-        current_state = await state.get_state()
+        # 2. Ro'yxatdan o'tganlik tekshiruvi
+        user_data = await state.get_data() if state else {}
+        if not user_data.get("registration_complete", False):
+            logger.warning("🚫 Ro'yxatdan o'tmagan, AI chetlab o'tildi.")
+            return await handler(event, data)
+
+        # 3. State tekshiruvi
         ai_states = {"AIChat:waiting_message", "AIAgent:conversation"}
-        if current_state and current_state not in ai_states:
+        if current_state not in ai_states:
+            logger.warning(f"🚫 State AI holatida emas ({current_state}). AI chetlab o'tildi.")
             return await handler(event, data)
 
+        # ─── AGAR SHU YERGACHA KELSA, DEMAK HAQIQATAN HAM AI ISHLASHI KERAK ───
+        logger.warning("🤖 AI ishga tushmoqda...")
+        return await handler(event, data)

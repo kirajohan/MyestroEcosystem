@@ -12,7 +12,7 @@ if _app_root not in sys.path:
 if _telegram_bot_root not in sys.path:
     sys.path.insert(0, _telegram_bot_root)
 
-from bot.handlers import academy, admin, ai_agent, ai_chat, contact, document, errors, menu, photo, profile, referral, register, reminders, start, sticker, video, broadcast, inbox
+from bot.handlers import academy, admin, ai_agent, contact, document, errors, menu, photo, profile, referral, register, reminders, start, sticker, video, broadcast, inbox
 
 from aiogram import Bot, Dispatcher, Router
 from aiogram.client.default import DefaultBotProperties
@@ -20,14 +20,12 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from bot.config import settings
-from bot.handlers import (
-    voice,
-)
+from bot.handlers import voice
+
 from bot.middlewares.ai_guard import AIGuardMiddleware
 from bot.middlewares.channel_check import ChannelCheckMiddleware
 from bot.middlewares.bot_guard import BotGuardMiddleware
 from bot.middlewares.db_session import DbSessionMiddleware
-from bot.utils.ai_client import shutdown_ai_client
 from bot.services.ai_service import ai_service
 from bot.services.broadcast_worker import BroadcastWorker
 from aiogram.fsm.storage.redis import RedisStorage
@@ -88,7 +86,6 @@ async def main():
     dp.include_router(register.router)
     dp.include_router(profile.router)
     dp.include_router(menu.router)
-    dp.include_router(ai_chat.router)
     dp.include_router(ai_agent.router)
     dp.include_router(inbox.router)
     dp.include_router(voice.router)
@@ -140,7 +137,6 @@ async def main():
             broadcast_task.cancel()
         if inbox_task and not inbox_task.done():
             inbox_task.cancel()
-        await shutdown_ai_client()
         logger.info("AI client shut down.")
 
 

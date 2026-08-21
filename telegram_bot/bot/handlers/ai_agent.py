@@ -164,10 +164,13 @@ async def _answer_with_memory(
         except asyncio.CancelledError:
             pass
 
+from bot.middlewares.ai_guard import NAVIGATION_WHITELIST
 
 @router.message(
     F.text,
     F.chat.type == "private",
+    ~(F.text.in_(NAVIGATION_WHITELIST)),  # 🛡️ YANGI: Navigatsiya tugmalari kelganda darhol to'xtatish
+
     ~StateFilter(
         # Exclude states where AI should NOT respond
         StartSection.language_selection,

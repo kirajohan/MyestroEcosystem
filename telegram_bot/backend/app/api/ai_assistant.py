@@ -91,35 +91,37 @@ async def get_memory_service(
     return AIMemoryService(db, redis_client)
 
 
+from sqlalchemy import select
+from app.models.user import User  # <-- User modelini import qiling
+
 @router.post(
     "/query-with-memory",
     response_model=ChatQueryWithMemoryResponse,
     summary="Query AI with memory context",
-    description="""
-    Query AI assistant with automatic memory management.
-    
-    Features:
-    - Maintains chat history per user session
-    - Automatic context summarization
-    - Redis caching for performance
-    - Persistent storage in PostgreSQL
-    """
 )
 async def query_with_memory(
     request: ChatQueryWithMemoryRequest,
+    db: AsyncSession = Depends(get_async_db),          # <-- QO'SHILDI
     memory_service: AIMemoryService = Depends(get_memory_service),
 ):
-    """
-    Query AI with full memory context and history.
-    
-    - Automatically creates session for user
-    - Loads last 10 messages from cache/database
-    - Generates summary if conversation > 15 messages
-    - Saves response to both Redis and PostgreSQL
-    """
     try:
+        # ═══════════════════════════════════════════════════════
+        # YANGI QO'SHILGAN QISM: Telegram ID → Ichki ID konvertatsiya
+        # ═══════════════════════════════════════════════════════
+        result = await db.execute(
+            select(User.id).where(User.telegram_id == request.user_id)
+        )
+        internal_user_id = result.scalar_one_or_none()
+
+        if internal_user_id is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User with telegram_id={request.user_id} not found. Register first."
+            )
+        # ═══════════════════════════════════════════════════════
+
         response = await memory_service.query_with_memory(
-            user_id=request.user_id,
+            user_id=internal_user_id,   # <-- Telegram ID emas, ichki ID!
             user_message=request.message,
             system_prompt=request.system_prompt,
             model=request.model,
@@ -127,13 +129,14 @@ async def query_with_memory(
             max_tokens=request.max_tokens
         )
         return response
-        
+
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error in query_with_memory: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="AI query failed")
-
 
 @router.get(
     "/session/{user_id}",

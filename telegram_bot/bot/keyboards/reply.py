@@ -165,9 +165,6 @@ def settings_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
         StyledKeyboardButton(text=t["ai"], style="primary"),
     )
     builder.add(
-        StyledKeyboardButton(text=t["logout"], style="danger"),
-    )
-    builder.add(
         StyledKeyboardButton(text="⬅️ Orqaga", style="danger"),
     )
     builder.adjust(2,1)

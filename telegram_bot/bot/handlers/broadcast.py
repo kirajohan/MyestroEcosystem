@@ -6,7 +6,6 @@ import logging
 from aiogram import Bot
 from redis.asyncio import Redis
 from bot.config import settings
-from bot.utils.markdown import escape_md
 
 logger = logging.getLogger(__name__)
 
@@ -59,28 +58,28 @@ async def broadcast_listener(bot: Bot):
                         if media_type == "text":
                             await bot.send_message(
                                 chat_id=user_id,
-                                text=escape_md(message),
+                                text=message,
                                 parse_mode="HTML"
                             )
                         elif media_type == "photo":
                             await bot.send_photo(
                                 chat_id=user_id,
                                 photo=media_url,
-                                caption=escape_html(message),
+                                caption=message,
                                 parse_mode="HTML"
                             )
                         elif media_type == "video":
                             await bot.send_video(
                                 chat_id=user_id,
                                 video=media_url,
-                                caption=escape_md(message),
+                                caption=message,
                                 parse_mode="HTML"
                             )
                         elif media_type == "document":
                             await bot.send_document(
                                 chat_id=user_id,
                                 document=media_url,
-                                caption=escape_md(message),
+                                caption=message,
                                 parse_mode="HTML"
                             )
                         

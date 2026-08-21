@@ -11,23 +11,23 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6380/0"
 
     # JWT
-    JWT_ACCESS_SECRET: str = "your-access-secret-here"
-    JWT_REFRESH_SECRET: str = "your-refresh-secret-here"
+    JWT_ACCESS_SECRET: str = "b376f24c1d2bfbaacfa9ef51027b74f40cb3aa9a8497aa50dd38c52c6bff5d07"
+    JWT_REFRESH_SECRET: str = "b376f24c1d2bfbaacfa9ef51027b74f40cb3aa9a8497aa50dd38c52c6bff5d07"
     JWT_ACCESS_EXPIRE: int = 15  # minutes
     JWT_REFRESH_EXPIRE: int = 10080  # minutes (7 days)
 
     # OpenRouter
-    OPENROUTER_API_KEY: str = "sk-or-v1-your-key-here"
+    OPENROUTER_API_KEY: str = "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"
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
     # Telegram (for content upload to private channel)
-    BOT_TOKEN: str = ""
-    TELEGRAM_CONTENT_BASE: str = ""  # e.g. -1001234567890
-
+    BOT_TOKEN: str = "8999243344:AAE7K_VjKmxKJrhN7RDHLEnj_5k5eDtz5Mg"
+    TELEGRAM_CONTENT_BASE: str = "-1004336645032"  # e.g. -1001234567890
+    
     # Channel (for inbox subscription check)
-    CHANNEL_ID: str = ""  # e.g. -1001234567890
-    CHANNEL_USERNAME: str = ""  # e.g. testmyestro
-    CHANNEL_URL: str = ""  # e.g. https://t.me/testmyestro
+    CHANNEL_ID: str = "-1003933846027"  # e.g. -1001234567890
+    CHANNEL_USERNAME: str = "testmyestro"  # e.g. testmyestro
+    CHANNEL_URL: str = "https://t.me/testmyestro"  # e.g. https://t.me/testmyestro
 
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:3002,http://localhost:8002"
