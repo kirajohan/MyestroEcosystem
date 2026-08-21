@@ -429,7 +429,7 @@ TRANSLATIONS = {
             "Xatolik takrorlansa, <a href='https://t.me/myestro_support'>bizga xabar bering</a>."
         ),
         "ai.thinking": (
-            "🧠 <b>AI o'ylayapdi...</b>\n\n"
+            "<b>AI o'ylayapdi...</b>\n\n"
             "Javob tayyorlanmoqda, bir oz kuting ⏳"
         ),
 
@@ -984,7 +984,7 @@ TRANSLATIONS = {
             "Если ошибка повторится, <a href='https://t.me/myestro_support'>сообщите нам</a>."
         ),
         "ai.thinking": (
-            "🧠 <b>ИИ думает...</b>\n\n"
+            " <b>ИИ думает...</b>\n\n"
             "Ответ готовится, пожалуйста, подождите ⏳"
         ),
 
@@ -1534,7 +1534,7 @@ TRANSLATIONS = {
             "If the error persists, <a href='https://t.me/myestro_support'>let us know</a>."
         ),
         "ai.thinking": (
-            "🧠 <b>AI is thinking...</b>\n\n"
+            "<b>AI is thinking...</b>\n\n"
             "Preparing your response, please wait ⏳"
         ),
 

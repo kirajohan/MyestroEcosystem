@@ -97,7 +97,7 @@ async def _stream_answer(
         except asyncio.CancelledError:
             pass
 
-
+from aiogram.exceptions import TelegramBadRequest
 async def _answer_with_memory(
     message: Message,
     lang: str,
@@ -130,23 +130,60 @@ async def _answer_with_memory(
             time_ms = response_data.get("processing_time_ms", 0)
         else:
             response_text = getattr(response_data, "response", get_text("ai.error", lang))
-            model_used = getattr(response_data, "model_used", "unknown")
+            # model_used = getattr(response_data, "model_used", "unknown")
             time_ms = getattr(response_data, "processing_time_ms", 0)
 
         # Header va Footer HTML formatida
-        header = "🤖 <b>Myestro AI</b>\n\n"
-        footer = f"\n\n<i>Model: {model_used} | Time: {time_ms}ms</i>"
+        header = " <b>Myestro AI</b>\n\n"
+        footer = f"\n\n<i>Time: {time_ms}ms</i>"
         full_response = header + response_text + footer
 
+        # OPTIMIZED STREAMING: Throttle bilan chunk-chunk qilib ko'rsatish
+        chunk_size = 50  # Har safar 50 ta belgi qo'shiladi (20 emas)
+        current_text = ""
+        last_edit = 0.0
+        
+        for i in range(0, len(full_response), chunk_size):
+            current_text = full_response[:i + chunk_size]
+            if len(current_text) > MAX_TEXT_LENGTH:
+                current_text = current_text[:MAX_TEXT_LENGTH]
+            
+            # Throttle: 0.1 soniyadan tez edit qilmaslik
+            now = time.monotonic()
+            if now - last_edit >= 0.1:  # 100ms o'tgan bo'lsa
+                try:
+                    await sent.edit_text(current_text, parse_mode="HTML")
+                    last_edit = now
+                except TelegramBadRequest:
+                    # Matn o'zgarmagan bo'lsa, e'tiborsiz qoldiramiz
+                    pass
+                except Exception as e:
+                    # Rate limit yoki boshqa xatolar
+                    if "Too Many Requests" in str(e):
+                        logger.warning(f"Rate limit hit, waiting 2 seconds...")
+                        await asyncio.sleep(2)
+                    else:
+                        logger.error(f"Edit error: {e}")
+            
+            await asyncio.sleep(0.05)  # Har 50ms da yangilash (30ms emas)
+
+        # Yakuniy to'liq matn
         if len(full_response) > MAX_TEXT_LENGTH:
-            await sent.edit_text(full_response[:MAX_TEXT_LENGTH], parse_mode="HTML")
+            try:
+                await sent.edit_text(full_response[:MAX_TEXT_LENGTH], parse_mode="HTML")
+            except TelegramBadRequest:
+                pass
             remaining = full_response[MAX_TEXT_LENGTH:]
             chunks = [remaining[i:i + MAX_TEXT_LENGTH] for i in range(0, len(remaining), MAX_TEXT_LENGTH)]
             for chunk in chunks:
                 await message.answer(chunk, parse_mode="HTML")
                 await asyncio.sleep(0.5)
         else:
-            await sent.edit_text(full_response, parse_mode="HTML")
+            try:
+                await sent.edit_text(full_response, parse_mode="HTML")
+            except TelegramBadRequest:
+                # Matn allaqachon to'liq ko'rsatilgan, e'tiborsiz qoldiramiz
+                pass
 
         return response_text
 
@@ -163,6 +200,7 @@ async def _answer_with_memory(
             await typing_task
         except asyncio.CancelledError:
             pass
+
 
 from bot.middlewares.ai_guard import NAVIGATION_WHITELIST
 

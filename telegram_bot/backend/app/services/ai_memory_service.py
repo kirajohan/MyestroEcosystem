@@ -203,12 +203,12 @@ class AIMemoryService:
         """Get chat history: first check Redis cache, then PostgreSQL."""
         
         # 1. Try Redis cache (fast path)
+    # 1. Try Redis cache (fast path)
         redis_messages = await self._get_redis_messages(session_id)
         if redis_messages:
-            logger.debug(f"Loaded {len(redis_messages)} messages from Redis")
-            return redis_messages
+            return redis_messages   # ← ESKI KESHNI QAYTARADI! Yangi xabarlar yo'q!
         
-        # 2. Fall back to PostgreSQL (slow path)
+            # 2. Fall back to PostgreSQL (slow path)
         logger.debug(f"Cache miss, loading from PostgreSQL for session {session_id}")
         stmt = select(Message).where(
             Message.session_id == session_id
@@ -419,6 +419,9 @@ Provide clear, supportive, and educational responses. Correct mistakes gently.""
         await self.db.refresh(session)
         
         # Update Redis cache
+        # 7. Update Redis cache
+        # Update Redis cache — avval eski keshni o'chirish shart
+        await self.redis.delete(self._get_redis_key(session.session_id))
         updated_history = await self.get_chat_history(session.session_id)
         await self._save_to_redis(session.session_id, updated_history)
         
