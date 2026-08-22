@@ -1,41 +1,30 @@
-// C:\Projects\MyestroEco\MyestroEco\admin\app\api\broadcast\route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
 
 export async function POST(request: NextRequest) {
   try {
-    // Frontenddan kelgan tokenni olamiz
-    const authHeader = request.headers.get('Authorization');
-    
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Token topilmadi' }, { status: 401 });
-    }
-
     const body = await request.json();
-    const { title, content, message_type, file_id, target_mode, target_user_ids, target_filter } = body;
+    const { title, content, message_type, file_id, target_mode, target_user_ids } = body;
 
+    // Backend schema (BroadcastCreate) bilan to'liq moslashtiramiz
     const broadcastPayload: Record<string, any> = {
       title: title || `Broadcast - ${new Date().toLocaleString('uz-UZ')}`,
       content: content,
       message_type: message_type || 'text',
       file_id: file_id || null,
-      target_mode: target_mode || 'all',
+      target_all_users: target_mode === 'all', // true yoki false
     };
 
     if (target_mode === 'manual' && target_user_ids) {
       broadcastPayload.target_user_ids = target_user_ids;
     }
-    if (target_mode === 'filter' && target_filter) {
-      broadcastPayload.target_filter = target_filter;
-    }
 
-    // Backendga aynan shu tokenni uzatamiz
+    // Backendga so'rov yuboramiz (JWTsiz, to'g'ridan-to'g'ri)
     const backendResp = await fetch(`${API_BASE_URL}/broadcast/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': authHeader,
       },
       body: JSON.stringify(broadcastPayload),
     });
@@ -64,4 +53,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+} 

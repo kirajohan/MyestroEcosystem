@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     BOT_GLOBAL_ENABLED: str = os.getenv("BOT_GLOBAL_ENABLED", "true")
     AI_GLOBAL_ENABLED: str = os.getenv("AI_GLOBAL_ENABLED", "true")
     ADMIN_IDS: str = os.getenv("ADMIN_IDS", "123456789")  # Comma-separated
-    
+    MEDIA_UPLOAD: str = os.getenv("MEDIA_UPLOAD", "-1004443633577")  # Telegram channel ID for media uploads
     @property
     def admin_ids_list(self) -> list[int]:
         """Parse ADMIN_IDS string to list of integers."""

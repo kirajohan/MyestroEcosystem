@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # OpenRouter
     OPENROUTER_API_KEY: str = "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"
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    MEDIA_UPLOAD: str = os.getenv("MEDIA_UPLOAD", "-1004443633577")  # Telegram channel ID for media uploads
 
     # Telegram (for content upload to private channel)
     BOT_TOKEN: str = "8999243344:AAE7K_VjKmxKJrhN7RDHLEnj_5k5eDtz5Mg"
