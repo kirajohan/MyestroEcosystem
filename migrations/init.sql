@@ -9,7 +9,7 @@
 CREATE TABLE users (
     id              BIGSERIAL PRIMARY KEY,
     email           VARCHAR(255) NOT NULL UNIQUE,
-    password_hash   VARCHAR(255),
+    password_hash   VARCHAR(255),   
     full_name       VARCHAR(255) NOT NULL,
     role            VARCHAR(20) DEFAULT 'student' NOT NULL,
     cefr_level      VARCHAR(10) DEFAULT 'A1' NOT NULL,
@@ -130,6 +130,57 @@ CREATE TABLE knowledge_docs (
 
 CREATE INDEX idx_knowledge_docs_category_id ON knowledge_docs(category_id);
 CREATE INDEX idx_knowledge_docs_cefr_level ON knowledge_docs(cefr_level);
+
+
+-- ══════════════════════════════════════════════════════════════
+-- TESTS MODULE (Telegram Quiz Poll)
+-- ══════════════════════════════════════════════════════════════
+
+-- 1. tests jadvali
+CREATE TABLE IF NOT EXISTS tests (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    cefr_level VARCHAR(2) NOT NULL,  -- A1, A2, B1, B2, C1, C2
+    passing_score INTEGER NOT NULL DEFAULT 60,  -- Foiz (60%)
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_tests_cefr_level ON tests(cefr_level);
+CREATE INDEX IF NOT EXISTS ix_tests_is_active ON tests(is_active);
+
+-- 2. test_questions jadvali
+CREATE TABLE IF NOT EXISTS test_questions (
+    id SERIAL PRIMARY KEY,
+    test_id INTEGER NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+    question_text TEXT NOT NULL,
+    options JSONB NOT NULL,  -- ["variant1", "variant2", "variant3", "variant4"]
+    correct_option_index INTEGER NOT NULL,  -- 0, 1, 2 yoki 3
+    explanation TEXT,  -- Telegram quiz explanation
+    order_index INTEGER NOT NULL DEFAULT 0,  -- Savol tartibi
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_test_questions_test_id ON test_questions(test_id);
+CREATE INDEX IF NOT EXISTS ix_test_questions_order ON test_questions(test_id, order_index);
+
+-- 3. test_attempts jadvali
+CREATE TABLE IF NOT EXISTS test_attempts (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,  -- Telegram user ID
+    test_id INTEGER NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+    score INTEGER NOT NULL,  -- To'g'ri javoblar soni
+    total_questions INTEGER NOT NULL,  -- Jami savollar
+    percentage INTEGER NOT NULL,  -- Foiz (0-100)
+    passed BOOLEAN NOT NULL,  -- Testdan o'tdi/o'tmadi
+    finished_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_test_attempts_user_id ON test_attempts(user_id);
+CREATE INDEX IF NOT EXISTS ix_test_attempts_test_id ON test_attempts(test_id);
+CREATE INDEX IF NOT EXISTS ix_test_attempts_user_test ON test_attempts(user_id, test_id);
 
 -- -----------------------------------------------------------
 -- 12. api_logs

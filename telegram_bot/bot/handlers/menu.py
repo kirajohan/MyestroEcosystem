@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from bot.keyboards.reply import (
     language_selection, main_menu, registered_menu_kb,
     contact_request_keyboard, remove_keyboard,
-    cefr_level_selection, settings_kb, guide_kb, about_us_kb,
+    cefr_level_selection_with_back, settings_kb, guide_kb, about_us_kb,
     language_switch_kb, confirm_kb, admin_contact_kb,
     registration_restart_kb,
     content_submenu_kb,  # ⭐ YANGI
@@ -13,14 +13,17 @@ from bot.states.registration import (
     StartSection, RegistrationFSM, MenuSection, RegisteredSection,
     QuizSection,  # ⭐ YANGI
 )
+from bot.keyboards.inline import test_list_inline_kb # Yangi inline keyboard
+from bot.states.test_states import TestSection # Yangi FSM State
+from bot.utils.api_client import fetch_public_tests # Yangi API chaqiruvi
 
 from bot.config import settings, API_BASE_URL
 import httpx
 from bot.utils.i18n import get_text
 from bot.states.registrations_filter import IsRegistered, IsNotRegistered
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-router = Router()
 
+router = Router()
 # ══════════════════════════════════════════════════════════════
 # HELPERS
 # ══════════════════════════════════════════════════════════════
@@ -341,70 +344,63 @@ async def msg_register(message: types.Message, state: FSMContext):
 # REGISTERED USER — TEST'S (English QUIZ)
 # ══════════════════════════════════════════════════════════════
 
-# Import qismiga qo'shing (agar yo'q bo'lsa):
-from bot.keyboards.reply import cefr_level_selection_with_back
-
 @router.message(
     IsRegistered(),
-    F.text.in_(["🧪 Test's (English QUIZ)", "🧪 Тесты (English QUIZ)"]),
+    F.text.in_(["🧪 Test (English QUIZ)", "🧪 Тест (English QUIZ)"]),
 )
-async def msg_quiz_start(message: types.Message, state: FSMContext):
-    """🧪 Test's bosilganda — CEFR daraja tanlash."""
+async def msg_test_start(message: types.Message, state: FSMContext):
+    """🧪 Test bo'limi bosilganda — CEFR daraja tanlash."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
 
-    await state.set_state(QuizSection.cefr_selection)
+    await state.set_state(TestSection.cefr_selection)
 
     await message.answer(
-        get_text("quiz.select_cefr", lang),
-        reply_markup=cefr_level_selection_with_back(lang),  # ✅ Orqaga tugmasi bilan
+        get_text("test.select_cefr", lang), # i18n kaliti yangilanadi
+        reply_markup=cefr_level_selection_with_back(lang),
     )
 
 @router.message(
-    QuizSection.cefr_selection,
-    F.text.in_(["A0", "A1", "A2", "B1", "B2", "C1", "C2"]),
+    TestSection.cefr_selection,
+    F.text.in_(["A1", "A2", "B1", "B2", "C1", "C2"]), # A0 olib tashlandi (standart CEFR)
 )   
-async def msg_quiz_cefr_selected(message: types.Message, state: FSMContext):
-    """CEFR daraja tanlandi — testlar ro'yxati."""
+async def msg_test_cefr_selected(message: types.Message, state: FSMContext):
+    """CEFR daraja tanlandi — Testlar ro'yxatini ko'rsatish."""
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     cefr_level = message.text
 
-    await state.update_data(quiz_cefr=cefr_level)
+    await state.update_data(test_cefr=cefr_level)
 
-    from bot.handlers.exam import fetch_public_exams, exam_list_inline_kb
-    
     loading_msg = await message.answer(
-        get_text("quiz.loading", lang).format(level=cefr_level),
+        get_text("test.loading", lang).format(level=cefr_level),
         parse_mode="HTML",
     )
     
-    exams = await fetch_public_exams(cefr_level, limit=10, offset=0)
+    # YANGI: Exam o'rniga Test API chaqiriladi
+    tests = await fetch_public_tests(cefr_level, limit=10, offset=0)
     
-    if not exams:
-        # ✅ State'ni cefr_selection ga QAYTARISH
-        await state.set_state(QuizSection.cefr_selection)
+    if not tests:
+        await state.set_state(TestSection.cefr_selection)
         
         await loading_msg.edit_text(
-            get_text("quiz.no_exams", lang).format(level=cefr_level),
+            get_text("test.no_tests", lang).format(level=cefr_level),
             parse_mode="HTML",
         )
-        # Keyboard'ni qayta ko'rsatish
         await message.answer(
-            get_text("quiz.select_cefr", lang),
+            get_text("test.select_cefr", lang),
             reply_markup=cefr_level_selection_with_back(lang),
         )
         return
     
-    # Testlar topildi — quiz_list state'ga o'tish
-    await state.set_state(QuizSection.quiz_list)
+    # Testlar topildi — test_list state'ga o'tish
+    await state.set_state(TestSection.test_list)
     
     await loading_msg.edit_text(
-        get_text("quiz.select_test", lang).format(level=cefr_level),
+        get_text("test.select_test", lang).format(level=cefr_level),
         parse_mode="HTML",
-        reply_markup=exam_list_inline_kb(exams, page=0, cefr_level=cefr_level)
+        reply_markup=test_list_inline_kb(tests, page=0, cefr_level=cefr_level)
     )
-
 
 # ═══ SETTINGS — SUBMENU ═════════════════════════════════════
 
@@ -790,6 +786,95 @@ async def handle_admin_contact_text(message: types.Message, state: FSMContext):
             get_text("admin.sent", lang),
             reply_markup=admin_contact_kb(lang),
         )
+# ══════════════════════════════════════════════════════════════
+# INLINE CALLBACK HANDLERS (Buni menu.py fayliga qo'shing!)
+# ══════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data == "back_to_menu")
+async def handle_back_to_menu(callback: types.CallbackQuery, state: FSMContext):
+    """Universal "Orqaga" inline tugmasi uchun handler."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    registration_complete = user_data.get("registration_complete", False)
+
+    if registration_complete:
+        await state.set_state(RegisteredSection.main_menu)
+        await callback.message.edit_text(
+            get_text("main_menu", lang),
+            reply_markup=registered_menu_kb(lang),
+        )
+    else:
+        await state.set_state(StartSection.main_menu)
+        await callback.message.edit_text(
+            get_text("main_menu", lang),
+            reply_markup=main_menu(lang),
+        )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "menu_settings")
+async def handle_menu_settings(callback: types.CallbackQuery, state: FSMContext):
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    await state.set_state(MenuSection.settings)
+    
+    await callback.message.edit_text(
+        get_text("settings.title", lang),
+        reply_markup=settings_kb(lang),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "settings_ai_toggle")
+async def handle_settings_ai_toggle(callback: types.CallbackQuery, state: FSMContext):
+    """AI ON/OFF inline tugmasi uchun handler."""
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    ai_enabled = user_data.get("ai_enabled", True)
+    db_user_id = user_data.get("id")
+    
+    if not db_user_id:
+        await callback.answer(get_text("error.user_not_found", lang), show_alert=True)
+        return
+
+    new_status = not ai_enabled
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            endpoint = f"{API_BASE_URL}/sync/users/{db_user_id}/ai-toggle"
+            resp = await client.put(endpoint, json={"ai_enabled": new_status})
+            
+            if resp.status_code != 200:
+                new_status = ai_enabled
+                await callback.answer(get_text("error.sync", lang), show_alert=True)
+                return
+    except Exception as e:
+        print(f"[AI TOGGLE ERROR] {e}")
+        new_status = ai_enabled
+        await callback.answer(get_text("error.sync", lang), show_alert=True)
+        return
+
+    await state.update_data(ai_enabled=new_status)
+    status_text = get_text("ai.enabled" if new_status else "ai.disabled", lang)
+    await callback.answer(f"✅ {status_text}")
+    
+    await callback.message.edit_text(
+        get_text("settings.title", lang),
+        reply_markup=settings_kb(lang),
+    )
+
+
+@router.callback_query(F.data == "settings_language")
+async def handle_settings_language(callback: types.CallbackQuery, state: FSMContext):
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    await state.set_state(MenuSection.language_selection)
+    
+    await callback.message.edit_text(
+        get_text("language.prompt", lang),
+        reply_markup=language_switch_kb(lang),
+    )
+    await callback.answer()
 
     # ══════════════════════════════════════════════════════════════
 # 🚫 FALLBACK BLOCKERS (ENG OXIRIDA BO'LISHI SHART!)

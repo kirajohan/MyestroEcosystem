@@ -1,8 +1,15 @@
-// C:\Projects\MyestroEco\MyestroEco\admin\app\api\tests\[id]\route.ts
+// admin/app/api/tests/[id]/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
+const API_BASE_URL =
+  process.env.BACKEND_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:8002';
+
+// ══════════════════════════════════════════════════════════════
+// GET /api/tests/[id] — Bitta testni olish
+// ══════════════════════════════════════════════════════════════
 
 export async function GET(
   _request: NextRequest,
@@ -11,7 +18,7 @@ export async function GET(
   try {
     const { id } = params;
 
-    const backendResp = await fetch(`${API_BASE_URL}/exams/${id}`, {
+    const backendResp = await fetch(`${API_BASE_URL}/api/tests/${id}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -27,13 +34,17 @@ export async function GET(
     const data = await backendResp.json();
     return NextResponse.json(data, { status: 200 });
   } catch (error: any) {
-    console.error('Test detail GET error:', error);
+    console.error('❌ Test GET error:', error);
     return NextResponse.json(
       { detail: error?.message || "Noma'lum xato" },
       { status: 500 }
     );
   }
 }
+
+// ══════════════════════════════════════════════════════════════
+// PUT /api/tests/[id] — Testni yangilash
+// ══════════════════════════════════════════════════════════════
 
 export async function PUT(
   request: NextRequest,
@@ -43,7 +54,7 @@ export async function PUT(
     const { id } = params;
     const body = await request.json();
 
-    const backendResp = await fetch(`${API_BASE_URL}/exams/${id}`, {
+    const backendResp = await fetch(`${API_BASE_URL}/api/tests/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -60,13 +71,17 @@ export async function PUT(
     const data = await backendResp.json();
     return NextResponse.json(data, { status: 200 });
   } catch (error: any) {
-    console.error('Test PUT error:', error);
+    console.error('❌ Test PUT error:', error);
     return NextResponse.json(
       { detail: error?.message || "Noma'lum xato" },
       { status: 500 }
     );
   }
 }
+
+// ══════════════════════════════════════════════════════════════
+// DELETE /api/tests/[id] — Testni o'chirish
+// ══════════════════════════════════════════════════════════════
 
 export async function DELETE(
   _request: NextRequest,
@@ -75,7 +90,7 @@ export async function DELETE(
   try {
     const { id } = params;
 
-    const backendResp = await fetch(`${API_BASE_URL}/exams/${id}`, {
+    const backendResp = await fetch(`${API_BASE_URL}/api/tests/${id}`, {
       method: 'DELETE',
     });
 
@@ -87,10 +102,15 @@ export async function DELETE(
       );
     }
 
+    // 204 No Content yoki JSON qaytarishi mumkin
+    if (backendResp.status === 204) {
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
     const data = await backendResp.json();
     return NextResponse.json(data, { status: 200 });
   } catch (error: any) {
-    console.error('Test DELETE error:', error);
+    console.error('❌ Test DELETE error:', error);
     return NextResponse.json(
       { detail: error?.message || "Noma'lum xato" },
       { status: 500 }

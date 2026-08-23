@@ -93,6 +93,60 @@ def registered_menu_kb(lang: str = "uz") -> InlineKeyboardMarkup:
     builder.adjust(2)
     return builder.as_markup()
 
+# ─── TESTS (QUIZ) ────────────────────────────────────────────
+
+def test_list_inline_kb(
+    tests: List[Dict], 
+    page: int = 0, 
+    cefr_level: str = "A1", 
+    lang: str = "uz"
+) -> InlineKeyboardMarkup:
+    """
+    Testlar ro'yxatini inline tugmalar sifatida qaytaradi.
+    Foydalanuvchi testni tanlaganda 'start_test:{test_id}' callback yuboriladi.
+    """
+    from bot.utils.i18n import get_text
+    
+    builder = InlineKeyboardBuilder()
+    
+    for test in tests:
+        test_id = test.get("id")
+        title = test.get("title", f"Test #{test_id}")
+        
+        # Tugma matni: 📝 Test nomi
+        display_text = f"📝 {title}"
+        
+        builder.button(
+            text=display_text, 
+            callback_data=f"start_test:{test_id}"
+        )
+    
+    # Orqaga qaytish tugmasi (CEFR tanlashga qaytadi)
+    builder.button(
+        text=get_text("back", lang), 
+        callback_data=f"test_back_to_cefr:{cefr_level}"
+    )
+    
+    # Har bir qatorda 1 ta tugma (ro'yxat ko'rinishi uchun)
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def cefr_level_selection_with_back(lang: str = "uz") -> InlineKeyboardMarkup:
+    """
+    CEFR daraja tanlash + Orqaga tugmasi (Asosiy menyuga qaytish uchun).
+    """
+    from bot.utils.i18n import get_text
+    
+    builder = InlineKeyboardBuilder()
+    levels = ["A1", "A2", "B1", "B2", "C1", "C2"]
+    
+    for level in levels:
+        builder.button(text=level, callback_data=f"level_{level}")
+    
+    builder.button(text=get_text("back", lang), callback_data="back_to_menu")
+    builder.adjust(2)  # Har qatorda 2 ta daraja (masalan: A1 | A2)
+    return builder.as_markup()
 
 # ─── SETTINGS ────────────────────────────────────────────────
 

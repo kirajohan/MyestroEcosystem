@@ -18,6 +18,7 @@ MIGRATION_FILES = [
     "broadcast_tables.sql",
     "inbox_tables.sql",
     "exam_tables.sql",
+    "tests_tables.sql",
     "global_settings.sql",
     "logs_table.sql",
     "admin_messages.sql",

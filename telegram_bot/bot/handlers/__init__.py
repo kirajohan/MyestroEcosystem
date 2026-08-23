@@ -1,7 +1,6 @@
 from . import start
 from . import menu
 from . import voice
-from . import exam
 from . import reminders
 from . import referral
 from . import contact

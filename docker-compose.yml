@@ -74,6 +74,7 @@ services:
     env_file:
       - ./.env
     environment:
+      BACKEND_API_URL: http://backend:8002
       DATABASE_URL: postgresql+asyncpg://myestro:myestro_password@postgres:5432/myestro
       REDIS_URL: redis://redis:6379/0
       BACKEND_URL: http://backend:8000

@@ -1,11 +1,5 @@
-"""AI Agent handler — process text messages via OpenRouter with Memory.
-
-This handler is for REGISTERED users only.
-Unregistered users are handled by text.py (fallback AI teacher).
-"""
-
+from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError, TelegramRetryAfter
 import asyncio
-import io
 import time
 import logging
 from typing import Optional
@@ -19,19 +13,16 @@ from bot.utils.ai_memory_client import AIMemoryClient
 from bot.utils.ai_prompts import build_system_prompt
 from bot.utils.i18n import get_text
 from bot.states.registration import (
-    QuizSection ,    StartSection, RegistrationFSM, AuthFSM, RegisterFSM, LoginFSM, MenuSection, RegisteredSection,
+    QuizSection, StartSection, RegistrationFSM, AuthFSM, RegisterFSM, LoginFSM, MenuSection, RegisteredSection,
 )
 from bot.handlers.profile import ProfileEditFSM
-QuizSection
 
 router = Router()
 logger = logging.getLogger(__name__)
 
-MAX_TEXT_LENGTH = 4000  # Telegram message limit
-
-# Stream edit throttle — Telegram rate limit 1 soniyada 1 edit
-STREAM_EDIT_INTERVAL = 1.0  # seconds between edits
-STREAM_BUFFER_MAX = 1000  # max chars to send per edit
+MAX_TEXT_LENGTH = 4000
+STREAM_EDIT_INTERVAL = 1.0
+STREAM_BUFFER_MAX = 1000
 
 
 async def _typing_refresh_task(message: Message, stop_event: asyncio.Event):
@@ -97,7 +88,53 @@ async def _stream_answer(
         except asyncio.CancelledError:
             pass
 
-from aiogram.exceptions import TelegramBadRequest
+
+async def _safe_edit_text(
+    sent: Message,
+    text: str,
+    parse_mode: Optional[str] = None,
+    retry_count: int = 1
+) -> bool:
+    """
+    Safely edit message text with retry logic and error handling.
+    Returns True if successful, False otherwise.
+    """
+    for attempt in range(retry_count + 1):
+        try:
+            await sent.edit_text(text, parse_mode=parse_mode)
+            return True
+        
+        except TelegramBadRequest:
+            # Matn o'zgarmagan bo'lsa, muammo yo'q
+            return True
+        
+        except TelegramRetryAfter as e:
+            # Rate limit - kutish kerak
+            logger.warning(f"Rate limit hit, waiting {e.retry_after} seconds...")
+            await asyncio.sleep(e.retry_after)
+            if attempt < retry_count:
+                continue  # Qayta urinish
+            return False
+        
+        except TelegramNetworkError as e:
+            # Network muammosi
+            logger.error(f"Network error on attempt {attempt + 1}: {e}")
+            if attempt < retry_count:
+                await asyncio.sleep(1)  # 1 soniya kutib qayta urinish
+                continue
+            return False
+        
+        except Exception as e:
+            # Boshqa xatolar
+            logger.error(f"Unexpected error on attempt {attempt + 1}: {e}")
+            if attempt < retry_count:
+                await asyncio.sleep(1)
+                continue
+            return False
+    
+    return False
+
+
 async def _answer_with_memory(
     message: Message,
     lang: str,
@@ -130,16 +167,16 @@ async def _answer_with_memory(
             time_ms = response_data.get("processing_time_ms", 0)
         else:
             response_text = getattr(response_data, "response", get_text("ai.error", lang))
-            # model_used = getattr(response_data, "model_used", "unknown")
+            model_used = getattr(response_data, "model_used", "unknown")
             time_ms = getattr(response_data, "processing_time_ms", 0)
 
         # Header va Footer HTML formatida
-        header = " <b>Myestro AI</b>\n\n"
-        footer = f"\n\n<i>Time: {time_ms}ms</i>"
+        header = "🤖 <b>Myestro AI</b>\n\n"
+        footer = f"\n\n<i>Model: {model_used} | Time: {time_ms}ms</i>"
         full_response = header + response_text + footer
 
         # OPTIMIZED STREAMING: Throttle bilan chunk-chunk qilib ko'rsatish
-        chunk_size = 50  # Har safar 50 ta belgi qo'shiladi (20 emas)
+        chunk_size = 50
         current_text = ""
         last_edit = 0.0
         
@@ -150,40 +187,29 @@ async def _answer_with_memory(
             
             # Throttle: 0.1 soniyadan tez edit qilmaslik
             now = time.monotonic()
-            if now - last_edit >= 0.1:  # 100ms o'tgan bo'lsa
-                try:
-                    await sent.edit_text(current_text, parse_mode="HTML")
-                    last_edit = now
-                except TelegramBadRequest:
-                    # Matn o'zgarmagan bo'lsa, e'tiborsiz qoldiramiz
-                    pass
-                except Exception as e:
-                    # Rate limit yoki boshqa xatolar
-                    if "Too Many Requests" in str(e):
-                        logger.warning(f"Rate limit hit, waiting 2 seconds...")
-                        await asyncio.sleep(2)
-                    else:
-                        logger.error(f"Edit error: {e}")
+            if now - last_edit >= 0.1:
+                await _safe_edit_text(sent, current_text, parse_mode="HTML", retry_count=1)
+                last_edit = now
             
-            await asyncio.sleep(0.05)  # Har 50ms da yangilash (30ms emas)
+            await asyncio.sleep(0.05)
 
         # Yakuniy to'liq matn
         if len(full_response) > MAX_TEXT_LENGTH:
-            try:
-                await sent.edit_text(full_response[:MAX_TEXT_LENGTH], parse_mode="HTML")
-            except TelegramBadRequest:
-                pass
+            success = await _safe_edit_text(sent, full_response[:MAX_TEXT_LENGTH], parse_mode="HTML", retry_count=1)
+            if not success:
+                # Edit ishlamadi, yangi xabar yuboramiz
+                await message.answer(full_response[:MAX_TEXT_LENGTH], parse_mode="HTML")
+            
             remaining = full_response[MAX_TEXT_LENGTH:]
             chunks = [remaining[i:i + MAX_TEXT_LENGTH] for i in range(0, len(remaining), MAX_TEXT_LENGTH)]
             for chunk in chunks:
                 await message.answer(chunk, parse_mode="HTML")
                 await asyncio.sleep(0.5)
         else:
-            try:
-                await sent.edit_text(full_response, parse_mode="HTML")
-            except TelegramBadRequest:
-                # Matn allaqachon to'liq ko'rsatilgan, e'tiborsiz qoldiramiz
-                pass
+            success = await _safe_edit_text(sent, full_response, parse_mode="HTML", retry_count=1)
+            if not success:
+                # Edit ishlamadi, yangi xabar yuboramiz
+                await message.answer(full_response, parse_mode="HTML")
 
         return response_text
 
@@ -207,10 +233,9 @@ from bot.middlewares.ai_guard import NAVIGATION_WHITELIST
 @router.message(
     F.text,
     F.chat.type == "private",
-    ~(F.text.in_(NAVIGATION_WHITELIST)),  # 🛡️ YANGI: Navigatsiya tugmalari kelganda darhol to'xtatish
+    ~(F.text.in_(NAVIGATION_WHITELIST)),
 
     ~StateFilter(
-        # Exclude states where AI should NOT respond
         StartSection.language_selection,
         StartSection.main_menu,
         RegistrationFSM.waiting_name,

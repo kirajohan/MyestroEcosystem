@@ -132,9 +132,9 @@ def content_submenu_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
 def registered_menu_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
     """Main menu for REGISTERED users."""
     texts = {
-        "uz": ["👤 Profil", "⚙️ Sozlamalar", "📖 Qo'llanma", "📨 Admin ga xabar", "📚 Darsliklar", "🧪 Test's (English QUIZ)"],
-        "ru": ["👤 Профиль", "⚙️ Настройки", "📖 Руководство", "📨 Написать админу", "📚 Учебные материалы", "🧪 Тесты (English QUIZ)"],
-        "en": ["👤 Profile", "⚙️ Settings", "📖 Guide", "📨 Message admin", "📚 Lessons", "🧪 Test's (English QUIZ)"],
+        "uz": ["👤 Profil", "⚙️ Sozlamalar", "📖 Qo'llanma", "📨 Admin ga xabar", "📚 Darsliklar", "🧪 Test (English QUIZ)"],
+        "ru": ["👤 Профиль", "⚙️ Настройки", "📖 Руководство", "📨 Написать админу", "📚 Учебные материалы", "🧪 Тест (English QUIZ)"],
+        "en": ["👤 Profile", "⚙️ Settings", "📖 Guide", "📨 Message admin", "📚 Lessons", "🧪 Test (English QUIZ)"],
     }
     items = texts.get(lang, texts["uz"])
     # 5 ta qoladi (primary, primary, success, danger, success) + yangi Test's (primary)

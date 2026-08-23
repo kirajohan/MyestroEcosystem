@@ -13,6 +13,7 @@ if _telegram_bot_root not in sys.path:
     sys.path.insert(0, _telegram_bot_root)
 
 from bot.handlers import academy, admin, ai_agent, contact, document, errors, menu, photo, profile, referral, register, reminders, start, sticker, video, broadcast, inbox
+from bot.handlers import test_quiz
 
 from aiogram import Bot, Dispatcher, Router
 from aiogram.client.default import DefaultBotProperties
@@ -79,13 +80,16 @@ async def main():
 
     # Register session middleware first (before any handlers, so session is available)
     dp.update.middleware(DbSessionMiddleware())
+    # main.py yoki bot/__init__.py ichida:
 
+# ... Dispatcher yaratilgandan keyin:
     dp.include_router(errors.router)
     dp.include_router(start.router)
     dp.include_router(contact.router)
     dp.include_router(register.router)
     dp.include_router(profile.router)
     dp.include_router(menu.router)
+    dp.include_router(test_quiz.router)
     dp.include_router(ai_agent.router)
     dp.include_router(inbox.router)
     dp.include_router(voice.router)
