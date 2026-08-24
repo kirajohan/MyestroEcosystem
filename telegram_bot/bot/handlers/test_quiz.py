@@ -9,9 +9,10 @@ from aiogram import Router, F, types, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 from bot.states.test_states import TestSection
+from bot.states.registration import  RegisteredSection  # ← RegisteredSection qo'shildi
 from bot.utils.api_client import fetch_test_questions, submit_test_attempt
 from bot.utils.i18n import get_text
-from bot.keyboards.inline import cefr_level_selection_with_back, registered_menu_kb
+from bot.keyboards.reply import registered_menu_kb, cefr_level_selection_with_back
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -53,10 +54,10 @@ async def start_test_quiz(callback: types.CallbackQuery, state: FSMContext):
             )
             await callback.message.answer(
                 get_text("test.return_to_menu", lang),
-                reply_markup=registered_menu_kb(lang),  # ✅ TO'G'RI
+                reply_markup=registered_menu_kb(lang),
                 parse_mode="HTML"
             )
-            await state.clear()
+            await state.set_state(RegisteredSection.main_menu)  # ← O'ZGARTIRILDI
             return
         
         # FSM ga saqlash
@@ -83,9 +84,8 @@ async def start_test_quiz(callback: types.CallbackQuery, state: FSMContext):
             get_text("test.error_loading", lang),
             parse_mode="HTML"
         )
-        await state.clear()
+        await state.set_state(RegisteredSection.main_menu)  # ← O'ZGARTIRILDI
 
-# bot/handlers/test_quiz.py yoki menu.py ichiga qo'shing
 
 @router.callback_query(F.data.startswith("test_back_to_cefr:"))
 async def handle_test_back_to_cefr(callback: types.CallbackQuery, state: FSMContext):
@@ -128,14 +128,16 @@ async def send_next_poll_question(message: types.Message, state: FSMContext, lan
     
     # Telegram Quiz Poll yuborish
     try:
+        correct_option_id = int(q["correct_answer"])
+        
         await message.answer_poll(
             question=q["question_text"],
-            options=q["options"],  # ["variant1", "variant2", "variant3", "variant4"]
-            type="quiz",  # ⭐ Eng muhimi: Telegram o'zi to'g'ri/noto'g'riligini ko'rsatadi
-            correct_option_id=q["correct_option_index"],  # 0, 1, 2 yoki 3
-            explanation=q.get("explanation", ""),  # Javob bergandan keyin chiqadigan izoh
-            is_anonymous=False,  # poll_answer handler ishlashi uchun
-            open_period=None,  # Cheksiz vaqt
+            options=q["options"],
+            type="quiz",
+            correct_option_id=correct_option_id,
+            explanation=q.get("explanation", ""),
+            is_anonymous=False,
+            open_period=None,
         )
     except Exception as e:
         logger.error(f"Poll yuborishda xatolik: {e}")
@@ -170,33 +172,28 @@ async def handle_poll_answer(poll_answer: types.PollAnswer, state: FSMContext, b
     user_answer = poll_answer.option_ids[0] if poll_answer.option_ids else None
     
     # Javob to'g'riligini tekshirish
-    if user_answer == current_q["correct_option_index"]:
+    correct_answer = int(current_q["correct_answer"])
+    if user_answer == correct_answer:
         new_score = data.get("score", 0) + 1
         await state.update_data(score=new_score)
     
     # FSM dagi indeksni 1 ga oshirish
     await state.update_data(current_question_index=current_idx + 1)
     
-    # Foydalanuvchiga xabar yuborish (keyingi savol yoki test yakuni)
+    # Foydalanuvchiga xabar yuborish
     user_data = await state.get_data()
     lang = _get_lang(user_data)
-    
-    # Foydalanuvchiga shaxsiy xabar yuborish uchun user obyektini olish
     user = poll_answer.user
     
-    # Kichik kechikuv (Telegram rate limit uchun)
+    # Kichik kechikuv
     import asyncio
     await asyncio.sleep(1)
     
-    # Keyingi savolni yuborish yoki testni yakunlash
-    # Eslatma: poll_answer'da message yo'q, shuning uchun bot.send_message ishlatamiz
     try:
-        # Progress xabari
         next_idx = current_idx + 1
         total = data.get("total_questions", len(questions))
         
         if next_idx < total:
-            # Hali savollar bor — progress ko'rsatish
             await bot.send_message(
                 chat_id=user.id,
                 text=f"✅ <b>{next_idx}/{total}</b> savolga o'tdingiz",
@@ -204,15 +201,13 @@ async def handle_poll_answer(poll_answer: types.PollAnswer, state: FSMContext, b
             )
             await asyncio.sleep(1)
         
-        # Keyingi savolni yuborish (send_next_poll_question bot.send_message ishlatadi)
-        # Lekin bu yerda message obyekti yo'q, shuning uchun maxsus funksiya kerak
         await send_next_poll_question_for_user(bot, user.id, state, lang)
         
     except Exception as e:
         logger.error(f"Keyingi savolni yuborishda xatolik: {e}")
 
 
-async def send_next_poll_question_for_user(bot:Bot, chat_id: int, state: FSMContext, lang: str):
+async def send_next_poll_question_for_user(bot: Bot, chat_id: int, state: FSMContext, lang: str):
     """poll_answer handler ichidan keyingi savolni yuborish uchun maxsus funksiya."""
     data = await state.get_data()
     questions = data.get("questions", [])
@@ -232,12 +227,14 @@ async def send_next_poll_question_for_user(bot:Bot, chat_id: int, state: FSMCont
     
     # Telegram Quiz Poll yuborish
     try:
+        correct_option_id = int(q["correct_answer"])
+        
         await bot.send_poll(
             chat_id=chat_id,
             question=q["question_text"],
             options=q["options"],
             type="quiz",
-            correct_option_id=q["correct_option_index"],
+            correct_option_id=correct_option_id,
             explanation=q.get("explanation", ""),
             is_anonymous=False,
         )
@@ -259,10 +256,10 @@ async def finish_test(message: types.Message, state: FSMContext, lang: str):
     """Test tugadi — natijani hisoblash va ko'rsatish (message orqali)."""
     data = await state.get_data()
     await _process_test_result(message, data, lang)
-    await state.clear()
+    await state.set_state(RegisteredSection.main_menu)  # ← O'ZGARTIRILDI: clear() emas
 
 
-async def finish_test_for_user(bot:Bot, chat_id: int, state: FSMContext, lang: str):
+async def finish_test_for_user(bot: Bot, chat_id: int, state: FSMContext, lang: str):
     """Test tugadi — natijani hisoblash va ko'rsatish (chat_id orqali)."""
     data = await state.get_data()
     
@@ -271,21 +268,22 @@ async def finish_test_for_user(bot:Bot, chat_id: int, state: FSMContext, lang: s
     percentage = int((score / total) * 100) if total > 0 else 0
     passing_score = data.get("passing_score", 60)
     passed = percentage >= passing_score
+    wrong_answers = total - score
     
     # Natija xabari
     if passed:
-        result_text = get_text("test.passed", lang).format(
-            score=score,
-            total=total,
-            percentage=percentage
-        )
+        result_text = f"🎉 <b>Tabriklaymiz! Test topshirildi!</b>\n\n"
     else:
-        result_text = get_text("test.failed", lang).format(
-            score=score,
-            total=total,
-            percentage=percentage,
-            passing_score=passing_score
-        )
+        result_text = f"😔 <b>Afsuski, test topshirilmadi</b>\n\n"
+    
+    result_text += (
+        f"📊 <b>Natijalar:</b>\n"
+        f"✅ To'g'ri javoblar: <b>{score}</b>\n"
+        f"❌ Noto'g'ri javoblar: <b>{wrong_answers}</b>\n"
+        f"📝 Umumiy savollar: <b>{total}</b>\n\n"
+        f"📈 Foiz: <b>{percentage}%</b>\n"
+        f"🎯 O'tish bali: <b>{passing_score}%</b>"
+    )
     
     await bot.send_message(
         chat_id=chat_id,
@@ -307,7 +305,7 @@ async def finish_test_for_user(bot:Bot, chat_id: int, state: FSMContext, lang: s
     except Exception as e:
         logger.error(f"Natijani backendga yuborishda xatolik: {e}")
     
-    await state.clear()
+    await state.set_state(RegisteredSection.main_menu)  # ← O'ZGARTIRILDI: clear() emas
 
 
 async def _process_test_result(message: types.Message, data: dict, lang: str):
@@ -317,21 +315,22 @@ async def _process_test_result(message: types.Message, data: dict, lang: str):
     percentage = int((score / total) * 100) if total > 0 else 0
     passing_score = data.get("passing_score", 60)
     passed = percentage >= passing_score
+    wrong_answers = total - score
     
     # Natija xabari
     if passed:
-        result_text = get_text("test.passed", lang).format(
-            score=score,
-            total=total,
-            percentage=percentage
-        )
+        result_text = f"🎉 <b>Tabriklaymiz! Test topshirildi!</b>\n\n"
     else:
-        result_text = get_text("test.failed", lang).format(
-            score=score,
-            total=total,
-            percentage=percentage,
-            passing_score=passing_score
-        )
+        result_text = f"😔 <b>Afsuski, test topshirilmadi</b>\n\n"
+    
+    result_text += (
+        f"📊 <b>Natijalar:</b>\n"
+        f"✅ To'g'ri javoblar: <b>{score}</b>\n"
+        f"❌ Noto'g'ri javoblar: <b>{wrong_answers}</b>\n"
+        f"📝 Umumiy savollar: <b>{total}</b>\n\n"
+        f"📈 Foiz: <b>{percentage}%</b>\n"
+        f"🎯 O'tish bali: <b>{passing_score}%</b>"
+    )
     
     await message.answer(
         result_text,
@@ -354,7 +353,7 @@ async def _process_test_result(message: types.Message, data: dict, lang: str):
 
 
 # ══════════════════════════════════════════════════════════════
-# TESTNI BEKOR QILISH (agar foydalanuvchi chiqib ketsa)
+# TESTNI BEKOR QILISH
 # ══════════════════════════════════════════════════════════════
 
 @router.message(StateFilter(TestSection.taking_quiz), F.text.in_(["❌ Bekor qilish", "❌ Отменить"]))
@@ -368,4 +367,4 @@ async def cancel_test(message: types.Message, state: FSMContext):
         parse_mode="HTML",
         reply_markup=registered_menu_kb(lang)
     )
-    await state.clear()
+    await state.set_state(RegisteredSection.main_menu)  # ← O'ZGARTIRILDI: clear() emas

@@ -78,7 +78,7 @@ async def fetch_test_questions(test_id: int) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Test savollarini olishda xatolik (test_id={test_id}): {e}")
         return None
-
+# bot/utils/api_client.py
 
 async def submit_test_attempt(
     user_id: int,
@@ -88,12 +88,7 @@ async def submit_test_attempt(
     percentage: int,
     passed: bool
 ) -> bool:
-    """
-    Test natijasini backendga yuborish (test_attempts jadvaliga saqlash).
-    
-    Returns:
-        True agar muvaffaqiyatli bo'lsa, False aks holda.
-    """
+    """Test natijasini backendga yuborish."""
     try:
         payload = {
             "user_id": user_id,
@@ -106,7 +101,7 @@ async def submit_test_attempt(
         
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
-                f"{API_BASE_URL}/api/test_attempts",
+                f"{API_BASE_URL}/api/tests/attempts",  # ← BU YER: /api/test_attempts emas, /api/tests/attempts
                 json=payload
             )
             response.raise_for_status()
