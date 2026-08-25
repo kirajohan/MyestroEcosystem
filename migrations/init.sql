@@ -281,19 +281,19 @@ CREATE INDEX idx_content_items_type ON content_items(content_type);
 CREATE INDEX idx_content_items_cefr ON content_items(cefr_level);
 CREATE INDEX idx_content_items_active ON content_items(is_active);
 
--- -----------------------------------------------------------
--- 17. bot_texts (CMS for bot messages)
--- -----------------------------------------------------------
-CREATE TABLE bot_texts (
-    id              BIGSERIAL PRIMARY KEY,
-    key             VARCHAR(100) NOT NULL,
-    lang            VARCHAR(10) DEFAULT 'uz' NOT NULL,
-    text            TEXT NOT NULL,
-    updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
+    -- -----------------------------------------------------------
+    -- 17. bot_texts (CMS for bot messages)
+    -- -----------------------------------------------------------
+    CREATE TABLE bot_texts (
+        id              BIGSERIAL PRIMARY KEY,
+        key             VARCHAR(100) NOT NULL,
+        lang            VARCHAR(10) DEFAULT 'uz' NOT NULL,
+        text            TEXT NOT NULL,
+        updated_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    );
 
-CREATE INDEX idx_bot_texts_key ON bot_texts(key);
-CREATE INDEX idx_bot_texts_lang ON bot_texts(lang);
+    CREATE INDEX idx_bot_texts_key ON bot_texts(key);
+    CREATE INDEX idx_bot_texts_lang ON bot_texts(lang);
 
 -- -----------------------------------------------------------
 -- 18. admin_messages (Inbox for user messages)

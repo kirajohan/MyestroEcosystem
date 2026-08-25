@@ -2,10 +2,89 @@
 
 Key naming convention: section.subsection.element
 """
+from bot.utils.text_cache import get_text_from_cache
 
 TRANSLATIONS = {
     "uz": {
-
+                # ═══════════════════════════════════════════════════════════
+        #  TEST (menu.py uchun)
+        # ═══════════════════════════════════════════════════════════
+        "test.select_cefr": (
+            "🎓 <b>CEFR darajangizni tanlang:</b>\n\n"
+            "Qaysi darajadagi testlarni ko'rmoqchisiz?"
+        ),
+        "test.loading": "⏳ <b>{level}</b> darajasidagi testlar yuklanmoqda...",
+        "test.no_tests": (
+            "❌ <b>{level}</b> darajasida testlar topilmadi\n\n"
+            "Boshqa darajani tanlang."
+        ),
+        "test.select_test": (
+            "📊 <b>{level}</b> darajasidagi testlar:\n\n"
+            "Testni tanlang ⬇️"
+        ),
+        
+        # ═══════════════════════════════════════════════════════════
+        #  ADDITIONAL REGISTRATION
+        # ═══════════════════════════════════════════════════════════
+        "registration.phone_confirmed": "✅ <b>Telefon raqamingiz tasdiqlandi!</b>",
+        "admin.sent_inbox": (
+            "✅ <b>Xabaringiz admin inboxiga yuborildi!</b>\n\n"
+            "Tez orada javob olasiz."
+        ),
+        
+        # ═══════════════════════════════════════════════════════════
+        #  ADDITIONAL ERRORS
+        # ═══════════════════════════════════════════════════════════
+        "error.user_not_found": "❌ <b>Foydalanuvchi topilmadi</b>",
+        "error.sync": (
+            "❌ <b>Sinxronizatsiya xatosi</b>\n\n"
+            "Server bilan aloqa uzildi. Qayta urinib ko'ring."
+        ),
+        "error.register_first": (
+            "⚠️ <b>Avval ro'yxatdan o'ting!</b>\n\n"
+            "Bu funksiyadan foydalanish uchun /start ni bosing."
+        ),
+        "error.already_registered": (
+            "✅ <b>Siz allaqachon ro'yxatdan o'tgansiz!</b>\n\n"
+            "Asosiy menyudan foydalaning."
+        ),
+                # ═══════════════════════════════════════════════════════════
+        #  TEST (test_quiz.py uchun)
+        # ═══════════════════════════════════════════════════════════
+        "test.loading_questions": (
+            "⏳ <b>Savollar yuklanmoqda...</b>\n\n"
+            "Iltimos, biroz kuting."
+        ),
+        "test.no_questions": (
+            "❌ <b>Bu testda savollar yo'q</b>\n\n"
+            "Boshqa testni tanlang yoki menyuga qayting."
+        ),
+        "test.return_to_menu": "📋 <b>Asosiy menyuga qayting</b>",
+        "test.error_loading": (
+            "❌ <b>Xatolik yuz berdi</b>\n\n"
+            "Savollarni yuklashda muammo. Qayta urinib ko'ring."
+        ),
+        "test.poll_error": (
+            "⚠️ <b>Poll yuborishda xatolik</b>\n\n"
+            "Keyingi savolga o'tilmoqda..."
+        ),
+        "test.select_cefr": (
+            "🎓 <b>CEFR darajangizni tanlang:</b>\n\n"
+            "Qaysi darajadagi testlarni ko'rmoqchisiz?"
+        ),
+        "test.select_test": "📝 <b>Testni tanlang:</b>",
+        "test.passed": (
+            "🎉 <b>Tabriklaymiz!</b>\n\n"
+            "Siz testni muvaffaqiyatli topshirdingiz!"
+        ),
+        "test.failed": (
+            "😔 <b>Afsuski, test topshirilmadi</b>\n\n"
+            "Qayta urinib ko'ring!"
+        ),
+        "test.cancelled": (
+            "❌ <b>Test bekor qilindi</b>\n\n"
+            "Asosiy menyuga qaytdingiz."
+        ),
         # ═══════════════════════════════════════════════════════════
         #  QUIZ (English QUIZ / Test's)
         # ═══════════════════════════════════════════════════════════
@@ -51,6 +130,19 @@ TRANSLATIONS = {
             "⚠️ <b>Urinishlar limiti tugadi</b>\n\n"
             "Bu testni yana topshirish uchun admin bilan bog'laning."
         ),
+        "quiz.no_questions": (
+            "❌ <b>Bu testda savollar topilmadi</b>\n\n"
+            "Boshqa testni tanlang yoki orqaga qayting."
+        ),
+        "quiz.poll_error": (
+            "⚠️ <b>Savol yuborishda xatolik</b>\n\n"
+            "Keyingi savolga o'tilmoqda..."
+        ),
+        "quiz.cancelled": (
+            "❌ <b>Test bekor qilindi</b>\n\n"
+            "Asosiy menyuga qaytdingiz."
+        ),
+        
         # ═══════════════════════════════════════════════════════════
         #  START
         # ═══════════════════════════════════════════════════════════
@@ -650,6 +742,85 @@ TRANSLATIONS = {
     },
     
     "ru": {
+                # ═══════════════════════════════════════════════════════════
+        #  TEST (menu.py uchun)
+        # ═══════════════════════════════════════════════════════════
+        "test.select_cefr": (
+            "🎓 <b>Выберите ваш уровень CEFR:</b>\n\n"
+            "Тесты какого уровня вы хотите увидеть?"
+        ),
+        "test.loading": "⏳ Загрузка тестов для уровня <b>{level}</b>...",
+        "test.no_tests": (
+            "❌ Тесты для уровня <b>{level}</b> не найдены\n\n"
+            "Выберите другой уровень."
+        ),
+        "test.select_test": (
+            "📊 Тесты для уровня <b>{level}</b>:\n\n"
+            "Выберите тест ⬇️"
+        ),
+        
+        # ═══════════════════════════════════════════════════════════
+        #  ADDITIONAL REGISTRATION
+        # ═══════════════════════════════════════════════════════════
+        "registration.phone_confirmed": "✅ <b>Ваш номер телефона подтверждён!</b>",
+        "admin.sent_inbox": (
+            "✅ <b>Ваше сообщение отправлено в inbox администратора!</b>\n\n"
+            "Вы получите ответ в ближайшее время."
+        ),
+        
+        # ═══════════════════════════════════════════════════════════
+        #  ADDITIONAL ERRORS
+        # ═══════════════════════════════════════════════════════════
+        "error.user_not_found": "❌ <b>Пользователь не найден</b>",
+        "error.sync": (
+            "❌ <b>Ошибка синхронизации</b>\n\n"
+            "Соединение с сервером потеряно. Попробуйте снова."
+        ),
+        "error.register_first": (
+            "⚠️ <b>Сначала зарегистрируйтесь!</b>\n\n"
+            "Для использования этой функции нажмите /start."
+        ),
+        "error.already_registered": (
+            "✅ <b>Вы уже зарегистрированы!</b>\n\n"
+            "Используйте главное меню."
+        ),
+                # ═══════════════════════════════════════════════════════════
+        #  TEST (test_quiz.py uchun)
+        # ═══════════════════════════════════════════════════════════
+        "test.loading_questions": (
+            "⏳ <b>Загружаем вопросы...</b>\n\n"
+            "Пожалуйста, подождите."
+        ),
+        "test.no_questions": (
+            "❌ <b>В этом тесте нет вопросов</b>\n\n"
+            "Выберите другой тест или вернитесь в меню."
+        ),
+        "test.return_to_menu": "📋 <b>Вернуться в главное меню</b>",
+        "test.error_loading": (
+            "❌ <b>Произошла ошибка</b>\n\n"
+            "Проблема с загрузкой вопросов. Попробуйте снова."
+        ),
+        "test.poll_error": (
+            "⚠️ <b>Ошибка при отправке опроса</b>\n\n"
+            "Переход к следующему вопросу..."
+        ),
+        "test.select_cefr": (
+            "🎓 <b>Выберите ваш уровень CEFR:</b>\n\n"
+            "Тесты какого уровня вы хотите увидеть?"
+        ),
+        "test.select_test": "📝 <b>Выберите тест:</b>",
+        "test.passed": (
+            "🎉 <b>Поздравляем!</b>\n\n"
+            "Вы успешно сдали тест!"
+        ),
+        "test.failed": (
+            "😔 <b>К сожалению, тест не сдан</b>\n\n"
+            "Попробуйте снова!"
+        ),
+        "test.cancelled": (
+            "❌ <b>Тест отменён</b>\n\n"
+            "Вы вернулись в главное меню."
+        ),
         # ═══════════════════════════════════════════════════════════
         #  QUIZ (English QUIZ / Test's)
         # ═══════════════════════════════════════════════════════════
@@ -695,6 +866,19 @@ TRANSLATIONS = {
             "⚠️ <b>Лимит попыток исчерпан</b>\n\n"
             "Для повторной сдачи теста свяжитесь с администратором."
         ),
+        "quiz.no_questions": (
+            "❌ <b>В этом тесте не найдено вопросов</b>\n\n"
+            "Выберите другой тест или вернитесь назад."
+        ),
+        "quiz.poll_error": (
+            "⚠️ <b>Ошибка при отправке вопроса</b>\n\n"
+            "Переход к следующему вопросу..."
+        ),
+        "quiz.cancelled": (
+            "❌ <b>Тест отменён</b>\n\n"
+            "Вы вернулись в главное меню."
+        ),
+        
         # ═══════════════════════════════════════════════════════════
         #  START
         # ═══════════════════════════════════════════════════════════
@@ -1292,6 +1476,85 @@ TRANSLATIONS = {
         "about_info": "ℹ️ Подробнее о нас",
     },
     "en": {
+                # ═══════════════════════════════════════════════════════════
+        #  TEST (menu.py uchun)
+        # ═══════════════════════════════════════════════════════════
+        "test.select_cefr": (
+            "🎓 <b>Select your CEFR level:</b>\n\n"
+            "Which level of tests would you like to see?"
+        ),
+        "test.loading": "⏳ Loading tests for <b>{level}</b>...",
+        "test.no_tests": (
+            "❌ No tests found for <b>{level}</b>\n\n"
+            "Choose another level."
+        ),
+        "test.select_test": (
+            "📊 Tests for <b>{level}</b>:\n\n"
+            "Select a test ⬇️"
+        ),
+        
+        # ═══════════════════════════════════════════════════════════
+        #  ADDITIONAL REGISTRATION
+        # ═══════════════════════════════════════════════════════════
+        "registration.phone_confirmed": "✅ <b>Your phone number is confirmed!</b>",
+        "admin.sent_inbox": (
+            "✅ <b>Your message has been sent to admin inbox!</b>\n\n"
+            "You will receive a reply shortly."
+        ),
+        
+        # ═══════════════════════════════════════════════════════════
+        #  ADDITIONAL ERRORS
+        # ═══════════════════════════════════════════════════════════
+        "error.user_not_found": "❌ <b>User not found</b>",
+        "error.sync": (
+            "❌ <b>Synchronization error</b>\n\n"
+            "Connection to server lost. Please try again."
+        ),
+        "error.register_first": (
+            "⚠️ <b>Please register first!</b>\n\n"
+            "To use this feature, press /start."
+        ),
+        "error.already_registered": (
+            "✅ <b>You are already registered!</b>\n\n"
+            "Use the main menu."
+        ),
+                # ═══════════════════════════════════════════════════════════
+        #  TEST (test_quiz.py uchun)
+        # ═══════════════════════════════════════════════════════════
+        "test.loading_questions": (
+            "⏳ <b>Loading questions...</b>\n\n"
+            "Please wait."
+        ),
+        "test.no_questions": (
+            "❌ <b>No questions in this test</b>\n\n"
+            "Choose another test or return to menu."
+        ),
+        "test.return_to_menu": "📋 <b>Return to main menu</b>",
+        "test.error_loading": (
+            "❌ <b>An error occurred</b>\n\n"
+            "Problem loading questions. Please try again."
+        ),
+        "test.poll_error": (
+            "⚠️ <b>Error sending poll</b>\n\n"
+            "Moving to the next question..."
+        ),
+        "test.select_cefr": (
+            "🎓 <b>Select your CEFR level:</b>\n\n"
+            "Which level of tests would you like to see?"
+        ),
+        "test.select_test": "📝 <b>Select a test:</b>",
+        "test.passed": (
+            "🎉 <b>Congratulations!</b>\n\n"
+            "You have successfully passed the test!"
+        ),
+        "test.failed": (
+            "😔 <b>Unfortunately, the test was not passed</b>\n\n"
+            "Try again!"
+        ),
+        "test.cancelled": (
+            "❌ <b>Test cancelled</b>\n\n"
+            "You've returned to the main menu."
+        ),
         # ═══════════════════════════════════════════════════════════
         #  QUIZ (English QUIZ / Test's)
         # ═══════════════════════════════════════════════════════════
@@ -1337,6 +1600,19 @@ TRANSLATIONS = {
             "⚠️ <b>Attempt limit reached</b>\n\n"
             "Contact admin to retake this test."
         ),
+        "quiz.no_questions": (
+            "❌ <b>No questions found in this test</b>\n\n"
+            "Choose another test or go back."
+        ),
+        "quiz.poll_error": (
+            "⚠️ <b>Error sending question</b>\n\n"
+            "Moving to the next question..."
+        ),
+        "quiz.cancelled": (
+            "❌ <b>Test cancelled</b>\n\n"
+            "You've returned to the main menu."
+        ),
+        
         # ═══════════════════════════════════════════════════════════
         #  START
         # ═══════════════════════════════════════════════════════════
@@ -1934,17 +2210,40 @@ TRANSLATIONS = {
     },
 }
 
+"""Internationalization — uz, ru, en languages."""
+
+
+
 
 def get_text(key: str, lang: str = "uz", **kwargs) -> str:
     """Get localized text by key.
 
-    Falls back to 'uz' if key not found in the requested language.
-    Falls back to the key itself if not found in any language.
+    Priority:
+    1. Redis cache (DB dan yuklangan)
+    2. Lokal TRANSLATIONS dict (fallback)
+    3. Key itself (agar hech qaerda topilmasa)
     """
-    text = TRANSLATIONS.get(lang, {}).get(key, TRANSLATIONS["uz"].get(key, key))
+    text = None
+    
+    # 1. Avval Redis cache dan tekshirish
+    try:
+        text = get_text_from_cache(key, lang)
+    except Exception:
+        pass
+    
+    # 2. Cache da bo'lmasa — lokal dict dan
+    if text is None:
+        text = TRANSLATIONS.get(lang, {}).get(key)
+    
+    # 3. Lokal dict da ham bo'lmasa — uz fallback, keyin key
+    if text is None:
+        text = TRANSLATIONS["uz"].get(key, key)
+    
+    # Placeholder'larni to'ldirish
     if kwargs:
         try:
             text = text.format(**kwargs)
-        except KeyError:
+        except (KeyError, ValueError):
             pass
+    
     return text

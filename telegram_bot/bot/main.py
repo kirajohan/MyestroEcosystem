@@ -12,7 +12,7 @@ if _app_root not in sys.path:
 if _telegram_bot_root not in sys.path:
     sys.path.insert(0, _telegram_bot_root)
 
-from bot.handlers import academy, admin, ai_agent, contact, document, errors, menu, photo, profile, referral, register, reminders, start, sticker, video, broadcast, inbox
+from bot.handlers import academy, admin, ai_agent, contact, document, errors, menu, photo, profile, referral, register, reminders, start, sticker, video, broadcast, inbox 
 from bot.handlers import test_quiz
 
 from aiogram import Bot, Dispatcher, Router
@@ -34,6 +34,7 @@ from bot.utils.ai_memory_client import AIMemoryClient
 from bot.workers.inbox_delivery import inbox_delivery_worker
 from redis.asyncio import Redis
 
+from bot.utils.text_cache import init_text_cache
 
 logging.basicConfig(level=settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
@@ -50,10 +51,11 @@ async def main():
     
     logger.info(f"OK: BOT_TOKEN loaded (length: {len(settings.BOT_TOKEN)})")
 
-    # FSM Storage (Memory — no Redis)
-    storage = MemoryStorage()
+    # ══════════════════════════════════════════════════════════
+    # FSM Storage (Redis)
+    # ══════════════════════════════════════════════════════════
     redis_storage = RedisStorage.from_url(settings.REDIS_URL + "/1")
-    dp = Dispatcher(storage=redis_storage)
+    dp = Dispatcher(storage=redis_storage)  # ← BITTA Dispatcher!
 
     http_client = httpx.AsyncClient(
         timeout=30.0,
@@ -75,14 +77,17 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
 
-    # Set admin IDs (from env or hardcoded for testing)
+    # Set admin IDs
     bot.admin_ids = []
 
-    # Register session middleware first (before any handlers, so session is available)
+    # ══════════════════════════════════════════════════════════
+    # MIDDLEWARES
+    # ══════════════════════════════════════════════════════════
     dp.update.middleware(DbSessionMiddleware())
-    # main.py yoki bot/__init__.py ichida:
 
-# ... Dispatcher yaratilgandan keyin:
+    # ══════════════════════════════════════════════════════════
+    # ROUTERS (tartib muhim!)
+    # ══════════════════════════════════════════════════════════
     dp.include_router(errors.router)
     dp.include_router(start.router)
     dp.include_router(contact.router)
@@ -102,14 +107,28 @@ async def main():
     dp.include_router(sticker.router)
     dp.include_router(video.router)
 
-    # Register middlewares
+    # ══════════════════════════════════════════════════════════
+    # MESSAGE MIDDLEWARES
+    # ══════════════════════════════════════════════════════════
     dp.message.middleware(BotGuardMiddleware())
     dp.callback_query.middleware(BotGuardMiddleware())
     dp.message.middleware(ChannelCheckMiddleware())
     dp.callback_query.middleware(ChannelCheckMiddleware())
     dp.message.middleware(AIGuardMiddleware())
 
-    # AI Health Check on startup
+    # ══════════════════════════════════════════════════════════
+    # STARTUP: Text Cache + AI Health Check
+    # ══════════════════════════════════════════════════════════
+    logger.info("🤖 Bot ishga tushmoqda...")
+
+    # Text cache ni to'ldirish (AWAIT bilan!)
+    try:
+        count = await init_text_cache()  # ← AWAIT! asyncio.run emas!
+        logger.info(f"📝 Text cache yuklandi: {count} matn")
+    except Exception as e:
+        logger.error(f"❌ Text cache yuklashda xatolik: {e}")
+
+    # AI Health Check
     logger.info("Running AI health check...")
     try:
         ai_status = await ai_service.health_check()
@@ -122,17 +141,22 @@ async def main():
 
     logger.info("Bot started polling...")
     
-    # Redis client for workers
+    # ══════════════════════════════════════════════════════════
+    # WORKERS
+    # ══════════════════════════════════════════════════════════
     redis_client = Redis.from_url(settings.REDIS_URL, decode_responses=False)
     
-    # Start BroadcastWorker (Redis queue consumer)
+    # Start BroadcastWorker
     broadcast_worker = BroadcastWorker(bot, redis_client)
     broadcast_task = asyncio.create_task(broadcast_worker.start())
     
-    # Start Inbox delivery worker (Redis queue consumer for admin replies)
+    # Start Inbox delivery worker
     inbox_task = asyncio.create_task(inbox_delivery_worker(bot, redis_client))
     logger.info("🚀 Inbox delivery worker started")
     
+    # ══════════════════════════════════════════════════════════
+    # POLLING
+    # ══════════════════════════════════════════════════════════
     try:
         await dp.start_polling(bot)
     finally:
@@ -141,7 +165,7 @@ async def main():
             broadcast_task.cancel()
         if inbox_task and not inbox_task.done():
             inbox_task.cancel()
-        logger.info("AI client shut down.")
+        logger.info("Bot shut down.")
 
 
 if __name__ == "__main__":

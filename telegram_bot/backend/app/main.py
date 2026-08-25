@@ -9,7 +9,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.database import close_redis
 from app.core.exceptions import AppException
-
+from app.api import bot_text  # ← YANGI
 
 # Add telegram_bot root to path so shared module is importable
 _telegram_bot_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -26,6 +26,33 @@ from app.core.exceptions import AppException
 from app.services.ai_service import shutdown_ai_client
 
 logger = logging.getLogger(__name__)
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+# Bot uchun mini FastAPI app (internal endpoints)
+internal_app = FastAPI()
+
+@internal_app.post("/internal/refresh-cache")
+async def refresh_cache_endpoint():
+    """
+    Internal endpoint for cache refresh.
+    Called by backend when bot texts are updated.
+    """
+    from bot.utils.text_cache import refresh_cache
+    count = await refresh_cache()
+    return {"status": "ok", "refreshed": count}
+
+# Start internal app on separate port
+import uvicorn
+from threading import Thread
+
+def run_internal_app():
+    uvicorn.run(internal_app, host="0.0.0.0", port=8001, log_level="error")
+
+# Start in background thread
+internal_thread = Thread(target=run_internal_app, daemon=True)
+internal_thread.start()
 
 
 @asynccontextmanager
@@ -92,7 +119,6 @@ def create_app() -> FastAPI:
     app.include_router(logs.router)
     app.include_router(tests.router)
     app.include_router(ws_router)  
-
     # Exception handlers
     
     @app.exception_handler(AppException)

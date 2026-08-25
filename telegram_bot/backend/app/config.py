@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     JWT_REFRESH_SECRET: str = "b376f24c1d2bfbaacfa9ef51027b74f40cb3aa9a8497aa50dd38c52c6bff5d07"
     JWT_ACCESS_EXPIRE: int = 15  # minutes
     JWT_REFRESH_EXPIRE: int = 10080  # minutes (7 days)
-
+    
     # OpenRouter
     OPENROUTER_API_KEY: str = "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"
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"

@@ -20,7 +20,7 @@ const navItems = [
   { label: 'Users', href: '/users', icon: Users },
   { label: 'Content', href: '/content', icon: Video },
   { label: 'Tests', href: '/tests', icon: FileQuestion },
-  { label: 'Bot Texts', href: '#', icon: FileText, disabled: true },
+  { label: 'Bot Texts', href: '/bot-texts', icon: FileText, disabled: false }, // ← O'ZGARTIRILDI
   { label: 'Broadcast', href: '/broadcast', icon: Send },
   { label: 'Inbox', href: '/inbox', icon: MessageSquare },
   { label: 'Logs', href: '#', icon: ScrollText, disabled: true },

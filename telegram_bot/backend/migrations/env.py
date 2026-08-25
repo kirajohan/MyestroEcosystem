@@ -1,37 +1,49 @@
-import os  
+"""Alembic environment configuration and migration runner."""
+from __future__ import with_statement
+
+import os
 import sys
-from pathlib import Path
 from logging.config import fileConfig
+from pathlib import Path
 from sqlalchemy import engine_from_config, pool
 from alembic import context
+from dotenv import load_dotenv
 
-# Add /app to sys.path so app module can be imported
-app_dir = Path(__file__).parent.parent
-sys.path.insert(0, str(app_dir))
+# Load environment variables from .env FIRST
+env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
 
-# Alembic Config obyekti
+# Get database URL early
+database_url = os.getenv("DATABASE_URL", "")
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+# Setup path for app imports
+app_dir = Path(__file__).resolve().parent.parent
+if str(app_dir) not in sys.path:
+    sys.path.insert(0, str(app_dir))
+
+# This is the Alembic Config object, which provides
+# access to the values within the .ini file in use.
 config = context.config
 
-# Log sozlamalarini yuklash
+# Set the database URL immediately
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+
+# Interpret the config file for Python logging.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Modellaringiz metadata-si (Autogenerate uchun)
+# Add your model's MetaData object for 'autogenerate' support
 from app.database import Base
-from app.models import *  # noqa: F401, F403
 
 target_metadata = Base.metadata
 
-# --- RAILWAY DATABASE_URL SOZLAMASI ---
-db_url = os.getenv("DATABASE_URL")
-if db_url:
-    # Railway ba'zan postgres:// beradi, SQLAlchemy esa postgresql:// talab qiladi
-    if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
-    config.set_main_option("sqlalchemy.url", db_url)
-# --------------------------------------
 
 def run_migrations_offline() -> None:
+    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -45,15 +57,17 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    # config.get_section hozirgina biz tepada o'zgartirgan yangi url-ni o'qiydi
+    """Run migrations in 'online' mode."""
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection, target_metadata=target_metadata
+        )
 
         with context.begin_transaction():
             context.run_migrations()
