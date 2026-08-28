@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Server-side: use internal Docker network URL if available
-const BACKEND_URL = process.env.BACKEND_INTERNAL_URL || process.env.BACKEND_URL || 'http://backend:8000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // GET /api/bot-texts - List all bot texts
 export async function GET(request: NextRequest) {

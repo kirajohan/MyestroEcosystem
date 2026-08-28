@@ -32,7 +32,7 @@ async def fetch_public_tests(
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
-                f"{API_BASE_URL}/api/tests",
+                f"{API_BASE_URL}/tests",
                 params={
                     "level": cefr_level,
                     "limit": limit,
@@ -71,7 +71,7 @@ async def fetch_test_questions(test_id: int) -> Optional[Dict[str, Any]]:
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(
-                f"{API_BASE_URL}/api/tests/{test_id}/questions"
+                f"{API_BASE_URL}/tests/{test_id}/questions"
             )
             response.raise_for_status()
             return response.json()
@@ -101,7 +101,7 @@ async def submit_test_attempt(
         
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
-                f"{API_BASE_URL}/api/tests/attempts",  # ← BU YER: /api/test_attempts emas, /api/tests/attempts
+                f"{API_BASE_URL}/tests/attempts",  # ← BU YER: /api/test_attempts emas, /api/tests/attempts
                 json=payload
             )
             response.raise_for_status()

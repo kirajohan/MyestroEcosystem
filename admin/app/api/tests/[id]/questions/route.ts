@@ -1,16 +1,11 @@
-// admin/app/api/tests/[id]/questions/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE_URL =
-  process.env.BACKEND_INTERNAL_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  'http://localhost:8002';
+// DIQQAT: Faqat ichki tarmoq URL ishlatiladi. NEXT_PUBLIC_API_URL client-side uchun, bu yerda ishlamaydi.
+const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
 
 // ══════════════════════════════════════════════════════════════
 // GET /api/tests/[id]/questions — Test savollarini olish
 // ══════════════════════════════════════════════════════════════
-
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
@@ -18,7 +13,8 @@ export async function GET(
   try {
     const { id } = params;
 
-    const backendResp = await fetch(`${API_BASE_URL}/api/tests/${id}/questions`, {
+    // DIQQAT: "/api/tests" emas, faqat "/tests"
+    const backendResp = await fetch(`${API_BASE_URL}/tests/${id}/questions`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -45,7 +41,6 @@ export async function GET(
 // ══════════════════════════════════════════════════════════════
 // POST /api/tests/[id]/questions — Yangi savol qo'shish
 // ══════════════════════════════════════════════════════════════
-
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -54,19 +49,12 @@ export async function POST(
     const { id } = params;
     const body = await request.json();
 
-    // Validatsiya
     if (!body.question_text || !body.question_text.trim()) {
-      return NextResponse.json(
-        { detail: 'Savol matni majburiy' },
-        { status: 400 }
-      );
+      return NextResponse.json({ detail: 'Savol matni majburiy' }, { status: 400 });
     }
 
     if (!body.options || !Array.isArray(body.options) || body.options.length < 2) {
-      return NextResponse.json(
-        { detail: 'Kamida 2 ta variant majburiy' },
-        { status: 400 }
-      );
+      return NextResponse.json({ detail: 'Kamida 2 ta variant majburiy' }, { status: 400 });
     }
 
     if (
@@ -74,13 +62,11 @@ export async function POST(
       body.correct_option_index < 0 ||
       body.correct_option_index >= body.options.length
     ) {
-      return NextResponse.json(
-        { detail: "To'g'ri javob indeksi noto'g'ri" },
-        { status: 400 }
-      );
+      return NextResponse.json({ detail: "To'g'ri javob indeksi noto'g'ri" }, { status: 400 });
     }
 
-    const backendResp = await fetch(`${API_BASE_URL}/api/tests/${id}/questions`, {
+    // DIQQAT: "/api/tests" emas, faqat "/tests"
+    const backendResp = await fetch(`${API_BASE_URL}/tests/${id}/questions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

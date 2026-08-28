@@ -1,18 +1,15 @@
-// admin/app/api/tests/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const API_BASE_URL =
-  process.env.BACKEND_INTERNAL_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  'http://localhost:8002';
+// DIQQAT: Docker tarmog'i ichida ichki port (8000) ishlatilishi SHART!
+// Agar docker-compose.yml da backend xizmati "myestro-backend" deb nomlangan bo'lsa, 
+// URL ni 'http://myestro-backend:8000' ga o'zgartiring.
+const API_BASE_URL = process.env.BACKEND_URL || 'http://backend:8000';
 
 // ══════════════════════════════════════════════════════════════
 // GET /api/tests — Testlar ro'yxati
 // ══════════════════════════════════════════════════════════════
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -21,7 +18,8 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get('limit') || '50';
     const offset = searchParams.get('offset') || '0';
 
-    let url = `${API_BASE_URL}/api/tests?limit=${limit}&offset=${offset}&active_only=${active_only}`;
+    // DIQQAT: FastAPI router prefix "/tests", "/api/tests" emas!
+    let url = `${API_BASE_URL}/tests?limit=${limit}&offset=${offset}&active_only=${active_only}`;
     if (level) {
       url += `&level=${level}`;
     }
@@ -40,7 +38,6 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await backendResp.json();
-    // Backend array yoki { tests: [...] } qaytarishi mumkin
     const result = Array.isArray(data) ? data : data.tests || [];
     return NextResponse.json(result, { status: 200 });
   } catch (error: any) {
@@ -55,12 +52,10 @@ export async function GET(request: NextRequest) {
 // ══════════════════════════════════════════════════════════════
 // POST /api/tests — Yangi test yaratish
 // ══════════════════════════════════════════════════════════════
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validatsiya
     if (!body.title || !body.title.trim()) {
       return NextResponse.json(
         { detail: 'Test sarlavhasi majburiy' },
@@ -75,7 +70,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const backendResp = await fetch(`${API_BASE_URL}/api/tests`, {
+    // DIQQAT: Bu yerda ham "/api/tests" emas, "/tests" bo'lishi kerak
+    const backendResp = await fetch(`${API_BASE_URL}/tests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

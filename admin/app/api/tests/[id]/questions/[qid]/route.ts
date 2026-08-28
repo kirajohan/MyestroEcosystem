@@ -2,31 +2,23 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE_URL =
-  process.env.BACKEND_INTERNAL_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  'http://localhost:8002';
+const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
 
-// ══════════════════════════════════════════════════════════════
-// PUT /api/tests/[id]/questions/[qid] — Savolni yangilash
-// ══════════════════════════════════════════════════════════════
-
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string; qid: string } }
-) {
+// PUT
+export async function PUT(request: NextRequest, { params }: { params: { id: string; qid: string } }) {
   try {
     const { id, qid } = params;
     const body = await request.json();
 
     const backendResp = await fetch(
-      `${API_BASE_URL}/api/tests/${id}/questions/${qid}`,
+      `${API_BASE_URL}/tests/${id}/questions/${qid}`, // "/api" olib tashlandi
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       }
     );
+    // ...
 
     if (!backendResp.ok) {
       const errData = await backendResp.json().catch(() => ({}));

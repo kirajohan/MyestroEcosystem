@@ -45,7 +45,7 @@ services:
     container_name: myestro-backend
     restart: unless-stopped
     ports:
-      - "8002:8000"
+      - "8000:8000"
     env_file:
       - ./.env
     environment:
@@ -74,7 +74,7 @@ services:
     env_file:
       - ./.env
     environment:
-      BACKEND_API_URL: http://backend:8002
+      BACKEND_API_URL: http://backend:8000
       DATABASE_URL: postgresql+asyncpg://myestro:myestro_password@postgres:5432/myestro
       REDIS_URL: redis://redis:6379/0
       BACKEND_URL: http://backend:8000
@@ -94,15 +94,13 @@ services:
       context: ./admin
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8002
+        NEXT_PUBLIC_API_URL: http://localhost:8000
     container_name: myestroeco-admin
     restart: unless-stopped
     ports:
       - "3002:3000"
     environment:
-      BACKEND_INTERNAL_URL: http://backend:8000
-      BACKEND_URL: http://backend:8000
-      NEXT_PUBLIC_ADMIN_PASSWORD: admin123
+      NEXT_PUBLIC_API_URL: http://localhost:8000
     depends_on:
       backend:
         condition: service_healthy
@@ -123,7 +121,7 @@ services:
     ports:
       - "3003:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8002
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - backend
     networks:

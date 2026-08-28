@@ -39,7 +39,6 @@ class ProfileEditFSM(StatesGroup):
 # ══════════════════════════════════════════════════════════════
 # PROFILE — SHOW
 # ══════════════════════════════════════════════════════════════
-
 async def show_profile(message: types.Message, state: FSMContext, from_callback: bool = False):
     """Show user profile with telegram_id, phone and CEFR level."""
     user_data = await state.get_data()
@@ -49,9 +48,8 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
     phone = user_data.get("phone", "—")
     email = user_data.get("email", "—")
     level = user_data.get("cefr_level", "A1")
-    password = user_data.get("password", "—")
+    password = user_data.get("password_hash", user_data.get("password", "—"))
 
-    # Telegram ID uchun eng ishonchli manba — message.from_user.id
     telegram_id = message.from_user.id
 
     # Backend'dan yangi ma'lumotlarni olish
@@ -66,9 +64,9 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
                 phone = data.get("phone", phone)
                 level = data.get("cefr_level", level)
                 telegram_id = data.get("telegram_id", telegram_id)
-                password = data.get("password", password)
+                # 🔑 password_hash ni olish (DB dagi nom)
+                password = data.get("password_hash", data.get("password", password))
 
-                # State'ni yangi ma'lumotlar bilan to'ldiramiz
                 await state.update_data(
                     email=email,
                     full_name=name,
@@ -76,21 +74,15 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
                     cefr_level=level,
                     telegram_id=telegram_id,
                     password=password,
+                    password_hash=password,
                 )
     except Exception:
         pass
 
     tmpl = get_text("profile.title", lang)
 
-    # Eski shablonlarda password placeholder qolib ketgan bo'lsa,
-    # KeyError chiqmasligi va password ko'rsatilmasligi uchun tozalaymiz.
-    for bad_placeholder in (
-        "{password}",
-        "{ password }",
-        "{Password}",
-        "{ PASSWORD }",
-    ):
-        tmpl = tmpl.replace(bad_placeholder, "")
+    # 🔑 Parol borligini ko'rsatish (lekin haqiqiy parolni emas)
+    password_status = "✅ O'rnatilgan" if password and password != "—" else "***"
 
     values = _SafeFormatDict(
         name=name,
@@ -99,20 +91,16 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
         level=level,
         lang=lang.upper(),
         telegram_id=telegram_id,
-        password=password,
+        password=password_status,  # <--- Bu yerda status ko'rsatiladi
     )
 
     try:
         text = tmpl.format_map(values)
     except ValueError:
-        # Agar shablonda format bilan bog'liq boshqa xato bo'lsa,
-        # foydalanuvchini xatosiz qaytarish uchun minimal fallback.
-        text = f"👤 {name}\n📞 {phone}\n📊 {level}"
+        text = f"👤 {name}\n📞 {phone}\n📊 {level}\n🔑 Parol: {password}"
 
-    # Telegram ID ni alohida ko'rsatamiz
     text += f"\n\n🆔 Telegram ID: <code>{telegram_id}</code>"
 
-    # Edit va Back reply tugmalari
     keyboard = profile_kb(lang)
 
     await message.answer(
@@ -120,7 +108,6 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
         reply_markup=keyboard,
         parse_mode="HTML"
     )
-
 
 @router.message(F.text.in_([
     "👤 Profil", "👤 Профиль", "👤 Profile",
@@ -248,6 +235,148 @@ async def profile_edit_field(message: types.Message, state: FSMContext):
         reply_markup=keyboard
     )
 
+# ══════════════════════════════════════════════════════════════
+# PROFILE EDIT — PASSWORD CHANGE
+# ══════════════════════════════════════════════════════════════
+
+class PasswordChangeFSM(StatesGroup):
+    waiting_new_password = State()
+    confirm_password = State()
+
+
+@router.message(
+    StateFilter(RegisteredSection.main_menu),
+    F.text.in_(["🔑 Parolni o'zgartirish", "🔑 Сменить пароль", "🔑 Change password"])
+)
+async def password_change_start(message: types.Message, state: FSMContext):
+    """Start password change process."""
+    user_data = await state.get_data()
+    lang = user_data.get("lang", "uz")
+
+    await state.set_state(PasswordChangeFSM.waiting_new_password)
+
+    prompts = {
+        "uz": "🔑 Yangi parolni kiriting (kamida 6 belgi):",
+        "ru": "🔑 Введите новый пароль (минимум 6 символов):",
+        "en": "🔑 Enter new password (minimum 6 characters):",
+    }
+
+    back_text = "⬅️ Orqaga" if lang == "uz" else ("⬅️ Назад" if lang == "ru" else "⬅️ Back")
+
+    keyboard = types.ReplyKeyboardMarkup(
+        keyboard=[[types.KeyboardButton(text=back_text)]],
+        resize_keyboard=True,
+    )
+
+    await message.answer(
+        prompts.get(lang, prompts["uz"]),
+        reply_markup=keyboard
+    )
+
+
+@router.message(PasswordChangeFSM.waiting_new_password)
+async def password_change_input(message: types.Message, state: FSMContext):
+    """Handle new password input."""
+    user_data = await state.get_data()
+    lang = user_data.get("lang", "uz")
+    new_password = message.text.strip()
+
+    back_texts = ["⬅️ Orqaga", "⬅️ Назад", "⬅️ Back", "⬅️ Orqaga qaytish"]
+
+    if new_password in back_texts or new_password.startswith("⬅️"):
+        await state.set_state(RegisteredSection.main_menu)
+        await message.answer(
+            get_text("main_menu", lang),
+            reply_markup=registered_menu_kb(lang)
+        )
+        return
+
+    # Validatsiya
+    if len(new_password) < 6:
+        prompts = {
+            "uz": "❌ Parol kamida 6 belgidan iborat bo'lishi kerak. Qayta kiriting:",
+            "ru": "❌ Пароль должен быть минимум 6 символов. Введите снова:",
+            "en": "❌ Password must be at least 6 characters. Enter again:",
+        }
+        await message.answer(prompts.get(lang, prompts["uz"]))
+        return
+
+    # Parolni tasdiqlash
+    await state.update_data(new_password=new_password)
+    await state.set_state(PasswordChangeFSM.confirm_password)
+
+    prompts = {
+        "uz": "🔑 Parolni tasdiqlang (qayta kiriting):",
+        "ru": "🔑 Подтвердите пароль (введите снова):",
+        "en": "🔑 Confirm password (enter again):",
+    }
+
+    await message.answer(prompts.get(lang, prompts["uz"]))
+
+
+@router.message(PasswordChangeFSM.confirm_password)
+async def password_change_confirm(message: types.Message, state: FSMContext):
+    """Confirm and save new password."""
+    user_data = await state.get_data()
+    lang = user_data.get("lang", "uz")
+    new_password = user_data.get("new_password")
+    confirm_password = message.text.strip()
+
+    back_texts = ["⬅️ Orqaga", "⬅️ Назад", "⬅️ Back", "⬅️ Orqaga qaytish"]
+
+    if confirm_password in back_texts or confirm_password.startswith("⬅️"):
+        await state.set_state(RegisteredSection.main_menu)
+        await message.answer(
+            get_text("main_menu", lang),
+            reply_markup=registered_menu_kb(lang)
+        )
+        return
+
+    if new_password != confirm_password:
+        prompts = {
+            "uz": "❌ Parollar mos kelmadi. Qaytadan boshlang.",
+            "ru": "❌ Пароли не совпадают. Начните заново.",
+            "en": "❌ Passwords do not match. Start over.",
+        }
+        await message.answer(
+            prompts.get(lang, prompts["uz"]),
+            reply_markup=registered_menu_kb(lang)
+        )
+        await state.set_state(RegisteredSection.main_menu)
+        return
+
+    # Backend ga yangi parolni yuborish
+    telegram_id = message.from_user.id
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.put(
+                f"{API_BASE_URL}/sync/user/{telegram_id}",
+                json={"password": new_password},
+            )
+
+            if resp.status_code == 200:
+                prompts = {
+                    "uz": "✅ Parol muvaffaqiyatli o'zgartirildi!",
+                    "ru": "✅ Пароль успешно изменен!",
+                    "en": "✅ Password successfully changed!",
+                }
+                await message.answer(
+                    prompts.get(lang, prompts["uz"]),
+                    reply_markup=registered_menu_kb(lang)
+                )
+            else:
+                await message.answer(
+                    f"❌ Xatolik: {resp.status_code}",
+                    reply_markup=registered_menu_kb(lang)
+                )
+    except Exception as e:
+        await message.answer(
+            f"❌ Xatolik: {str(e)}",
+            reply_markup=registered_menu_kb(lang)
+        )
+
+    await state.set_state(RegisteredSection.main_menu)\
 
 # ══════════════════════════════════════════════════════════════
 # PROFILE EDIT — CEFR LEVEL SAVE

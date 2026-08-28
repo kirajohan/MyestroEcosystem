@@ -300,23 +300,42 @@ def admin_contact_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
 
 # ─── PROFILE KEYBOARDS ──────────────────────────────────────
 
+# ─── PROFILE KEYBOARDS ──────────────────────────────────────
+
 def profile_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
-    """Profile screen keyboard: Edit + Back."""
+    """Profile screen keyboard: Edit + Change Password + Back."""
     texts = {
-        "uz": {"edit": "✏️ Tahrirlash", "back": "⬅️ Orqaga"},
-        "ru": {"edit": "✏️ Редактировать", "back": "⬅️ Назад"},
-        "en": {"edit": "✏️ Edit", "back": "⬅️ Back"},
+        "uz": {
+            "edit": "✏️ Tahrirlash",
+            "password": "🔑 Parolni o'zgartirish",
+            "back": "⬅️ Orqaga",
+        },
+        "ru": {
+            "edit": "✏️ Редактировать",
+            "password": "🔑 Сменить пароль",
+            "back": "⬅️ Назад",
+        },
+        "en": {
+            "edit": "✏️ Edit",
+            "password": "🔑 Change password",
+            "back": "⬅️ Back",
+        },
     }
     t = texts.get(lang, texts["uz"])
 
     builder = ReplyKeyboardBuilder()
     builder.add(
         StyledKeyboardButton(text=t["edit"], style="primary"),
+        StyledKeyboardButton(text=t["password"], style="success"),
+    )
+    builder.add(
         StyledKeyboardButton(text=t["back"], style="danger"),
     )
-    builder.adjust(1)
+    builder.adjust(2, 1)
     return builder.as_markup(resize_keyboard=True)
 
+
+    
 
 def profile_edit_fields_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
     """Profile edit field selection keyboard."""

@@ -115,6 +115,7 @@ def create_app() -> FastAPI:
     app.include_router(settings_router.router)
     app.include_router(content.router)
     app.include_router(bot_text.router)
+    app.include_router(tests.router)
     app.include_router(admin_messages.router)
     app.include_router(broadcast.router)
     app.include_router(inbox.router)

@@ -2,7 +2,6 @@ from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError, Telegra
 import asyncio
 import time
 import logging
-import re
 from typing import Optional
 from aiogram import Router, F
 from aiogram.types import Message
@@ -24,68 +23,6 @@ logger = logging.getLogger(__name__)
 MAX_TEXT_LENGTH = 4000
 STREAM_EDIT_INTERVAL = 1.0
 STREAM_BUFFER_MAX = 1000
-
-
-def format_english_with_blockquotes(text: str) -> str:
-    """
-    Format English sentences with <blockquote> tags.
-    - Detects COMPLETE English sentences (start with capital, end with punctuation)
-    - Wraps them in <blockquote></blockquote>
-    - Preserves existing HTML tags
-    
-    Example:
-        Input: "Here is a sentence: I am learning English. This is great!"
-        Output: "Here is a sentence: <blockquote>I am learning English.</blockquote> <blockquote>This is great!</blockquote>"
-    """
-    if not text or len(text) < 5:
-        return text
-    
-    result = []
-    current_pos = 0
-    
-    # Pattern matches: Capital letter, followed by English characters/spaces/punctuation, ends with . ! ?
-    # This captures complete English sentences
-    pattern = r'([A-Z][a-zA-Z\s\'\"\-,;:]*[.!?])'
-    
-    for match in re.finditer(pattern, text):
-        sentence = match.group(1).strip()
-        start = match.start()
-        end = match.end()
-        
-        # Add any text before this sentence
-        if start > current_pos:
-            result.append(text[current_pos:start])
-        
-        # Check if sentence is already wrapped in blockquote
-        if not (sentence.startswith('<blockquote>') and sentence.endswith('</blockquote>')):
-            # Verify it's not inside code or pre tags
-            if '<code>' not in sentence and '<pre>' not in sentence and '`' not in sentence:
-                # Must be a reasonable length (not just punctuation)
-                if len(sentence) > 3:
-                    sentence = f'<blockquote>{sentence}</blockquote>'
-        
-        result.append(sentence)
-        current_pos = end
-    
-    # Add remaining text
-    if current_pos < len(text):
-        result.append(text[current_pos:])
-    
-    return ''.join(result)
-
-
-def enhance_html_response(response_text: str) -> str:
-    """
-    Post-process AI response to ensure proper HTML formatting:
-    - Apply blockquote formatting to English sentences
-    - Ensure parse_mode=HTML compatibility
-    """
-    if not response_text:
-        return response_text
-    
-    # Format English sentences with blockquotes
-    enhanced = format_english_with_blockquotes(response_text)
-    return enhanced
 
 
 async def _typing_refresh_task(message: Message, stop_event: asyncio.Event):
@@ -232,9 +169,6 @@ async def _answer_with_memory(
             response_text = getattr(response_data, "response", get_text("ai.error", lang))
             model_used = getattr(response_data, "model_used", "unknown")
             time_ms = getattr(response_data, "processing_time_ms", 0)
-
-        # Apply HTML formatting enhancement to the AI response
-        response_text = enhance_html_response(response_text)
 
         # Header va Footer HTML formatida
         header = "🤖 <b>Myestro AI</b>\n\n"
