@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
+const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8002';
 
 export async function GET() {
   try {

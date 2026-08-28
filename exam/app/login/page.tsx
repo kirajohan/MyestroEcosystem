@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { login } from "@/lib/api";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -19,7 +17,8 @@ export default function LoginPage() {
     try {
       const res = await login(phone, password);
       if (res.ok) {
-        router.push("/cabinet");
+        // To'liq sahifa yuklash — middleware yangi cookie bilan qayta ishlaydi
+        window.location.replace("/cabinet");
       } else {
         setError("Telefon raqam yoki parol noto'g'ri");
       }

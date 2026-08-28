@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { getMe, logout } from "@/lib/api";
 
 interface UserInfo {
@@ -20,26 +19,31 @@ const SECTIONS = [
 ];
 
 export default function CabinetPage() {
-  const router = useRouter();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadUser() {
       const res = await getMe();
+
       if (res.ok && res.data) {
         setUser(res.data as UserInfo);
+        setLoading(false);
       } else {
-        router.push("/login");
+        // ⚠️ Session yaroqsiz (masalan, Redis tozalangan).
+        // Avval logout qilib cookie'ni o'chiramiz, keyin login'ga qaytamiz.
+        // window.location.replace → middleware qayta ishlaydi,
+        // lekin cookie o'chirilgani uchun loop BO'LMAYDI.
+        await logout();
+        window.location.replace("/login");
       }
-      setLoading(false);
     }
     loadUser();
-  }, [router]);
+  }, []);
 
   async function handleLogout() {
     await logout();
-    router.push("/login");
+    window.location.replace("/login");
   }
 
   if (loading) {
@@ -79,9 +83,9 @@ export default function CabinetPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {SECTIONS.map((section) => (
-            <button
+            <a
               key={section.key}
-              onClick={() => router.push(`/exams?type=${section.key}`)}
+              href={`/exams?type=${section.key}`}
               className="card text-left hover:shadow-md hover:-translate-y-0.5 transition-all duration-150"
             >
               <div className={`w-12 h-12 ${section.color} rounded-lg flex items-center justify-center text-2xl mb-4`}>
@@ -89,7 +93,7 @@ export default function CabinetPage() {
               </div>
               <h3 className="text-lg font-semibold">{section.title}</h3>
               <p className="text-sm text-slate-500 mt-1">{section.desc}</p>
-            </button>
+            </a>
           ))}
         </div>
       </div>
