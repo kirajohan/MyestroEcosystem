@@ -49,6 +49,7 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
     phone = user_data.get("phone", "—")
     email = user_data.get("email", "—")
     level = user_data.get("cefr_level", "A1")
+    password = user_data.get("password", "—")
 
     # Telegram ID uchun eng ishonchli manba — message.from_user.id
     telegram_id = message.from_user.id
@@ -65,6 +66,7 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
                 phone = data.get("phone", phone)
                 level = data.get("cefr_level", level)
                 telegram_id = data.get("telegram_id", telegram_id)
+                password = data.get("password", password)
 
                 # State'ni yangi ma'lumotlar bilan to'ldiramiz
                 await state.update_data(
@@ -73,6 +75,7 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
                     phone=phone,
                     cefr_level=level,
                     telegram_id=telegram_id,
+                    password=password,
                 )
     except Exception:
         pass
@@ -96,6 +99,7 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
         level=level,
         lang=lang.upper(),
         telegram_id=telegram_id,
+        password=password,
     )
 
     try:

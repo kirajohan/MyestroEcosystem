@@ -1,12 +1,15 @@
-"""Security utilities - JWT token yaratish/tekshirish, password hashing."""
-"""Security utilities - JWT token yaratish/tekshirish, password hashing."""
+"""Security utilities - JWT token yaratish/tekshirish, password hashing.
+
+⚠️ MUHIM: create_access_token va get_current_user IKKALASI HAM
+bir xil ACCESS_SECRET kalitni ishlatishi SHART. Aks holda JWT ishlamaydi.
+"""
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional , Dict , Any
+from typing import Any, Dict, Optional
 
 import bcrypt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,28 +24,42 @@ from app.models.user import User
 # ══════════════════════════════════════════════════════════════
 security = HTTPBearer(auto_error=False)
 
-SECRET_KEY = getattr(settings, "SECRET_KEY", "change-me-in-production")
-ALGORITHM = getattr(settings, "ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 15)
+
+def _get(name: str, default: Any = None) -> Any:
+    """settings dan xavfsiz qiymat olish."""
+    return getattr(settings, name, default)
+
+
+# ────────────────────────────────────────────────────────────────
+# YAGONA SIR KALITLAR — create VA verify ikkalasi ham SHULARNI ishlatadi!
+# ────────────────────────────────────────────────────────────────
+ACCESS_SECRET = (
+    _get("JWT_ACCESS_SECRET")
+    or _get("SECRET_KEY")
+    or "change-me-in-production"
+)
+REFRESH_SECRET = _get("JWT_REFRESH_SECRET") or ACCESS_SECRET
+ALGORITHM = _get("ALGORITHM", "HS256")
+ACCESS_EXPIRE_MINUTES = (
+    _get("JWT_ACCESS_EXPIRE")
+    or _get("ACCESS_TOKEN_EXPIRE_MINUTES")
+    or 15
+)
+REFRESH_EXPIRE_MINUTES = _get("JWT_REFRESH_EXPIRE") or (7 * 24 * 60)  # 7 kun
 
 
 # ══════════════════════════════════════════════════════════════
-# PASSWORD HASHING (bcrypt — passlib emas)
+# PASSWORD HASHING (bcrypt)
 # ══════════════════════════════════════════════════════════════
 def hash_password(password: str) -> str:
     """Parolni hash qilish (bcrypt)."""
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
-    return hashed.decode("utf-8")
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+def verify_password(password: str, hashed: str) -> bool:
     """Parolni tekshirish (bcrypt)."""
     try:
-        return bcrypt.checkpw(
-            plain_password.encode("utf-8"),
-            hashed_password.encode("utf-8"),
-        )
+        return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
     except (ValueError, TypeError):
         return False
 
@@ -51,16 +68,44 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # JWT TOKEN YARATISH
 # ══════════════════════════════════════════════════════════════
 def create_access_token(
-    data: dict,
-    expires_delta: Optional[timedelta] = None,
+    user_id: int,
+    email: Optional[str] = None,
+    role: str = "student",
 ) -> str:
-    """Access token yaratish."""
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    """Access token yaratish (15 min).
+
+    Eslatma: email ixtiyoriy, chunki Telegram userlarda email bo'lmaydi.
+    """
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_EXPIRE_MINUTES)
+    payload: Dict[str, Any] = {
+        "sub": str(user_id),
+        "type": "access",
+        "exp": expire,
+    }
+    if email:
+        payload["email"] = email
+    if role:
+        payload["role"] = role
+    return jwt.encode(payload, ACCESS_SECRET, algorithm=ALGORITHM)
+
+
+def create_refresh_token(user_id: int) -> str:
+    """Refresh token yaratish (7 kun)."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=REFRESH_EXPIRE_MINUTES)
+    payload = {
+        "sub": str(user_id),
+        "type": "refresh",
+        "exp": expire,
+    }
+    return jwt.encode(payload, REFRESH_SECRET, algorithm=ALGORITHM)
+
+
+def verify_token(token: str, secret: str) -> Dict[str, Any]:
+    """Tokenni decode qilish. Payload qaytaradi yoki ValueError."""
+    try:
+        return jwt.decode(token, secret, algorithms=[ALGORITHM])
+    except JWTError as e:
+        raise ValueError(f"Invalid token: {e}")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -70,7 +115,10 @@ async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """JWT token'dan foydalanuvchini olish."""
+    """JWT token'dan foydalanuvchini olish.
+
+    ⚠️ BU YERDA ACCESS_SECRET ishlatiladi — create_access_token bilan BIR XIL!
+    """
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -81,7 +129,7 @@ async def get_current_user(
     token = credentials.credentials
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, ACCESS_SECRET, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
         if user_id is None:
             raise HTTPException(
@@ -100,8 +148,7 @@ async def get_current_user(
             detail="Token yaroqsiz format",
         )
 
-    query = select(User).where(User.id == user_id)
-    result = await db.execute(query)
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
     if user is None:
@@ -109,7 +156,6 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Foydalanuvchi topilmadi",
         )
-
     return user
 
 
@@ -136,44 +182,3 @@ async def get_current_admin_user(
             detail="Admin huquqi talab qilinadi",
         )
     return current_user
-    
-
-def verify_password(password: str, hashed: str) -> bool:
-    """Verify password against bcrypt hash."""
-    try:
-        return bcrypt.checkpw(password.encode(), hashed.encode())
-    except (ValueError, TypeError):
-        return False
-
-
-def create_access_token(user_id: int, email: str, role: str) -> str:
-    """Create JWT access token (15 min)."""
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_ACCESS_EXPIRE)
-    payload = {
-        "sub": str(user_id),
-        "email": email,
-        "role": role,
-        "type": "access",
-        "exp": expire,
-    }
-    return jwt.encode(payload, settings.JWT_ACCESS_SECRET, algorithm="HS256")
-
-
-def create_refresh_token(user_id: int) -> str:
-    """Create JWT refresh token (7 days)."""
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_REFRESH_EXPIRE)
-    payload = {
-        "sub": str(user_id),
-        "type": "refresh",
-        "exp": expire,
-    }
-    return jwt.encode(payload, settings.JWT_REFRESH_SECRET, algorithm="HS256")
-
-
-def verify_token(token: str, secret: str) -> Dict[str, Any]:
-    """Decode and validate JWT token. Returns payload or raises."""
-    try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"])
-        return payload
-    except JWTError as e:
-        raise ValueError(f"Invalid token: {str(e)}")

@@ -404,17 +404,6 @@ async def msg_test_cefr_selected(message: types.Message, state: FSMContext):
 
 # ═══ SETTINGS — SUBMENU ═════════════════════════════════════
 
-@router.message(F.text.in_(["🌐 Til o'zgartirish", "🌐 Сменить язык", "🌐 Change Language"]))
-async def settings_language_reply(message: types.Message, state: FSMContext):
-    user_data = await state.get_data()
-    lang = _get_lang(user_data)
-    await state.set_state(MenuSection.language_selection)
-
-    await message.answer(
-        get_text("language.prompt", lang),
-        reply_markup=language_switch_kb(lang),
-    )
-
 @router.message(F.text.in_(["🤖 AI ON/OFF", "🤖 AI ВКЛ/ВЫКЛ", "🤖 AI Yoqish/O'chirish"]))
 async def settings_ai_toggle_reply(message: types.Message, state: FSMContext):
     """Toggle AI ON/OFF."""

@@ -14,8 +14,8 @@ env_path = Path(__file__).resolve().parent.parent.parent / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 
-# Get database URL early
-database_url = os.getenv("DATABASE_URL", "")
+# Get database URL early - use hardcoded for local dev if needed
+database_url = os.getenv("DATABASE_URL", "postgresql://myestro:[REDACTED]@localhost:5433/myestro")
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 

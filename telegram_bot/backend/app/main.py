@@ -9,7 +9,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.database import close_redis
 from app.core.exceptions import AppException
-from app.api import bot_text  # ← YANGI
+from app.api import bot_text
 
 # Add telegram_bot root to path so shared module is importable
 _telegram_bot_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from app.api.exam_v2.router import exam_v2_router
 
 # Bot uchun mini FastAPI app (internal endpoints)
 internal_app = FastAPI()
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.include_router(exam_v2_router)
     # Include routers
     app.include_router(auth.router)
     app.include_router(users.router)

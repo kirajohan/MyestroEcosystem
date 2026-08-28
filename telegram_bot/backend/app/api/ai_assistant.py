@@ -6,7 +6,9 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 import redis.asyncio as redis
 import logging
-
+from sqlalchemy import select
+from app.models.user import User
+from sqlalchemy import select, text  # <-- 'text' ni import qiling
 from app.database import get_async_db, get_redis
 from app.services.ai_service import ask_ai, analyze_error_logs
 from app.services.ai_memory_service import AIMemoryService
@@ -50,8 +52,10 @@ async def analyze_logs(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Analyze error logs using AI to suggest causes and solutions."""
+
+    # ...
     logs = await db.execute(
-        "SELECT id, error_type, error_message, service FROM error_logs WHERE is_fixed = FALSE LIMIT 10"
+        text("SELECT id, error_type, error_message, service FROM error_logs WHERE is_fixed = FALSE LIMIT 10")
     )
     log_records = logs.fetchall()
     
@@ -139,44 +143,68 @@ async def query_with_memory(
         raise HTTPException(status_code=500, detail="AI query failed")
 
 @router.get(
-    "/session/{user_id}",
+    "/session/{telegram_id}",  # <-- O'ZGARTIRISH: user_id emas, telegram_id
     response_model=AIMemorySessionResponse,
     summary="Get user's active AI session"
 )
 async def get_session(
-    user_id: int,
+    telegram_id: int,  # <-- O'ZGARTIRISH
+    db: AsyncSession = Depends(get_async_db),          # <-- QO'SHILDI
     memory_service: AIMemoryService = Depends(get_memory_service),
 ):
-    """Get user's active AI session info."""
     try:
-        session = await memory_service.get_or_create_session(user_id)
-        return AIMemorySessionResponse.from_orm(session)
+        # 1. Telegram ID ni ichki ID ga aylantirish
+        result = await db.execute(select(User.id).where(User.telegram_id == telegram_id))
+        internal_user_id = result.scalar_one_or_none()
+
+        if internal_user_id is None:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # 2. Xotira xizmatiga ichki ID ni berish
+        session = await memory_service.get_or_create_session(internal_user_id)
+        
+        # 3. Pydantic V2 uchun to'g'ri sintaksis (qarang: 3-xatolik)
+        return AIMemorySessionResponse.model_validate(session)        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting session: {e}")
         raise HTTPException(status_code=500, detail="Failed to get session")
-
-
+    
 @router.post(
-    "/session/{user_id}/clear",
+    "/session/{telegram_id}/clear",
     summary="Clear session memory cache"
 )
 async def clear_session_memory(
-    user_id: int,
+    telegram_id: int,  # <-- telegram_id qabul qilamiz
+    db: AsyncSession = Depends(get_async_db),
     memory_service: AIMemoryService = Depends(get_memory_service),
 ):
     """Clear Redis cache for user's session (soft reset)."""
     try:
-        session = await memory_service.get_or_create_session(user_id)
-        success = await memory_service.clear_session_memory(session.session_id)
+        # 1. Telegram ID ni ichki ID ga aylantirish
+        result = await db.execute(select(User.id).where(User.telegram_id == telegram_id))
+        internal_user_id = result.scalar_one_or_none()
+
+        if internal_user_id is None:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # 2. Foydalanuvchining thread'ini topamiz
+        thread = await memory_service._get_or_create_thread(internal_user_id)
+        
+        # 3. Xotirani thread_id orqali tozalaymiz
+        success = await memory_service.clear_session_memory(thread.id)
+        
         return {
             "status": "success" if success else "failed",
-            "session_id": str(session.session_id),
+            "thread_id": thread.id,
             "message": "Memory cache cleared" if success else "Error clearing cache"
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error clearing session: {e}")
         raise HTTPException(status_code=500, detail="Failed to clear session")
-
 
 @router.post(
     "/cleanup-expired",

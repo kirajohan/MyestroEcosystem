@@ -9,7 +9,8 @@ from sqlalchemy import select
 from app.models.user import User
 from bot.keyboards.reply import (
     main_menu,
-    registered_menu_kb
+    registered_menu_kb,
+    language_selection,   # ← YANGI QO'SHILDI
 )
 from bot.utils.i18n import get_text
 
@@ -93,8 +94,8 @@ async def start_handler(
     else:
         # ❌ UNREGISTERED USER
 
-        # ✅ MUHIM: Unregistered user uchun ham FSM state va default ma'lumotlarni saqlaymiz.
-        await state.set_state("StartSection:main_menu")
+        # ✅ MUHIM: Til tanlash uchun FSM state (main_menu emas, waiting_language)
+        await state.set_state("StartSection:waiting_language")   # ← O'ZGARDI
 
         await state.update_data(
             registration_complete=False,
@@ -111,8 +112,8 @@ async def start_handler(
             "🇬🇧 Please choose a language:"
         )
 
-        # Get main menu keyboard
-        keyboard = main_menu(lang="uz")  # Default
+        # ✅ TIL TANLASH KLAVIATURASI (main_menu o'rniga)
+        keyboard = language_selection()   # ← O'ZGARDI
 
         # Send response for unregistered user
         await message.answer(

@@ -133,24 +133,22 @@ class AIMemoryService:
     # ═══════════════════════════════════════════════════════════════════
     # REDIS CACHE OPERATIONS
     # ═══════════════════════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════════════════
+    # REDIS CACHE OPERATIONS
+    # ═══════════════════════════════════════════════════════════════════
     
-    def _get_redis_key(self, session_id: UUID) -> str:
-        """Redis key for session messages."""
-        return f"ai_chat:{session_id}:messages"
+    def _get_redis_key(self, thread_id: int) -> str:
+        return f"ai_chat:{thread_id}:messages"
     
-    def _get_summary_key(self, session_id: UUID) -> str:
-        """Redis key for session summary."""
-        return f"ai_chat:{session_id}:summary"
+    def _get_summary_key(self, thread_id: int) -> str:
+        return f"ai_chat:{thread_id}:summary"
     
-    async def _get_redis_messages(self, session_id: UUID) -> List[ChatMessage]:
-        """Get messages from Redis cache."""
+    async def _get_redis_messages(self, thread_id: int) -> List[ChatMessage]: # <-- thread_id ga o'zgartirildi
         try:
-            redis_key = self._get_redis_key(session_id)
+            redis_key = self._get_redis_key(thread_id)
             cached_json = await self.redis.get(redis_key)
-            
             if not cached_json:
                 return []
-            
             messages_data = json.loads(cached_json)
             return [
                 ChatMessage(role=m["role"], content=m["content"])
@@ -161,141 +159,94 @@ class AIMemoryService:
             logger.error(f"Error retrieving Redis messages: {e}")
             return []
     
-    async def _save_to_redis(self, session_id: UUID, messages: List[ChatMessage]) -> None:
-        """Save messages to Redis cache."""
+    async def _save_to_redis(self, thread_id: int, messages: List[ChatMessage]) -> None: # <-- thread_id ga o'zgartirildi
         try:
-            redis_key = self._get_redis_key(session_id)
-            messages_json = json.dumps([
-                {"role": m.role, "content": m.content}
-                for m in messages
-            ])
-            await self.redis.setex(
-                redis_key,
-                REDIS_MEMORY_TTL,
-                messages_json
-            )
+            redis_key = self._get_redis_key(thread_id)
+            messages_json = json.dumps([{"role": m.role, "content": m.content} for m in messages])
+            await self.redis.setex(redis_key, REDIS_MEMORY_TTL, messages_json)
         except Exception as e:
             logger.error(f"Error saving to Redis: {e}")
     
-    async def _get_redis_summary(self, session_id: UUID) -> Optional[str]:
-        """Get context summary from Redis."""
+    async def _get_redis_summary(self, thread_id: int) -> Optional[str]: # <-- thread_id ga o'zgartirildi
         try:
-            summary_key = self._get_summary_key(session_id)
+            summary_key = self._get_summary_key(thread_id)
             summary = await self.redis.get(summary_key)
             if not summary:
                 return None
-            
-            # ✅ FIX: Agar bytes bo'lsa decode qiladi, agar string bo'lsa to'g'ridan-to'g'ri qaytaradi
             return summary.decode() if isinstance(summary, bytes) else summary
         except Exception as e:
             logger.error(f"Error retrieving summary from Redis: {e}")
             return None
-        
-    # ═══════════════════════════════════════════════════════════════════
-    # MESSAGE HISTORY BUILDING
-    # ═══════════════════════════════════════════════════════════════════
-    
-    async def get_chat_history(
-        self,
-        session_id: UUID,
-        limit: int = MAX_MEMORY_MESSAGES
-    ) -> List[ChatMessage]:
-        """Get chat history: first check Redis cache, then PostgreSQL."""
-        
-        # 1. Try Redis cache (fast path)
-    # 1. Try Redis cache (fast path)
-        redis_messages = await self._get_redis_messages(session_id)
-        if redis_messages:
-            return redis_messages   # ← ESKI KESHNI QAYTARADI! Yangi xabarlar yo'q!
-        
-            # 2. Fall back to PostgreSQL (slow path)
-        logger.debug(f"Cache miss, loading from PostgreSQL for session {session_id}")
-        stmt = select(Message).where(
-            Message.session_id == session_id
-        ).order_by(
-            desc(Message.created_at)
-        ).limit(limit)
-        
-        result = await self.db.execute(stmt)
-        messages_db = result.scalars().all()
-        
-        # Reverse to get chronological order
-        messages = [
-            ChatMessage(role=m.role, content=m.content)
-            for m in reversed(messages_db)
-        ]
-        
-        # Cache in Redis for future queries
-        if messages:
-            await self._save_to_redis(session_id, messages)
-        
-        return messages
-    
+
+    async def get_chat_history(self, thread_id: int) -> List[ChatMessage]:
+        """Get chat history for a thread."""
+        try:
+            stmt = select(Message).where(
+                Message.thread_id == thread_id
+            ).order_by(desc(Message.created_at)).limit(MAX_MEMORY_MESSAGES)
+            result = await self.db.execute(stmt)
+            messages = result.scalars().all()
+            return [
+                ChatMessage(role=m.role, content=m.content)
+                for m in reversed(messages)
+            ]
+        except Exception as e:
+            logger.error(f"Error getting chat history: {e}")
+            return []
+
     async def build_context_for_query(
         self,
-        session_id: UUID,
+        thread_id: int,
         user_message: str,
-        system_prompt: Optional[str] = None,
-        use_summary: bool = True
+        system_prompt: Optional[str] = None
     ) -> ChatHistory:
-        """Build full chat context for OpenRouter API."""
-        
-        # Get message count to determine if we need summary
-        stmt = select(Message).where(Message.session_id == session_id)
-        result = await self.db.execute(stmt)
-        all_messages_db = result.scalars().all()
-        total_message_count = len(all_messages_db)
-        
-        # Get chat history (last 10)
-        history_messages = await self.get_chat_history(session_id, limit=MAX_MEMORY_MESSAGES)
+        """Build chat history context for AI query."""
+        # Get recent messages from cache or DB
+        recent_messages = await self._get_redis_messages(thread_id)
+        if not recent_messages:
+            db_messages = await self.get_chat_history(thread_id)
+            recent_messages = db_messages
         
         # Generate summary if needed
         summary = None
-        if use_summary and total_message_count > SUMMARY_THRESHOLD:
-            logger.debug(f"Session has {total_message_count} messages, generating summary...")
-            summary = await self._generate_or_get_summary(
-                session_id,
-                all_messages_db[-SLIDING_WINDOW_SIZE:]
-            )
+        if len(recent_messages) >= SUMMARY_THRESHOLD:
+            # Get older messages for summary
+            stmt = select(Message).where(
+                Message.thread_id == thread_id
+            ).order_by(desc(Message.created_at)).limit(SLIDING_WINDOW_SIZE)
+            result = await self.db.execute(stmt)
+            older_messages = result.scalars().all()
+            summary = await self._generate_or_get_summary(thread_id, older_messages)
         
-        # Build system prompt with summary
-        if not system_prompt:
-            system_prompt = self._build_system_prompt(summary)
+        # Build final system prompt
+        final_system_prompt = system_prompt or self._build_system_prompt(summary)
         
-        # Add user's current message
-        all_messages = history_messages + [ChatMessage(role="user", content=user_message)]
+        # Construct messages list
+        messages = list(recent_messages)  # Copy recent messages
+        messages.append(ChatMessage(role="user", content=user_message))
         
         return ChatHistory(
-            messages=all_messages,
-            system_prompt=system_prompt
+            messages=messages,
+            system_prompt=final_system_prompt,
+            summary=summary
         )
-    
+
     async def _generate_or_get_summary(
         self,
-        session_id: UUID,
+        thread_id: int,  # <-- session_id emas, thread_id
         recent_messages: List[Message]
     ) -> str:
-        """Generate summary using AI or get from cache."""
-        
-        # Check if summary exists in Redis
-        cached_summary = await self._get_redis_summary(session_id)
+        cached_summary = await self._get_redis_summary(thread_id)
         if cached_summary:
             logger.debug("Using cached summary")
             return cached_summary
         
-        # Build summary request
-        convo_text = "\n".join([
-            f"{m.role}: {m.content[:200]}"
-            for m in recent_messages
-        ])
-        
+        convo_text = "\n".join([f"{m.role}: {m.content[:200]}" for m in recent_messages])
         summary_prompt = f"""Summarize this conversation in 2-3 sentences. Focus on:
 - Main topics discussed
 - User's learning level/goals
 - Any corrections or key points
-
-Conversation:
-{convo_text}"""
+Conversation:\n{convo_text}"""
         
         try:
             summary = await ask_ai(
@@ -304,17 +255,27 @@ Conversation:
                 temperature=0.3,
                 max_tokens=200
             )
-            
-            # Cache summary for 24 hours
-            summary_key = self._get_summary_key(session_id)
+            summary_key = self._get_summary_key(thread_id)
             await self.redis.setex(summary_key, 86400, summary)
-            
-            logger.info(f"Generated summary for session {session_id}")
+            logger.info(f"Generated summary for thread {thread_id}")
             return summary
-            
         except Exception as e:
             logger.error(f"Error generating summary: {e}")
             return "Previous conversation context"
+
+    # ... (query_with_memory o'zgarishsiz qoladi, u to'g'ri) ...
+
+    async def clear_session_memory(self, thread_id: int) -> bool: # <-- session_id emas, thread_id
+        try:
+            redis_key = self._get_redis_key(thread_id)
+            summary_key = self._get_summary_key(thread_id)
+            await self.redis.delete(redis_key)
+            await self.redis.delete(summary_key)
+            logger.info(f"Cleared memory for thread {thread_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error clearing session memory: {e}")
+            return False
     
     def _build_system_prompt(self, summary: Optional[str] = None) -> str:
         """Build system prompt with optional summary."""
@@ -357,10 +318,11 @@ Provide clear, supportive, and educational responses. Correct mistakes gently.""
         
         # 3. Build context
         chat_history = await self.build_context_for_query(
-            session.session_id,
-            user_message,
+            thread_id=thread.id,  # <-- TO'G'IRLANDI: session.session_id emas
+            user_message=user_message,
             system_prompt=system_prompt
         )
+
         
         context_message_count = len(chat_history.messages)
         logger.debug(f"Built context with {context_message_count} messages")
@@ -399,8 +361,7 @@ Provide clear, supportive, and educational responses. Correct mistakes gently.""
         
         # 6. Save messages to storage (with valid thread_id)
         await self._save_messages_to_storage(
-            session_id=session.session_id,
-            thread_id=thread.id,  # ✅ Endi NULL emas
+            thread_id=thread.id,  # <-- TO'G'IRLANDI: session_id olib tashlandi
             user_id=user_id,
             user_message=user_message,
             ai_response=ai_response,
@@ -421,10 +382,11 @@ Provide clear, supportive, and educational responses. Correct mistakes gently.""
         # Update Redis cache
         # 7. Update Redis cache
         # Update Redis cache — avval eski keshni o'chirish shart
-        await self.redis.delete(self._get_redis_key(session.session_id))
-        updated_history = await self.get_chat_history(session.session_id)
-        await self._save_to_redis(session.session_id, updated_history)
-        
+        # Update Redis cache
+        await self.redis.delete(self._get_redis_key(thread.id))  # <-- TO'G'IRLANDI
+        updated_history = await self.get_chat_history(thread.id)  # <-- TO'G'IRLANDI
+        await self._save_to_redis(thread.id, updated_history)  # <-- TO'G'IRLANDI
+
         # 8. Return response
         return ChatQueryWithMemoryResponse(
             response=ai_response,
@@ -434,11 +396,9 @@ Provide clear, supportive, and educational responses. Correct mistakes gently.""
             processing_time_ms=processing_time,
             context_messages_count=context_message_count
         )
-        
     async def _save_messages_to_storage(
         self,
-        session_id: UUID,
-        thread_id: Optional[int],
+        thread_id: int,  # <-- O'ZGARTIRILDI: session_id olib tashlandi
         user_id: int,
         user_message: str,
         ai_response: str,
@@ -451,19 +411,17 @@ Provide clear, supportive, and educational responses. Correct mistakes gently.""
         try:
             # User message
             user_msg = Message(
-                session_id=session_id,
                 thread_id=thread_id,
                 user_id=user_id,
                 role="user",
                 content=user_message,
                 content_type="text",
-                source="api",
-                is_in_memory=True
+                source="api"
+                # is_in_memory o'chirildi, chunki init.sql da yo'q
             )
             
             # AI message
             ai_msg = Message(
-                session_id=session_id,
                 thread_id=thread_id,
                 user_id=user_id,
                 role="assistant",
@@ -472,15 +430,15 @@ Provide clear, supportive, and educational responses. Correct mistakes gently.""
                 ai_model=model_used,
                 tokens_used=tokens_used,
                 processing_time_ms=processing_time_ms,
-                source="api",
-                is_in_memory=True
+                source="api"
+                # is_in_memory o'chirildi, chunki init.sql da yo'q
             )
             
             self.db.add(user_msg)
             self.db.add(ai_msg)
             await self.db.commit()
             
-            logger.debug(f"Saved messages to PostgreSQL for session {session_id}")
+            logger.debug(f"Saved messages to PostgreSQL for thread {thread_id}")
             
         except Exception as e:
             logger.error(f"Error saving messages to storage: {e}")

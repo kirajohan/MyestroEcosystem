@@ -3,6 +3,7 @@
 import random
 import hashlib
 import hmac
+import sys
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session as DBSession
 from redis import Redis
@@ -59,7 +60,16 @@ def authenticate_admin(db: DBSession, email: str, password: str) -> dict:
 
 def register_user(db: DBSession, user_data: dict) -> User:
     email = user_data["email"]
-    phone = normalize_phone(user_data.get("phone")) or user_data.get("phone")
+    phone_input = user_data.get("phone")
+    
+    print(f"[REGISTER] phone_input={phone_input}", file=sys.stderr)
+    
+    phone = normalize_phone(phone_input) if phone_input else None
+    print(f"[REGISTER] normalized phone={phone}", file=sys.stderr)
+    
+    phone = phone or phone_input
+    print(f"[REGISTER] final phone={phone}", file=sys.stderr)
+    
     telegram_id = user_data.get("telegram_id")
 
     # Check if telegram_id already exists — UPDATE instead of ERROR

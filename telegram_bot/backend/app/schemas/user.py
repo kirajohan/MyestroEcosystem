@@ -30,6 +30,7 @@ class UserCreate(BaseModel):
     email: str
     password: Optional[str] = None
     full_name: str
+    phone: Optional[str] = None
     role: str = "student"
     cefr_level: str = "A1"
     target_level: str = "B1"

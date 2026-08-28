@@ -31,14 +31,6 @@ class QuizSection(StatesGroup):
     quiz_active = State()       # Test jarayoni (inline keyboard — javob berish)
     quiz_results = State()      # Natijani ko'rsatish
 
-class RegistrationStates(StatesGroup):
-    """Original registration states (kept for backward compatibility)."""
-    select_language = State()
-    waiting_name = State()
-    waiting_level = State()
-    registration_done = State()
-
-
 class StartSection(StatesGroup):
     """Start section — language selection → main menu."""
     language_selection = State()       # Til tanlash
@@ -46,10 +38,13 @@ class StartSection(StatesGroup):
 
 
 class RegistrationFSM(StatesGroup):
+    """Registration FSM — Phone → Name → Password → Level → Confirmation."""
     waiting_phone = State()        # Telefon kontaktini kutish
     waiting_name = State()         # Ism kutish
+    waiting_password = State()     # Parol kutish
     waiting_level = State()        # Ingliz tili darajasini kutish
-    waiting_confirmation = State() #
+    waiting_confirmation = State() # Tasdiqlash
+
 
 class AuthFSM(StatesGroup):
     """Bitta Auth FSM — Register/Login bitta oqim."""

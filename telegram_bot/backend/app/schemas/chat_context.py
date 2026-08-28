@@ -28,6 +28,10 @@ class ChatHistory(BaseModel):
         None,
         description="System prompt with context summary (if generated)"
     )
+    summary: Optional[str] = Field(
+        None,
+        description="Generated summary of previous conversation"
+    )
     
     def to_openrouter_format(self) -> Dict[str, Any]:
         """Convert to OpenRouter API format."""

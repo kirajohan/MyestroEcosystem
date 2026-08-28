@@ -50,7 +50,8 @@ export function useDeleteUser() {
       await api.delete(`/users/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      // Barcha 'users' bilan bog'liq queries ni invalidate qil
+      queryClient.invalidateQueries({ queryKey: ['users'], exact: false });
     },
   });
 }

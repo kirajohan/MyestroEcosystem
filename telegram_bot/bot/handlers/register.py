@@ -15,7 +15,7 @@ from aiogram.filters import StateFilter, Command, or_f
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 
-from bot.states.registration import RegistrationFSM, StartSection, RegisteredSection
+from bot.states.registration import RegistrationFSM, StartSection, RegisteredSection 
 from bot.keyboards.reply import (
     contact_request_keyboard,
     registered_menu_kb,
@@ -38,11 +38,13 @@ from bot.states.registrations_filter import IsNotRegistered
 
 @router.message(
     IsNotRegistered(),
-    Command("register"),
-    F.text.in_(["📝 Register", "📝 Регистрация", "📝 Register"]),
+    or_f(
+        Command("register"),
+        F.text.in_(["📝 Register", "📝 Регистрация", "📝 Register"])
+    ),
 )
 async def start_registration(message: types.Message, state: FSMContext):
-    """Register — ONLY UNREGISTERED users."""
+    # ... kod ...    """Register — ONLY UNREGISTERED users."""
     # ... mavjud kod
     pass
     """Foydalanuvchi Ro'yxatdan o'tish tugmasini bossa, kontakt yuborishni so'raydi."""
@@ -180,16 +182,38 @@ async def handle_name(message: types.Message, state: FSMContext):
     if len(name) < 2 or len(name) > 100:
         await message.answer(get_text("register.invalid_name", lang))
         return
-
     await state.update_data(register_name=name)
+    await state.set_state(RegistrationFSM.waiting_password)  # ← endi level emas, PAROL
+
+    # Keyingi bosqich: Parol so'rash
+    await message.answer(
+        get_text("register.ask_password", lang),
+    )
+
+# ==============================================================================
+# 3.5-BOSQICH: PAROLNI QABUL QILISH -> LEVEL SO'RASH
+# ==============================================================================
+@router.message(RegistrationFSM.waiting_password)
+async def handle_password(message: types.Message, state: FSMContext):
+    """Parolni qabul qiladi va Ingliz tili darajasini (Level) so'raydi."""
+    user_data = await state.get_data()
+    lang = user_data.get("lang", "uz")
+
+    password = message.text.strip() if message.text else ""
+
+    # Parol validatsiyasi: kamida 6 belgi
+    if len(password) < 6:
+        await message.answer(get_text("register.invalid_password", lang))
+        return
+
+    await state.update_data(register_password=password)
     await state.set_state(RegistrationFSM.waiting_level)
 
     # Keyingi bosqich: Level (Daraja) tanlash tugmalarini chiqarish
     await message.answer(
         get_text("register.ask_level", lang),
-        reply_markup=cefr_level_selection()  # A1, A2, B1, B2, C1, C2 tugmalari
+        reply_markup=cefr_level_selection()
     )
-
 
 # ==============================================================================
 # 4-BOSQICH: LEVEL DARAJANING QABUL QILINISHI (Inline va Text uchun)
@@ -255,6 +279,7 @@ async def handle_confirmation(message: types.Message, state: FSMContext):
     text = message.text.strip() if message.text else ""
     user_data = await state.get_data()
     lang = user_data.get("lang", "uz")
+    password = user_data.get("register_password", "")  # ← parolni olamiz
 
     confirm_texts = ["✅ Ha", "✅ Да", "✅ Yes"]
     restart_texts = ["❌ Yo'q", "❌ Нет", "❌ No"]
@@ -266,10 +291,14 @@ async def handle_confirmation(message: types.Message, state: FSMContext):
         telegram_id = message.from_user.id
 
         # Backend API / DB ga saqlash so'rovi
+        # Backend API / DB ga saqlash so'rovi
+
+        # Backend API / DB ga saqlash so'rovi
         success, user_info = await register_user_in_db(
             telegram_id=telegram_id,
             name=name,
             phone=phone,
+            password=password,   # ← YANGI parametr
             level=level,
             lang=lang
         )
@@ -359,17 +388,17 @@ async def register_user_in_db(
     telegram_id: int,
     name: str,
     phone: str,
+    password: str,   # ← YANGI: endi foydalanuvchidan olinadi
     level: str,
     lang: str = "uz"
 ) -> tuple[bool, dict]:
     """
     Handler tomonidan ishlatiladigan helper funksiya.
-    Email/Parol telegram foydalanuvchisidan so'ralmagani sababli avtomatik generatsiya qilinadi.
-    Muvaffaqiyatli o'tsa (True, user_info), aks holda (False, {}) qaytaradi.
+    Parol endi foydalanuvchidan so'raladi (register flow orqali).
+    Email esa telegram_id asosida avtomatik generatsiya qilinadi.
     """
-    # Backend email va password talab qilsa, zaxira qiymatlar yaratiladi:
     email = f"user_{telegram_id}@myestro.local"
-    password = f"tg_pass_{telegram_id}"
+    # password endi argument sifatida keladi (avtomatik emas)
 
     return await _register_user(
         telegram_id=telegram_id,

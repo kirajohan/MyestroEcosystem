@@ -2,27 +2,43 @@
 
 Key naming convention: section.subsection.element
 """
+from codecs import register
+
 from bot.utils.text_cache import get_text_from_cache
 
 TRANSLATIONS = {
     "uz": {
-                # ═══════════════════════════════════════════════════════════
-        #  TEST (menu.py uchun)
+        "register.ask_password": "🔐 Parol kiriting (kamida 6 belgi):",
+        "register.invalid_password": "⚠️ Parol kamida 6 belgidan iborat bo'lishi kerak. Qayta kiriting:",
+        # ═══════════════════════════════════════════════════════════
+        #  TEST (menu.py uchun) - YANGILANGAN
         # ═══════════════════════════════════════════════════════════
         "test.select_cefr": (
             "🎓 <b>CEFR darajangizni tanlang:</b>\n\n"
+            "<blockquote>🗝️ Til — bu fikrning qanoti. Har bir daraja "
+            "yangi ufqlar ochadi. A1 dan boshlang, C2 gacha intiling. "
+            "Sizning sayohatingiz bugun boshlanadi.</blockquote>\n\n"
             "Qaysi darajadagi testlarni ko'rmoqchisiz?"
         ),
-        "test.loading": "⏳ <b>{level}</b> darajasidagi testlar yuklanmoqda...",
+        "test.loading": (
+            "⏳ <b>{level}</b> darajasidagi testlar yuklanmoqda...\n\n"
+            "<blockquote>🌱 Har bir savol — bu o'sish imkoniyati. "
+            "Sabr qiling, bilim pishib yetilishi vaqt talab qiladi.</blockquote>"
+        ),
         "test.no_tests": (
             "❌ <b>{level}</b> darajasida testlar topilmadi\n\n"
+            "<blockquote>🔄 Ba'zan yo'q narsa — yangi imkoniyat demakdir. "
+            "Boshqa darajani tanlang yoki bizga xabar bering: "
+            "<a href='https://t.me/myestro_support'>@myestro_support</a></blockquote>\n\n"
             "Boshqa darajani tanlang."
         ),
         "test.select_test": (
             "📊 <b>{level}</b> darajasidagi testlar:\n\n"
+            "<blockquote>🎯 Aniq maqsad — muvaffaqiyat kaliti. "
+            "Tanlangan testingiz sizni keyingi bosqichga olib chiqadi. "
+            "Ishonchingiz komilmi?</blockquote>\n\n"
             "Testni tanlang ⬇️"
         ),
-        
         # ═══════════════════════════════════════════════════════════
         #  ADDITIONAL REGISTRATION
         # ═══════════════════════════════════════════════════════════
@@ -68,11 +84,6 @@ TRANSLATIONS = {
             "⚠️ <b>Poll yuborishda xatolik</b>\n\n"
             "Keyingi savolga o'tilmoqda..."
         ),
-        "test.select_cefr": (
-            "🎓 <b>CEFR darajangizni tanlang:</b>\n\n"
-            "Qaysi darajadagi testlarni ko'rmoqchisiz?"
-        ),
-        "test.select_test": "📝 <b>Testni tanlang:</b>",
         "test.passed": (
             "🎉 <b>Tabriklaymiz!</b>\n\n"
             "Siz testni muvaffaqiyatli topshirdingiz!"
@@ -86,16 +97,30 @@ TRANSLATIONS = {
             "Asosiy menyuga qaytdingiz."
         ),
         # ═══════════════════════════════════════════════════════════
-        #  QUIZ (English QUIZ / Test's)
+        #  QUIZ (English QUIZ / Test's) - YANGILANGAN
         # ═══════════════════════════════════════════════════════════
         "quiz.select_cefr": (
             "🧪 <b>English QUIZ</b>\n\n"
+            "<blockquote>🌍 Til o'rganish — bu nafaqat grammatika, "
+            "bu dunyoni boshqa ko'z bilan ko'rish san'ati. "
+            "Har bir so'z — yangi fikr, har bir gap — yangi olam.</blockquote>\n\n"
             "Bilimingizni sinab ko'ring! 🎯\n\n"
             "Quyidagi CEFR darajalardan birini tanlang:\n\n"
-            "🟢 <b>A0–A2</b> — Boshlang'ich\n"
-            "🟡 <b>B1–B2</b> — O'rta\n"
-            "🔴 <b>C1–C2</b> — Yuqori\n\n"
+            "🟢 <b>A0–A2</b> — Boshlang'ich: Poydevor qo'ying\n"
+            "🟡 <b>B1–B2</b> — O'rta: Qanot yoying\n"
+            "🔴 <b>C1–C2</b> — Yuqori: Cho'qqiga intiling\n\n"
             "Darajani tanlang ⬇️"
+        ),
+        "quiz.finished": (
+            "✅ <b>Test yakunlandi!</b>\n\n"
+            "<blockquote>🏆 Natija — bu faqat raqam emas. "
+            "Har bir xato — o'rganish imkoniyati, har bir to'g'ri javob — "
+            "sizning g'alabangiz. Davom eting, chunki mukammallik — jarayon.</blockquote>\n\n"
+            "📊 <b>Natija:</b>\n"
+            "• To'g'ri javoblar: <b>{correct}/{total}</b>\n"
+            "• Foiz: <b>{percentage:.1f}%</b>\n"
+            "• Holat: <b>{status}</b>\n\n"
+            "🎯 <b>Umumiy ball:</b> {score}"
         ),
         "quiz.no_exams": (
             "❌ <b>{level}</b> darajasida testlar topilmadi\n\n"
@@ -116,14 +141,7 @@ TRANSLATIONS = {
         "quiz.question_title": (
             "❓ <b>Savol {current}/{total}</b>"
         ),
-        "quiz.finished": (
-            "✅ <b>Test yakunlandi!</b>\n\n"
-            "📊 <b>Natija:</b>\n"
-            "• To'g'ri javoblar: <b>{correct}/{total}</b>\n"
-            "• Foiz: <b>{percentage:.1f}%</b>\n"
-            "• Holat: <b>{status}</b>\n\n"
-            "🎯 <b>Umumiy ball:</b> {score}"
-        ),
+
         "quiz.passed": "✅ O'TDINGIZ!",
         "quiz.failed": "❌ O'TMADINGIZ",
         "quiz.limit_reached": (
@@ -148,14 +166,16 @@ TRANSLATIONS = {
         # ═══════════════════════════════════════════════════════════
         "start.welcome": (
             "👋 <b>Xush kelibsiz!</b>\n\n"
+            "<blockquote>🌟 \"Til — bu ruhning xaritasi.\" "
             "Siz <b>Myestro Teacher</b> — "
             "<a href='https://t.me/myestro_ecosystem'>Myestro Ecosystem</a> "
-            "ekosistemasining AI-powered ingliz tili o'qitish platformasidasiz.\n\n"
+            "ekosistemasining AI-powered ingliz tili platformasidasiz. "
+            "Bu yerda har bir so'z — qadam, har bir suhbat — sarguzasht.</blockquote>\n\n"
             "🎯 <b>Platforma imkoniyatlari:</b>\n"
-            "• 🤖 <b>AI Teacher</b> — ingliz tilida suhbatlashib, amaliy ko'nikmalarni oshiring\n"
-            "• 📝 <b>Myestro Exam</b> — bilim darajangizni obyektiv baholang\n"
-            "• 📚 <b>Myestro Academy</b> — o'quv materiallari va kurslar\n"
-            "• 🎓 <b>100% bepul</b> — barcha funksiyalar ochiq va bepul\n\n"
+            "• 🤖 <b>AI Teacher</b> — tabiiy suhbat orqali amaliy ko'nikma\n"
+            "• 📝 <b>Myestro Exam</b> — CEFR standartlarida objektiv baho\n"
+            "• 📚 <b>Myestro Academy</b> — tizimli o'quv materiallari\n"
+            "• 🎓 <b>100% bepul</b> — bilim — har kimning haqqi\n\n"
             "🚀 Ingliz tilini o'rganishni bugun boshlang!"
         ),
         "start.language_prompt": "🌍 Iltimos, platforma tilini tanlang:",
@@ -241,20 +261,28 @@ TRANSLATIONS = {
             "• <b>Referral</b> — Do'stlaringizni taklif qilib, bonuslar yutib oling\n\n"
             "⚙️ <b>Sozlamalar</b> orqali tilni, AI rejimini va profilni boshqarish mumkin."
         ),
+        # ═══════════════════════════════════════════════════════════
+        #  GUIDE - YANGILANGAN
+        # ═══════════════════════════════════════════════════════════
         "guide.ai": (
             "🧠 <b>AI Teacher qanday ishlaydi?</b>\n\n"
+            "<blockquote>🔮 Sun'iy intellekt — bu o'qituvchi emas, "
+            "bu sizning shaxsiy yo'ldoshingiz. U sizning xatolaringizdan "
+            "o'rganadi, darajangizga moslashadi va har daqiqada "
+            "yangi imkoniyatlar taqdim etadi. Texnologiya + insoniyat = "
+            "kelajak.</blockquote>\n\n"
             "<b>Texnologiya:</b> OpenRouter orqali quyidagi modellarga ulanadi:\n"
-            "• GPT-4 (OpenAI)\n"
-            "• Gemini (Google)\n"
-            "• Claude (Anthropic)\n"
-            "• Mistral\n\n"
+            "• GPT-4 (OpenAI) — mantiqiy tahlil\n"
+            "• Gemini (Google) — kreativ yondashuv\n"
+            "• Claude (Anthropic) — etikal suhbat\n"
+            "• Mistral — tez va aniq javoblar\n\n"
             "<b>Xususiyatlar:</b>\n"
-            "• Sizning <b>CEFR darajangiz</b> (A1–C2) ga moslashadi\n"
-            "• Grammatik xatolarni <b>real vaqtda</b> tuzatadi\n"
-            "• 3 ta til (uz, ru, en) da javob beradi\n"
-            "• Ovozli xabarlarni matnga aylantiradi va tahlil qiladi\n\n"
-            "💡 <b>Maslahat:</b> AI bilan har kuni kamida 10 daqiqa suhbatlashish "
-            "— til o'rganishning eng samarali usuli."
+            "• <b>CEFR darajangiz</b> (A1–C2) ga individual moslashuv\n"
+            "• Grammatik xatolarni <b>real vaqtda</b> tahlil qilish\n"
+            "• 3 ta til (uz, ru, en) da kontekstli javoblar\n"
+            "• Ovozli xabarlarni matnga aylantirib, talaffuzni baholash\n\n"
+            "💡 <b>Maslahat:</b> AI bilan har kuni 10 daqiqa suhbat — "
+            "til o'rganishning eng tabiiy va samarali usuli. 🗣️✨"
         ),
 
         # ═══════════════════════════════════════════════════════════
@@ -609,7 +637,7 @@ TRANSLATIONS = {
         ),
 
         # ═══════════════════════════════════════════════════════════
-        #  VIDEO LESSONS
+        #  VIDEO LESSONS  PART 2 
         # ═══════════════════════════════════════════════════════════
         "video.title": "🎬 <b>Video darsliklar</b>",
         "video.list": (
@@ -742,7 +770,9 @@ TRANSLATIONS = {
     },
     
     "ru": {
-                # ═══════════════════════════════════════════════════════════
+        "register.ask_password": "🔐 Введите пароль (минимум 6 символов):",
+        "register.invalid_password": "⚠️ Пароль должен содержать минимум 6 символов. Введите снова:",
+        # ═══════════════════════════════════════════════════════════
         #  TEST (menu.py uchun)
         # ═══════════════════════════════════════════════════════════
         "test.select_cefr": (
@@ -1612,7 +1642,8 @@ TRANSLATIONS = {
             "❌ <b>Test cancelled</b>\n\n"
             "You've returned to the main menu."
         ),
-        
+        "register.ask_password": "🔐 Enter a password (minimum 6 characters):",
+        "register.invalid_password": "⚠️ Password must be at least 6 characters. Try again:",
         # ═══════════════════════════════════════════════════════════
         #  START
         # ═══════════════════════════════════════════════════════════

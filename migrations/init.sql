@@ -419,7 +419,7 @@ INSERT INTO users (
     profile_completed
 ) VALUES (
     'abdurakhmonbek0770@gmail.com',
-    '$2b$12$Nq/aHl.C7F9jP1zR8mXq.O5K6T3wX7e8R9t0Y1u2V3w4X5y6Z7a8b', -- admin123 ning xeshi
+    '$2b$12$lzWWuM5heYmzucj5kp1vZ.AhdRR05O4i2/PM7TgNpTJgQt6riySvm', -- admin123 uchun HAQIQIY bcrypt xeshi
     'Super Admin',
     'admin',
     'C2',
@@ -430,4 +430,9 @@ INSERT INTO users (
     TRUE,
     TRUE
 )
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT (email) DO UPDATE 
+SET 
+    password_hash = EXCLUDED.password_hash,
+    role = EXCLUDED.role,
+    full_name = EXCLUDED.full_name,
+    is_active = TRUE;

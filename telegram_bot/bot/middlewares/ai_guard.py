@@ -38,7 +38,7 @@ NAVIGATION_WHITELIST = {
     "🚪 Log Out", "🚪 Выйти", "🚪 Chiqish",
 
     # ─── SUBMENU: Qo'llanma / About ───────────────────
-    "🤖 Bot bo'yicha", "🤖 О боте", "🤖 About Bot",
+    "🤖 Bot bo'yicha", "🤖 О боте", "🤖 About Bot","📝 Register", "📝 Регистрация", "📝 Register",
     "🧠 AI bo'yicha", "🧠 Об AI", "🧠 About AI",
     "🔗 Havolalar", "🔗 Ссылки", "🔗 Links",
     "🌐 Ecosystem Haqida", "🌐 Об экосистеме", "🌐 About Ecosystem",

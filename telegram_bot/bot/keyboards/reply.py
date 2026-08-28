@@ -77,7 +77,7 @@ def guide_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
     builder.add(
         StyledKeyboardButton(text="⬅️ Orqaga", style="danger"),
     )
-    builder.adjust(1)
+    builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
 
 
@@ -242,21 +242,21 @@ def main_menu(lang: str = "uz") -> ReplyKeyboardMarkup:
     texts = {
         "uz": {
             "start": "📝 Register",
-            "language": "🌐 Til/Language",
+            "language": "🌐 Til o'zgartirish",
             "about": "ℹ️ Biz haqimizda",
             "guide": "📖 Qo'llanma",
             "admin": "📨 Admin ga xabar",
         },
         "ru": {
             "start": "📝 Регистрация",
-            "language": "🌐 Язык",
+            "language": "🌐 Сменить язык",
             "about": "ℹ️ О нас",
             "guide": "📖 Руководство",
             "admin": "📨 Написать админу",
         },
         "en": {
             "start": "📝 Register",
-            "language": "🌐 Language",
+            "language": "🌐 Change Language",
             "about": "ℹ️ About us",
             "guide": "📖 Guide",
             "admin": "📨 Message admin",
