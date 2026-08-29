@@ -13,6 +13,7 @@ import {
   Settings,
   Bot,
   FileQuestion,
+  ClipboardCheck, // ← YANGI QO'SHILDI
 } from 'lucide-react';
 
 const navItems = [
@@ -20,7 +21,8 @@ const navItems = [
   { label: 'Users', href: '/users', icon: Users },
   { label: 'Content', href: '/content', icon: Video },
   { label: 'Tests', href: '/tests', icon: FileQuestion },
-  { label: 'Bot Texts', href: '/bot-texts', icon: FileText, disabled: false }, // ← O'ZGARTIRILDI
+  { label: 'Exams', href: '/exam', icon: ClipboardCheck }, // ← YANGI QO'SHILDI
+  { label: 'Bot Texts', href: '/bot-texts', icon: FileText, disabled: false },
   { label: 'Broadcast', href: '/broadcast', icon: Send },
   { label: 'Inbox', href: '/inbox', icon: MessageSquare },
   { label: 'Logs', href: '#', icon: ScrollText, disabled: true },
@@ -43,7 +45,7 @@ export function Sidebar() {
         <ul className="space-y-2">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
             const isDisabled = item.disabled;
 
             return (
@@ -70,7 +72,6 @@ export function Sidebar() {
           })}
         </ul>
       </nav>
-
     </div>
   );
 }

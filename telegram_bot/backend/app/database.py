@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 # 1. ORM BASE
 # ═══════════════════════════════════════════════════════════════════
 Base = declarative_base()
+Base.metadata.create_all = lambda *args, **kwargs: None  # Prevent errors on re-import
 
 
 # ═══════════════════════════════════════════════════════════════════

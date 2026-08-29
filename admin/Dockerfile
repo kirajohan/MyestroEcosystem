@@ -12,9 +12,6 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Accept build-time API URL (for browser-side code)
-ARG NEXT_PUBLIC_API_URL=http://backend:8002
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 # Build Next.js app
 RUN npm run build

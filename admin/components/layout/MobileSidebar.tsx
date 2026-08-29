@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState } from 'react';  
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -16,6 +16,7 @@ import {
   FileQuestion,
   Menu,
   X,
+  ClipboardCheck, // ← YANGI QO'SHILDI
 } from 'lucide-react';
 
 const navItems = [
@@ -23,6 +24,7 @@ const navItems = [
   { label: 'Users', href: '/users', icon: Users },
   { label: 'Content', href: '/content', icon: Video },
   { label: 'Tests', href: '/tests', icon: FileQuestion },
+  { label: 'Exams', href: '/exam', icon: ClipboardCheck }, // ← YANGI QO'SHILDI
   { label: 'Bot Texts', href: '#', icon: FileText, disabled: true },
   { label: 'Broadcast', href: '/broadcast', icon: Send },
   { label: 'Inbox', href: '/inbox', icon: MessageSquare },
@@ -69,7 +71,8 @@ export function MobileSidebar() {
           <ul className="space-y-2">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href;
+              // isActive tekshiruvi sub-routelarni ham qamrab oladi (masalan: /exam/exams)
+              const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
               const isDisabled = item.disabled;
 
               return (
@@ -98,7 +101,6 @@ export function MobileSidebar() {
             })}
           </ul>
         </nav>
-
       </div>
     </>
   );

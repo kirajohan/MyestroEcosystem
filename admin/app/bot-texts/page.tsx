@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface BotText {
@@ -20,11 +20,7 @@ export default function BotTextsPage() {
   const [filterKey, setFilterKey] = useState('');
   const router = useRouter();
 
-  useEffect(() => {
-    fetchTexts();
-  }, [filterLang, filterKey]);
-
-  const fetchTexts = async () => {
+  const fetchTexts = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -41,7 +37,11 @@ export default function BotTextsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterLang, filterKey]);
+
+  useEffect(() => {
+    fetchTexts();
+  }, [fetchTexts]);
 
   const handleEdit = (text: BotText) => {
     setEditingId(text.id);

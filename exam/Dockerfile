@@ -13,6 +13,9 @@ COPY app ./app
 COPY lib ./lib
 COPY public ./public
 COPY middleware.ts postcss.config.js tailwind.config.js ./
+COPY .env .env.local
+ARG NEXT_PUBLIC_API_URL=http://localhost:8002
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 
 # -- 3. Runner ----

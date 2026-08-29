@@ -1,11 +1,5 @@
-"""Models package — SQLAlchemy models registry.
+"""Models package — SQLAlchemy models registry."""
 
-Import model classes here so importing this package registers them
-with the SQLAlchemy `Base` metadata. Avoid runtime prints or other
-side-effects so imports remain safe in different contexts.
-"""
-
-# Base (must be imported before models)
 from app.database import Base
 
 # Core models
@@ -19,54 +13,42 @@ from .bot_text import BotText
 from .admin_message import AdminMessage
 from .broadcast import BroadcastJob, BroadcastHistory
 
-# AI Memory model
+# AI Memory
 try:
     from .ai_memory import AIMemorySession
 except Exception:
     AIMemorySession = None
 
-# Optional models — guard imports to avoid ImportError during partial setups
-try:
-    from .exam import Exam, ExamSection, ExamQuestion, ExamAttempt, ExamAnswer
-except Exception:
-    Exam = ExamSection = ExamQuestion = ExamAttempt = ExamAnswer = None
-
+# INBOX
 try:
     from .inbox import InboxMessage, InboxMessageHistory
 except Exception:
     InboxMessage = InboxMessageHistory = None
 
+# TESTS
 try:
     from .tests import Test, TestQuestion, TestAttempt
 except Exception:
     Test = TestQuestion = TestAttempt = None
 
+# EXAM (YANGI SXEMA)
+try:
+    from .exam import (
+        Exam, ExamBlock, ExamItem, ExamOption, ExamRubric,
+        ExamAttempt, ExamAttemptBlock, ExamAnswer, ExamAIJob, ExamMedia
+    )
+except Exception as e:
+    print(f"⚠️ Exam modellarni import qilishda xatolik: {e}")
+    Exam = ExamBlock = ExamItem = ExamOption = ExamRubric = None
+    ExamAttempt = ExamAttemptBlock = ExamAnswer = ExamAIJob = ExamMedia = None
+
 __all__ = [
-    "Base",
-    "User",
-    "Session",
-    "ConversationThread",
-    "Message",
-    "KnowledgeCategory",
-    "KnowledgeDoc",
-    "ApiLog",
-    "ErrorLog",
-    "AuditLog",
-    "SystemSetting",
-    "ContentItem",
-    "BotText",
-    "AdminMessage",
-    "BroadcastJob",
-    "BroadcastHistory",
-    "InboxMessage",
-    "InboxMessageHistory",
-    "AIMemorySession",
-    "Exam",
-    "ExamSection",
-    "ExamQuestion",
-    "ExamAttempt",
-    "ExamAnswer",
-    "Test",
-    "TestQuestion",
-    "TestAttempt",
+    "Base", "User", "Session", "ConversationThread", "Message",
+    "KnowledgeCategory", "KnowledgeDoc", "ApiLog", "ErrorLog", "AuditLog",
+    "SystemSetting", "ContentItem", "BotText", "AdminMessage",
+    "BroadcastJob", "BroadcastHistory", "InboxMessage", "InboxMessageHistory",
+    "AIMemorySession", "Test", "TestQuestion", "TestAttempt",
+    # Yangi Exam modellar
+    "Exam", "ExamBlock", "ExamItem", "ExamOption", "ExamRubric",
+    "ExamAttempt", "ExamAttemptBlock", "ExamAnswer", "ExamAIJob", "ExamMedia"
 ]

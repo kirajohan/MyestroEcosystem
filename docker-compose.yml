@@ -94,13 +94,14 @@ services:
       context: ./admin
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8002
+        NEXT_PUBLIC_API_URL: http://backend:8000
     container_name: myestroeco-admin
     restart: unless-stopped
     ports:
       - "3002:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8002
+      NEXT_PUBLIC_API_URL: http://backend:8000
+      BACKEND_INTERNAL_URL: http://backend:8000
     depends_on:
       backend:
         condition: service_healthy
@@ -119,7 +120,7 @@ services:
     container_name: maestro-exam
     restart: unless-stopped
     ports:
-      - "3003:3000"
+      - "3001:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:

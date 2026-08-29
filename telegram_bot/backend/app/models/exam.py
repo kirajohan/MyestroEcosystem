@@ -12,6 +12,7 @@ from .exam_enums import (
 
 class Exam(Base):
     __tablename__ = "exams"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     code = Column(String, unique=True, nullable=False, index=True)
@@ -33,6 +34,7 @@ class Exam(Base):
 
 class ExamBlock(Base):
     __tablename__ = "exam_blocks"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     exam_id = Column(BigInteger, ForeignKey("exams.id", ondelete="CASCADE"), nullable=False)
@@ -55,6 +57,7 @@ class ExamBlock(Base):
 
 class ExamRubric(Base):
     __tablename__ = "exam_rubrics"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     code = Column(String, unique=True, nullable=False, index=True)
@@ -74,6 +77,7 @@ class ExamRubric(Base):
 
 class ExamItem(Base):
     __tablename__ = "exam_items"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     block_id = Column(BigInteger, ForeignKey("exam_blocks.id", ondelete="CASCADE"), nullable=False)
@@ -106,6 +110,7 @@ class ExamItem(Base):
 
 class ExamOption(Base):
     __tablename__ = "exam_options"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     item_id = Column(BigInteger, ForeignKey("exam_items.id", ondelete="CASCADE"), nullable=False)
@@ -121,6 +126,7 @@ class ExamOption(Base):
 
 class ExamAttempt(Base):
     __tablename__ = "exam_attempts"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -132,7 +138,7 @@ class ExamAttempt(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     total_score = Column(Float, nullable=True)
     cefr_estimate = Column(String, nullable=True)
-    metadata = Column(JSONB, nullable=True)
+    meta_data = Column(JSONB, nullable=True)  # Changed from 'metadata' to 'meta_data'
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -145,6 +151,7 @@ class ExamAttempt(Base):
 
 class ExamAttemptBlock(Base):
     __tablename__ = "exam_attempt_blocks"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     attempt_id = Column(BigInteger, ForeignKey("exam_attempts.id", ondelete="CASCADE"), nullable=False)
@@ -153,7 +160,7 @@ class ExamAttemptBlock(Base):
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     score = Column(Float, nullable=True)
-    metadata = Column(JSONB, nullable=True)
+    meta_data = Column(JSONB, nullable=True)  # Changed from 'metadata'
 
     # Relationships
     attempt = relationship("ExamAttempt", back_populates="attempt_blocks")
@@ -162,6 +169,7 @@ class ExamAttemptBlock(Base):
 
 class ExamAnswer(Base):
     __tablename__ = "exam_answers"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     attempt_id = Column(BigInteger, ForeignKey("exam_attempts.id", ondelete="CASCADE"), nullable=False)
@@ -186,6 +194,7 @@ class ExamAnswer(Base):
 
 class ExamAIJob(Base):
     __tablename__ = "exam_ai_jobs"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     attempt_id = Column(BigInteger, ForeignKey("exam_attempts.id", ondelete="CASCADE"), nullable=False)
@@ -207,6 +216,7 @@ class ExamAIJob(Base):
 
 class ExamMedia(Base):
     __tablename__ = "exam_media"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     owner_type = Column(String, nullable=False) # 'exam_item', 'exam_answer'
