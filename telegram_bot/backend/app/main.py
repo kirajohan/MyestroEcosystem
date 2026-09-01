@@ -6,6 +6,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 from app.database import close_redis
 from app.core.exceptions import AppException
@@ -93,16 +95,31 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     
-    # CORS
+    # Media fayllar uchun static serving
+    media_dir = Path("/app/media")
+    media_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/media", StaticFiles(directory=str(media_dir)), name="media")
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.allowed_origins_list,
+        allow_origins=[
+            "http://localhost:3002",
+            "http://localhost:3003",
+            "http://localhost:3001",
+            "http://localhost:8002",
+            "http://127.0.0.1:3002",
+            "http://127.0.0.1:3003",
+            "http://127.0.0.1:3001",
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["*"],
     )
-
+    
+    # Exam v2 router
     app.include_router(exam_v2_router)
+    
     # Include routers
     app.include_router(auth.router)
     app.include_router(users.router)
@@ -113,15 +130,14 @@ def create_app() -> FastAPI:
     app.include_router(sync.router)
     app.include_router(knowledge.router)
     app.include_router(settings_router.router)
-    app.include_router(content.router)
     app.include_router(bot_text.router)
     app.include_router(tests.router)
     app.include_router(admin_messages.router)
     app.include_router(broadcast.router)
     app.include_router(inbox.router)
     app.include_router(logs.router)
-    app.include_router(tests.router)
-    app.include_router(ws_router)  
+    app.include_router(ws_router)
+    
     # Exception handlers
     
     @app.exception_handler(AppException)

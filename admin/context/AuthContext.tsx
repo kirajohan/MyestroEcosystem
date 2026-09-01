@@ -65,7 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data.detail || 'Login xatosi');
       }
 
-      const adminToken = data.token || `admin_${Date.now()}`;
+      const adminToken = data.token;
+      if (!adminToken || !adminToken.startsWith('eyJ')) {
+        throw new Error("Backend haqiqiy token qaytarmadi");
+      }
       const adminUser: AuthUser = {
         id: data.user?.id ?? 0,
         email: data.user?.email ?? email,

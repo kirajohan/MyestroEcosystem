@@ -86,48 +86,87 @@ LANGUAGE_MATCH_RULE = (
     "may stay in English even if the surrounding explanation is in another language."
 )
 
-TELEGRAM_HTML_FORMAT_RULE = (
-    "\n\n=== TELEGRAM HTML OUTPUT FORMAT (STRICT RULES) ===\n"
-    "Your response WILL BE PARSED AS HTML by the Telegram Bot API (parse_mode=HTML).\n"
-    "Strictly adhere to the following tag usage, formatting, and escaping rules:\n\n"
+TELEGRAM_HTML_FORMAT_RULE = ("""
+=== TELEGRAM HTML OUTPUT FORMAT (STRICT & NON-NEGOTIABLE) ===
+Your response WILL BE PARSED AS HTML by the Telegram Bot API (parse_mode="HTML").
+You MUST strictly adhere to the following rules. ANY Markdown (**, #, ```, -) WILL BREAK THE BOT.
 
-    "1. ALLOWED HTML TAGS & WHEN TO USE THEM:\n"
-    "   - <b>Bold text</b> : Use for main section titles, key grammar concepts, rule names, and primary focus words.\n"
-    "   - <i>Italic text</i> : Use for SINGLE English words, short phrases (2-3 words), native language translations (e.g. Uzbek), pronunciations, and subtle emphasis.\n"
-    "   - <code>Inline code</code> : Use for target-language vocabulary, isolated single words, short phrases, commands, or key variables.\n"
-    "   - <pre><code class=\"language-python\">Code block</code></pre> : Use for multi-line example sentences, structured dialogues, table-like text, or code snippets.\n"
-    "   - <blockquote>Quote block</blockquote> : Use for COMPLETE English sentences, full English example phrases, grammar rules, warning notes, key takeaways, or callout tips.\n"
-    "   - <blockquote expandable>Collapsible quote</blockquote> : Use for detailed background explanations, secondary reference material, or long notes that can be collapsed.\n"
-    "   - <tg-spoiler>Spoiler text</tg-spoiler> : Use for quiz answers, test keys, hidden hints, or exercise solutions.\n"
-    "   - <u>Underline</u> : Use for highlighting specific target parts in a sentence or key exceptions.\n"
-    "   - <s>Strikethrough</s> : Use for INCORRECT grammar examples or common mistakes to avoid.\n"
-    "   - <a href=\"URL\">Link text</a> : Use ONLY for valid web links.\n\n"
+1. 🎯 MANDATORY EMOJI RULE (CRITICAL):
+   - You MUST use at least ONE relevant emoji in EVERY sentence, OR at least one emoji every 4-5 lines.
+   - If the response is short, EVERY single line MUST contain an emoji.
+   - Use this diverse Emoji Palette based on context:
+     😀 Emotions: 😊, 😢, 😲, 😡, 🥰, 😎, 🤔, 😴, 🤩, 🥺
+     📚 Learning: 📖, ✍️, 🎓, 🧠, 💡, 📝, 🎯, 📌, 🔍, 🗣️
+     ✅ Status: ✅, ❌, ⚠️, 🚫, 🔥, ⭐, 🏆, 🎉, 🚀, 💪
+     🌍 Daily Life: 🏠, 🏫, 💼, 🛒, ☕, 🎵, 🎬, ✈️, 🕰️, 📱
 
-    "2. ENGLISH LANGUAGE FORMATTING (CRITICAL):\n"
-    "   - SINGLE English words or short phrases (2-3 words): Use <i>italic</i> or <code>inline code</code>.\n"
-    "     Example: \"The word <i>hello</i> means 'salom' in Uzbek.\"\n"
-    "   - COMPLETE English sentences or longer phrases: Use <blockquote>quote blocks</blockquote>.\n"
-    "     Example: \"Here is an example: <blockquote>I went to the store yesterday.</blockquote>\"\n"
-    "   - When correcting English mistakes, show the correction in <blockquote>:\n"
-    "     Example: \"✏️ Tuzatish: <blockquote>I went to school yesterday.</blockquote> | Sabab: ...\"\n\n"
+2. 📐 SCENARIO-BASED FORMATTING (Apply based on user query):
+   
+   A) Definition / "Bu nima?" (What is this?):
+      😲 <b>[Term/Noun]</b>
+      💡 Bu — [qisqa va aniq ta'rif].
+      📌 Asosiy xususiyati: <blockquote>[asosiy xususiyat]</blockquote>
 
-    "3. STRICT SYNTAX & ESCAPING RULES (CRITICAL):\n"
-    "   - NO MARKDOWN AT ALL: Never use Markdown formatting like **, __, #, *, ```, or [text](url). Use ONLY HTML tags.\n"
-    "   - CHARACTER ESCAPING: Always escape literal '<', '>', and '&' characters as &lt;, &gt;, and &amp; (unless they are part of a valid HTML tag).\n"
-    "   - PROPER TAG CLOSING & NESTING: Always open and close every tag properly. Tags must be nested strictly in order (e.g. <b><i>correct</i></b>, NOT <b><i>wrong</b></i>).\n"
-    "   - NO UNSUPPORTED TAGS: Do NOT use unsupported HTML tags like <div>, <span> (except tg-spoiler), <p>, <br>, <h1>-<h6>, <ul>, <li>. Use double line breaks for paragraph spacing.\n\n"
+   B) Grammar Rules (Grammatika):
+      📚 <b>[Grammar Topic, e.g., Present Simple]</b>
+      💡 <b>Qoida:</b> [Qoidaning o'zbekcha tushuntirishi].
+      📝 <b>To'g'ri misol:</b> <blockquote>[English example sentence].</blockquote>
+      ❌ <b>Xato misol:</b> <s>[Incorrect English sentence].</s>
+      🧠 <b>Eslatma:</b> [Qo'shimcha muhim eslatma].
 
-    "4. VISUAL LAYOUT & READABILITY:\n"
-    "   - Use emojis (e.g. 📌, 💡, 📝, 🎯, ❌, ✅ ...) as bullet points instead of list tags.\n"
-    "   - Maintain clear line breaks between sections to ensure high readability on mobile screens.\n"
-    "   - When showing English examples, ALWAYS use proper HTML tags as described above."
+   C) Vocabulary / New Words (Yangi so'zlar):
+      🗣️ <b>[English Word]</b> — <i>[O'zbekcha tarjimasi]</i>
+      📖 <b>Misol:</b> <blockquote>[English sentence using the word].</blockquote>
+      🎯 <b>Sinonim:</b> <i>[Synonym]</i>
+
+   D) Error Correction (Xatolarni tuzatish):
+      ✏️ <b>Tuzatish:</b> <s>[User's wrong sentence]</s> ➡️ <b>[Corrected sentence]</b>
+      💡 <b>Sabab:</b> [Nima uchun xato ekanligining qisqa tushuntirishi].
+
+3. 🛠️ ALLOWED HTML TAGS DICTIONARY:
+   - <b>text</b> : Main titles, key grammar concepts, important words.
+   - <i>text</i> : Single English words, short phrases, native language translations.
+   - <code>text</code> : Target vocabulary, isolated terms, commands.
+   - <blockquote>text</blockquote> : COMPLETE English sentences, full examples, grammar rules, warnings.
+   - <tg-spoiler>text</tg-spoiler> : Quiz answers, hidden hints, exercise solutions.
+   - <u>text</u> : Highlighting specific target parts in a sentence.
+   - <s>text</s> : INCORRECT grammar examples or common mistakes.
+   - <a href="URL">text</a> : ONLY for valid web links.
+
+4. 🚫 STRICT PROHIBITIONS:
+   - NO Markdown asterisks (**), underscores (__), backticks (```), or hash (#).
+   - NO unsupported tags like <div>, <span>, <p>, <br>, <h1>-<h6>, <ul>, <li>. Use \n\n for paragraph breaks.
+   - NO raw, unformatted English sentences floating in the text. Always wrap them in <blockquote> or <i>.
+   - ALWAYS escape literal '<', '>', and '&' as &lt;, &gt;, and &amp; if they are not part of a valid HTML tag.
+   - ALWAYS close every tag properly. Nesting must be perfect (e.g., <b><i>text</i></b>).
+
+5. 📝 FEW-SHOT EXAMPLES (Follow this exact style):
+
+   ❌ BAD OUTPUT (DO NOT DO THIS):
+   **Present Simple** 
+   Bu zamon doimiy harakatlar uchun ishlatiladi.
+   Masalan: I go to school every day. 
+   *Xato:* I goes to school.
+
+   ✅ GOOD OUTPUT (EXACTLY LIKE THIS):
+   📚 <b>Present Simple</b> (Oddiy hozirgi zamon)
+   
+   💡 Bu zamon <b>doimiy harakatlar</b> va <b>odatlarni</b> ifodalash uchun ishlatiladi.
+   
+   📝 <b>To'g'ri misol:</b> 
+   <blockquote>I go to school every day.</blockquote>
+   
+   ❌ <b>Keng tarqalgan xato:</b> 
+   <s>I goes to school.</s> 
+   
+   🧠 <b>Eslatma:</b> "I", "You", "We", "They" olmoshlari bilan fe'lga "-s" qo'shimchasi qo'shilmaydi.
+"""
 )
-
 
 LENGTH_RULE = (
     "\n\n=== LENGTH RULE (STRICT) ===\n"
-    "Keep your entire reply between 100 and 1500 words. "
-    "Never go below 100 or above 1500 words."
+    "Keep your entire reply between 100 and 2000 words. "
+    "Never go below 100 or above 2000 words."
 )
 
 

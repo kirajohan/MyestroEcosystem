@@ -12,6 +12,10 @@ from bot.utils.ai_client import ask_ai, stream_ask_ai
 from bot.utils.ai_memory_client import AIMemoryClient
 from bot.utils.ai_prompts import build_system_prompt
 from bot.utils.i18n import get_text
+
+# ✨ YANGI: RAG Client import
+from bot.utils.rag_client import rag_client
+
 from bot.states.registration import (
     QuizSection, StartSection, RegistrationFSM, AuthFSM, RegisterFSM, LoginFSM, MenuSection, RegisteredSection,
 )
@@ -105,27 +109,23 @@ async def _safe_edit_text(
             return True
         
         except TelegramBadRequest:
-            # Matn o'zgarmagan bo'lsa, muammo yo'q
             return True
         
         except TelegramRetryAfter as e:
-            # Rate limit - kutish kerak
             logger.warning(f"Rate limit hit, waiting {e.retry_after} seconds...")
             await asyncio.sleep(e.retry_after)
             if attempt < retry_count:
-                continue  # Qayta urinish
+                continue
             return False
         
         except TelegramNetworkError as e:
-            # Network muammosi
             logger.error(f"Network error on attempt {attempt + 1}: {e}")
             if attempt < retry_count:
-                await asyncio.sleep(1)  # 1 soniya kutib qayta urinish
+                await asyncio.sleep(1)
                 continue
             return False
         
         except Exception as e:
-            # Boshqa xatolar
             logger.error(f"Unexpected error on attempt {attempt + 1}: {e}")
             if attempt < retry_count:
                 await asyncio.sleep(1)
@@ -170,12 +170,10 @@ async def _answer_with_memory(
             model_used = getattr(response_data, "model_used", "unknown")
             time_ms = getattr(response_data, "processing_time_ms", 0)
 
-        # Header va Footer HTML formatida
         header = "🤖 <b>Myestro AI</b>\n\n"
         footer = f"\n\n<i>Model: {model_used} | Time: {time_ms}ms</i>"
         full_response = header + response_text + footer
 
-        # OPTIMIZED STREAMING: Throttle bilan chunk-chunk qilib ko'rsatish
         chunk_size = 50
         current_text = ""
         last_edit = 0.0
@@ -185,7 +183,6 @@ async def _answer_with_memory(
             if len(current_text) > MAX_TEXT_LENGTH:
                 current_text = current_text[:MAX_TEXT_LENGTH]
             
-            # Throttle: 0.1 soniyadan tez edit qilmaslik
             now = time.monotonic()
             if now - last_edit >= 0.1:
                 await _safe_edit_text(sent, current_text, parse_mode="HTML", retry_count=1)
@@ -193,11 +190,9 @@ async def _answer_with_memory(
             
             await asyncio.sleep(0.05)
 
-        # Yakuniy to'liq matn
         if len(full_response) > MAX_TEXT_LENGTH:
             success = await _safe_edit_text(sent, full_response[:MAX_TEXT_LENGTH], parse_mode="HTML", retry_count=1)
             if not success:
-                # Edit ishlamadi, yangi xabar yuboramiz
                 await message.answer(full_response[:MAX_TEXT_LENGTH], parse_mode="HTML")
             
             remaining = full_response[MAX_TEXT_LENGTH:]
@@ -208,7 +203,6 @@ async def _answer_with_memory(
         else:
             success = await _safe_edit_text(sent, full_response, parse_mode="HTML", retry_count=1)
             if not success:
-                # Edit ishlamadi, yangi xabar yuboramiz
                 await message.answer(full_response, parse_mode="HTML")
 
         return response_text
@@ -234,7 +228,6 @@ from bot.middlewares.ai_guard import NAVIGATION_WHITELIST
     F.text,
     F.chat.type == "private",
     ~(F.text.in_(NAVIGATION_WHITELIST)),
-
     ~StateFilter(
         StartSection.language_selection,
         StartSection.main_menu,
@@ -265,7 +258,7 @@ from bot.middlewares.ai_guard import NAVIGATION_WHITELIST
     F.text & ~F.text.startswith("/")
 )
 async def ai_agent_text_handler(message: Message, state: FSMContext):
-    """Handle text messages for registered users — AI Teacher with Memory."""
+    """Handle text messages for registered users — AI Teacher with Memory + RAG."""
     user_data = await state.get_data()
 
     print(f"[AI_HANDLER] start: user={message.from_user.id} text='{(message.text or '')[:80]}'")
@@ -283,7 +276,13 @@ async def ai_agent_text_handler(message: Message, state: FSMContext):
     await message.bot.send_chat_action(message.chat.id, "typing")
 
     try:
+        # 1. Asosiy system promptni olish
         system_prompt = build_system_prompt(lang, cefr_level)
+
+        # ✨ 2. YANGI: RAG orqali context olish va promptga qo'shish
+        rag_context = await rag_client.build_context(user_message)
+        if rag_context:
+            system_prompt += f"\n\n📚 BILIMLAR BAZASI (RAG):\n{rag_context}\n\n⚠️ QOIDA: Yuqoridagi BILIMLAR BAZASI ma'lumotlaridan foydalanib javob bering. Agar savol bu ma'lumotlarga tegishli bo'lmasa, o'z umumiy bilimingizdan foydalaning."
 
         logger.debug("[AI_HANDLER] Calling _answer_with_memory()")
         await _answer_with_memory(

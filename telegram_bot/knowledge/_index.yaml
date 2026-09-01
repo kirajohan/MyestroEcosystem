@@ -1,0 +1,44 @@
+# telegram_bot/knowledge/_index.yaml
+# Myestro Knowledge Base Index
+# Bu fayl RAG tizimi qaysi fayllarni yuklashini boshqaradi
+
+version: "1.0"
+language: ["uz", "ru", "en"]
+last_updated: "2026-08-31"
+
+categories:
+  - id: about
+    name: "Biz haqimizda"
+    file: about_us.md
+    description: "Myestro platformasi haqida umumiy ma'lumot"
+    priority: high
+
+  - id: platform
+    name: "Platforma qo'llanmasi"
+    file: platform_guide.md
+    description: "Platformadan qanday foydalanish"
+    priority: high
+
+  - id: cefr
+    name: "CEFR darajalari"
+    file: cefr_levels.md
+    description: "Ingliz tili darajalari tavsifi"
+    priority: medium
+
+  - id: english
+    name: "Ingliz tili bilimlari"
+    file: english_tips.md
+    description: "Til o'rganish maslahatlari va usullari"
+    priority: medium
+
+  - id: grammar
+    name: "Grammatika"
+    file: grammar_basics.md
+    description: "Asosiy grammatika qoidalari"
+    priority: medium
+
+  - id: faq
+    name: "Ko'p so'raladigan savollar"
+    file: faq.md
+    description: "Foydalanuvchilar tez-tez so'raydigan savollar"
+    priority: high

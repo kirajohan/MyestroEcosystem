@@ -1,3 +1,5 @@
+// C:\Projects\MyestroEco\MyestroEco\admin\app\api\auth\login\route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
@@ -30,11 +32,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Login muvaffaqiyatli — frontend uchun token qaytaramiz
+    // ✅ XAVFSIZLIK TEKSHIRUVI: Haqiqiy JWT token borligini tekshiramiz
+    const accessToken = data.access_token;
+    if (!accessToken || typeof accessToken !== 'string' || !accessToken.startsWith('eyJ')) {
+      console.error('Backend javobida access_token yo\'q yoki noto\'g\'ri:', data);
+      return NextResponse.json(
+        { detail: 'Backend token qaytarmadi. Admin login endpoint\'ini tekshiring.' },
+        { status: 500 }
+      );
+    }
+
+    // Login muvaffaqiyatli — HAQIQIY JWT tokenni qaytaramiz
     return NextResponse.json({
       success: true,
       user: data.user,
-      token: data.access_token || `admin_${Date.now()}`,
+      token: accessToken,  // ✅ Faqat haqiqiy token, fallback YO'Q
     });
   } catch (error: any) {
     console.error('Auth login error:', error);

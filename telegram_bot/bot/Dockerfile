@@ -20,6 +20,8 @@ COPY backend/ ./backend/
 
 # Copy bot directory contents (everything from bot/) to /app/bot/
 COPY bot/ ./bot/
+COPY . /app
+COPY knowledge/ /app/knowledge/
 
 # Set PYTHONPATH to include both backend and current directory
 ENV PYTHONPATH=/app:/app/backend

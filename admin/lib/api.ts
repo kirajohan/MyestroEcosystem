@@ -2,7 +2,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 
 // Backend URL: environment'dan o'qiladi, fallback localhost:8002
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
 
 // lib/api.ts
@@ -103,6 +103,51 @@ export async function deleteBotText(id: number): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete bot text');
 }
 
+// ═══════════════════════════════════════════════════════════
+// MEDIA UPLOAD
+// ═══════════════════════════════════════════════════════════
+
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002";
+
+// ═══════════════════════════════════════════════════════════
+// MEDIA UPLOAD
+// ═══════════════════════════════════════════════════════════
+
+export async function uploadMedia(
+  file: File,
+  fileType: "audio" | "image" = "audio"
+): Promise<{ url: string; file_name: string; size_bytes: number; content_type: string }> {
+  // ✅ Token nomini to'g'ri qo'yamiz
+  const token = typeof window !== "undefined" 
+    ? localStorage.getItem("myestro_admin_token") 
+    : null;
+
+  if (!token) {
+    throw new Error("Token topilmadi. Qayta login qiling.");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(
+    `${API_URL}/api/v2/exam/admin/media/upload?file_type=${fileType}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // ⚠️ Content-Type header qo'ymang — browser multipart uchun o'zi qo'yadi
+      },
+      body: formData,
+    }
+  );
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Upload xatosi: ${res.status} - ${errText}`);
+  }
+
+  return res.json();
+}
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

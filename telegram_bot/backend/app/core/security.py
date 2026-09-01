@@ -13,7 +13,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.database import get_async_db
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
@@ -113,7 +113,7 @@ def verify_token(token: str, secret: str) -> Dict[str, Any]:
 # ══════════════════════════════════════════════════════════════
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),   # ✅ get_async_db
 ) -> User:
     """JWT token'dan foydalanuvchini olish.
 

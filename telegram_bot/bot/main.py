@@ -33,6 +33,7 @@ from aiogram.fsm.storage.redis import RedisStorage
 from bot.utils.ai_memory_client import AIMemoryClient
 from bot.workers.inbox_delivery import inbox_delivery_worker
 from redis.asyncio import Redis
+from bot.utils.rag_client import rag_client
 
 from bot.utils.text_cache import init_text_cache
 
@@ -43,6 +44,21 @@ logger = logging.getLogger(__name__)
 async def main():
     """Initialize and start the bot."""
     logger.info("Starting Myestro Bot...")
+
+    try:
+        logger.info("📚 RAG bilimlar bazasini yuklash boshlandi...")
+        chunk_count = rag_client.load_knowledge()
+        
+        if chunk_count > 0:
+            logger.info(f"🔄 {chunk_count} ta chunk uchun embedding hisoblanmoqda...")
+            await rag_client.initialize_embeddings()
+            logger.info(f"✅ RAG muvaffaqiyatli ishga tushdi! Jami: {chunk_count} ta chunk")
+        else:
+            logger.warning("⚠️ RAG: knowledge papkasida .md fayllar topilmadi!")
+            
+    except Exception as e:
+        logger.error(f"❌ RAG ishga tushishda jiddiy xato: {e}", exc_info=True)
+
 
     # Debug: Check BOT_TOKEN
     if not settings.BOT_TOKEN or settings.BOT_TOKEN.strip() == "":

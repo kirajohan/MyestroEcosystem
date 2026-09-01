@@ -40,7 +40,7 @@ services:
 
   backend:
     build:
-      context: ./telegram_bot
+      context: ./telegram_bot 
       dockerfile: backend/Dockerfile
     container_name: myestro-backend
     restart: unless-stopped
@@ -51,6 +51,8 @@ services:
     environment:
       DATABASE_URL: postgresql://myestro:myestro_password@postgres:5432/myestro
       REDIS_URL: redis://redis:6379/0
+    volumes:
+      - exam_media:/app/media          # ← Media uchun volume
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,7 +69,7 @@ services:
 
   bot:
     build:
-      context: ./telegram_bot
+      context: ./telegram_bot   
       dockerfile: bot/Dockerfile
     container_name: myestro-bot
     restart: unless-stopped
@@ -117,20 +119,33 @@ services:
   exam:
     build:
       context: ./exam
+      dockerfile: Dockerfile              # ← Dockerfile qo'shildi
     container_name: maestro-exam
     restart: unless-stopped
     ports:
       - "3001:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      # Browser tomondan backend'ga murojaat (host port!)
+      - NEXT_PUBLIC_API_URL=http://localhost:8002    # ← 8002 (host port)
+      # Server-side (SSR) backend'ga murojaat (container nomi)
+      - BACKEND_INTERNAL_URL=http://backend:8000
+      - NODE_ENV=production
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy        # ← Condition qo'shildi
+    healthcheck:                          # ← Healthcheck qo'shildi
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - myestro-net
 
 volumes:
   postgres_data:
   redis_data:
+  exam_media:                             # Media fayllar uchun
 
 networks:
   myestro-net:

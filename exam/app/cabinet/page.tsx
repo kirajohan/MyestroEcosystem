@@ -83,11 +83,11 @@ export default function CabinetPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {SECTIONS.map((section) => (
-            <a
-              key={section.key}
-              href={`/exams?type=${section.key}`}
-              className="card text-left hover:shadow-md hover:-translate-y-0.5 transition-all duration-150"
-            >
+                <a
+                  key={section.key}
+                  href={`/exams?type=${section.key}`}
+                  className="card text-left hover:shadow-md hover:-translate-y-0.5 transition-all duration-150"
+                >
               <div className={`w-12 h-12 ${section.color} rounded-lg flex items-center justify-center text-2xl mb-4`}>
                 {section.icon}
               </div>
@@ -97,6 +97,22 @@ export default function CabinetPage() {
           ))}
         </div>
       </div>
+      <a
+        href="/results"
+        className="block bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl">
+            📊
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">Mening natijalarim</h3>
+            <p className="text-sm text-slate-500">
+              Yakunlangan va davom etayotgan imtihonlaringiz
+            </p>
+          </div>
+        </div>
+      </a>
     </main>
   );
 }

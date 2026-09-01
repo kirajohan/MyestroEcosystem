@@ -88,7 +88,12 @@ class TelegramLoginResponse(BaseModel):
 # =====================================================
 class ExamBase(BaseModel):
     """Imtihon yaratish/yangilash uchun umumiy maydonlar."""
-    code: str = Field(..., min_length=2, max_length=100, description="Unikal kod, masalan: full_exam_b1")
+    model_config = ConfigDict(
+        from_attributes=True,
+        use_enum_values=True,   # ✅ SHU QATORNI QO'SHING
+    )
+    
+    code: str = Field(..., min_length=2, max_length=100)
     title: str = Field(..., min_length=2, max_length=255)
     description: Optional[str] = None
     exam_type: ExamType
