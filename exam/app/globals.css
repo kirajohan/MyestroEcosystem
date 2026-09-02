@@ -2,18 +2,205 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer components {
-  .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white font-semibold
-           py-2.5 px-5 rounded-lg transition-colors duration-150
-           disabled:opacity-50 disabled:cursor-not-allowed;
+/* ═══════════════════════════════════════════════════════════
+   GLOBAL DARK MODE STYLES
+   Barcha matn va fon uchun default dark mode
+   ═══════════════════════════════════════════════════════════ */
+
+@layer base {
+  /* Light mode (default) */
+  html {
+    color-scheme: light;
   }
-  .input-field {
-    @apply w-full border border-slate-300 rounded-lg px-4 py-2.5
-           focus:outline-none focus:ring-2 focus:ring-primary-500
-           focus:border-primary-500 bg-white;
+
+  body {
+    @apply bg-white text-slate-900;
+    transition: background-color 0.5s ease, color 0.5s ease;
   }
+
+  /* Dark mode */
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html.dark body {
+    @apply bg-slate-950 text-slate-100;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100;
+  }
+
+  html.dark ::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+
+  html.dark ::-webkit-scrollbar-thumb {
+    @apply bg-slate-700;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+
+  html.dark ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-600;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-orange-500/30 text-orange-900;
+  }
+
+  html.dark ::selection {
+    @apply bg-orange-500/40 text-orange-100;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   COMPONENT UTILITIES
+   ═══════════════════════════════════════════════════════════ */
+
+@layer utilities {
+  /* Hide scrollbar for marquee */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Backdrop blur fallback */
+  .backdrop-fallback {
+    @apply bg-white/80;
+  }
+  html.dark .backdrop-fallback {
+    @apply bg-slate-900/80;
+  }
+
+  /* Card styles with dark mode */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-slate-200 p-6;
+    @apply bg-white border border-slate-200 rounded-2xl transition-all;
   }
+  html.dark .card {
+    @apply bg-slate-900 border-slate-800;
+  }
+
+  /* Text utilities */
+  .text-base-primary {
+    @apply text-slate-900;
+  }
+  html.dark .text-base-primary {
+    @apply text-slate-100;
+  }
+
+  .text-base-secondary {
+    @apply text-slate-600;
+  }
+  html.dark .text-base-secondary {
+    @apply text-slate-400;
+  }
+
+  .text-base-muted {
+    @apply text-slate-500;
+  }
+  html.dark .text-base-muted {
+    @apply text-slate-500;
+  }
+
+  /* Surface backgrounds */
+  .bg-surface {
+    @apply bg-white;
+  }
+  html.dark .bg-surface {
+    @apply bg-slate-900;
+  }
+
+  .bg-surface-elevated {
+    @apply bg-slate-50;
+  }
+  html.dark .bg-surface-elevated {
+    @apply bg-slate-800/50;
+  }
+
+  /* Borders */
+  .border-base {
+    @apply border-slate-200;
+  }
+  html.dark .border-base {
+    @apply border-slate-800;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition-property: background-color, border-color, color;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
+}
+
+/* Except for elements that need fast transitions */
+button,
+a,
+input,
+textarea,
+select {
+  transition: all 0.15s ease;
+}
+
+/* Prevent layout shift from scrollbar */
+html {
+  overflow-y: scroll;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus styles */
+:focus-visible {
+  @apply outline-none ring-2 ring-orange-500 ring-offset-2;
+}
+
+html.dark :focus-visible {
+  @apply ring-offset-slate-950;
+}
+
+/* Gradient text utility */
+.text-gradient-brand {
+  @apply bg-gradient-to-r from-orange-600 to-rose-500 bg-clip-text text-transparent;
+}
+
+/* Prevent body scroll when modal open */
+body.no-scroll {
+  overflow: hidden;
 }

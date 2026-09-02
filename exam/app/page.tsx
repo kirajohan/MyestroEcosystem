@@ -1,5 +1,323 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export default function Home() {
-  redirect("/cabinet");
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "./providers";
+import CurtainEffect from "@/components/landing/CurtaineEffect";
+import Header from "@/components/landing/Header";
+import Footer from "@/components/landing/Footer";
+import FAQ from "@/components/landing/FAQ";
+import {
+  KineticHero,
+  SpotlightCard,
+  GlowButton,
+  AnimatedCounter,
+  FloatingWords,
+  InfiniteMarquee,
+  CardStack,
+  QuizCard,
+  TextReveal,
+  CompareSlider,
+  AudioWaveform,
+} from "@/components/landing/Sections";
+
+const FEATURES = [
+  { icon: "🎧", title: "Listening", desc: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.", color: "from-blue-500 to-cyan-500", span: "md:col-span-2 md:row-span-2" },
+  { icon: "📖", title: "Reading", desc: "Sed do eiusmod tempor incididunt ut labore.", color: "from-emerald-500 to-teal-500", span: "md:col-span-1" },
+  { icon: "✍️", title: "Writing", desc: "Ut enim ad minim veniam, quis nostrud.", color: "from-amber-500 to-orange-500", span: "md:col-span-1" },
+  { icon: "🎤", title: "Speaking", desc: "Duis aute irure dolor in reprehenderit.", color: "from-rose-500 to-pink-500", span: "md:col-span-2" },
+];
+
+const STATS = [
+  { value: 10000, label: "Talabalar", suffix: "+" },
+  { value: 94, label: "Muvaffaqiyat", suffix: "%" },
+  { value: 50, label: "Davlatlar", suffix: "+" },
+  { value: 4.9, label: "Reyting", suffix: "★" },
+];
+
+const TESTIMONIALS = [
+  { name: "John D.", text: "Lorem ipsum dolor sit amet.", rating: 5 },
+  { name: "Sarah K.", text: "Consectetur adipiscing elit.", rating: 5 },
+  { name: "Mike R.", text: "Sed do eiusmod tempor.", rating: 5 },
+  { name: "Anna L.", text: "Ut enim ad minim veniam.", rating: 5 },
+];
+
+const FAQ_ITEMS = [
+  { q: "Lorem ipsum dolor sit amet?", a: "Consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." },
+  { q: "Sed do eiusmod tempor?", a: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris." },
+  { q: "Duis aute irure dolor?", a: "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia." },
+];
+
+export default function LandingPage() {
+  const { t } = useLanguage();
+
+  return (
+    <main className="min-h-screen overflow-x-hidden relative">
+      <CurtainEffect />
+      <Header />
+
+      {/* ═══ HERO ═══ */}
+      <section className="relative max-w-7xl mx-auto px-6 py-20 md:py-32">
+        <FloatingWords />
+        <div className="relative z-10 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.5 }}
+            className="inline-flex items-center gap-2 border border-orange-200 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 text-sm font-semibold px-4 py-2 rounded-full mb-8"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500" />
+            </span>
+            {t("hero_badge")}
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.6 }}
+          >
+            <KineticHero />
+          </motion.div>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.7 }}
+            className="text-base-secondary text-lg md:text-xl max-w-2xl mx-auto mb-10"
+          >
+            {t("hero_subtitle")}
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.8 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+          >
+            <GlowButton href="/login">🚀 {t("cta_start")}</GlowButton>
+            <Link
+              href="#features"
+              className="px-8 py-4 text-lg font-semibold rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-base-primary backdrop-blur transition-colors"
+            >
+              {t("cta_learn")}
+            </Link>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 2 }}
+            className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20 max-w-3xl mx-auto"
+          >
+            {STATS.map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className="text-3xl md:text-4xl font-bold bg-gradient-to-br from-orange-500 to-rose-500 bg-clip-text text-transparent">
+                  <AnimatedCounter value={stat.value} suffix={stat.suffix} />
+                </div>
+                <div className="text-base-secondary text-sm mt-1">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ═══ MARQUEE ═══ */}
+      <InfiniteMarquee
+        items={["Grammar", "Vocabulary", "Speaking", "Listening", "Writing", "Reading", "IELTS", "Business English", "Pronunciation", "Idioms"]}
+      />
+
+      {/* ═══ FEATURES ═══ */}
+      <section id="features" className="relative max-w-7xl mx-auto px-6 py-24">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-base-primary text-4xl md:text-5xl font-bold mb-4">
+            Barcha imkoniyatlar{" "}
+            <span className="text-gradient-brand">bir joyda</span>
+          </h2>
+          <p className="text-base-secondary text-lg max-w-2xl mx-auto">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[180px]">
+          {FEATURES.map((feature, idx) => (
+            <SpotlightCard key={feature.title} className={feature.span}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                className="h-full p-8 flex flex-col justify-between text-white"
+              >
+                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center text-3xl`}>
+                  {feature.icon}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold mb-2">{feature.title}</h3>
+                  <p className="text-white/80">{feature.desc}</p>
+                </div>
+              </motion.div>
+            </SpotlightCard>
+          ))}
+        </div>
+      </section>
+
+      {/* ═══ DEMO ═══ */}
+      <section className="relative py-24 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+        <div className="relative max-w-7xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <div className="inline-block bg-orange-500/20 text-orange-400 text-sm font-semibold px-4 py-2 rounded-full mb-4">
+              Sinab ko'ring
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Interaktiv{" "}
+              <span className="bg-gradient-to-r from-orange-500 to-amber-400 bg-clip-text text-transparent">
+                o'rganish
+              </span>
+            </h2>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-3">🎴 Flashcards</h3>
+              <p className="text-slate-400 mb-6">Lorem ipsum dolor sit amet.</p>
+              <CardStack />
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-3">🧠 Quick Quiz</h3>
+              <p className="text-slate-400 mb-6">Sed do eiusmod tempor.</p>
+              <QuizCard />
+            </div>
+          </div>
+
+          <div className="mt-16 text-center">
+            <h3 className="text-xl font-bold text-white mb-4">🎤 Speaking Practice</h3>
+            <div className="inline-flex items-center gap-4 bg-white/5 backdrop-blur-sm px-8 py-4 rounded-2xl border border-white/10">
+              <AudioWaveform />
+              <span className="text-white/80">Lorem ipsum dolor...</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ METHOD ═══ */}
+      <section id="method" className="relative py-24">
+        <div className="max-w-5xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-base-primary text-4xl md:text-5xl font-bold mb-4">
+              Bizning <span className="text-gradient-brand">metodika</span>
+            </h2>
+          </motion.div>
+          <TextReveal
+            text="Biz isbotlangan til o'rganish metodlarini zamonaviy AI texnologiyalari bilan birlashtirib, shaxsiylashtirilgan feedback, real vaqtda tuzatish va tez o'sishni ta'minlaymiz."
+          />
+        </div>
+      </section>
+
+      {/* ═══ BEFORE/AFTER ═══ */}
+      <section id="results" className="relative py-24">
+        <div className="max-w-5xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-base-primary text-4xl md:text-5xl font-bold mb-4">
+              <span className="text-gradient-brand">Transformatsiya</span>ni ko'ring
+            </h2>
+          </motion.div>
+          <CompareSlider />
+        </div>
+      </section>
+
+      {/* ═══ TESTIMONIALS ═══ */}
+      <section className="relative py-24 max-w-7xl mx-auto px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-base-primary text-4xl md:text-5xl font-bold">
+            Minglab <span className="text-gradient-brand">talabalar</span> sevgan
+          </h2>
+        </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <AnimatePresence>
+            {TESTIMONIALS.map((t, i) => (
+              <motion.div
+                key={t.name}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, type: "spring" }}
+                whileHover={{ y: -5 }}
+                className="card rounded-2xl p-6"
+              >
+                <div className="flex mb-3 text-orange-500">{"★".repeat(t.rating)}</div>
+                <p className="text-base-secondary mb-4">"{t.text}"</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-rose-500" />
+                  <div>
+                    <div className="text-base-primary font-semibold">{t.name}</div>
+                    <div className="text-base-muted text-xs">Talaba</div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      </section>
+
+      {/* ═══ FAQ ═══ */}
+      <FAQ items={FAQ_ITEMS} />
+
+      {/* ═══ CTA ═══ */}
+      <section className="relative py-24 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-600 via-orange-500 to-rose-500" />
+        <div className="relative max-w-4xl mx-auto px-6 text-center">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-4xl md:text-6xl font-bold text-white mb-6"
+          >
+            Ingliz tilini mukammal bilishga tayyormisiz?
+          </motion.h2>
+          <p className="text-xl text-white/90 mb-10">
+            Telegram orqali kirib, birinchi imtihoningizni topshiring.
+          </p>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 bg-white text-orange-600 text-xl font-bold px-10 py-5 rounded-xl hover:bg-orange-50 transition-colors shadow-2xl"
+          >
+            🚀 Bepul boshlash
+          </Link>
+        </div>
+      </section>
+
+      <Footer />
+    </main>
+  );
 }

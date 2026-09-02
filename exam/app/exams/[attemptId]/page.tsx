@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { API_URL } from "@/lib/api";
+import AudioPlayer from "@/components/AudioPlayer";
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -21,6 +22,7 @@ interface Item {
   instruction?: string;
   question_text?: string;
   passage_text?: string;
+  audio_url?: string;
   max_score: number;
   order: number;
   options: Option[];
@@ -102,7 +104,7 @@ export default function ExamRoomPage() {
       setAttempt(data);
 
       if (data.status === "completed" || data.status === "scoring") {
-        router.push(`/exams/results/${attemptId}`);
+        router.push(`/exams/result/${attemptId}`);
         return;
       }
 
@@ -122,7 +124,6 @@ export default function ExamRoomPage() {
 
   // ── 2. Block yuklash ───────────────────────────────────
   async function loadBlock(blockId: number) {
-    // Agar allaqachon yuklangan bo'lsa, qayta yuklamaymiz
     if (blocksData[blockId]?.loaded) return;
 
     try {
@@ -229,7 +230,7 @@ export default function ExamRoomPage() {
 
       if (!res.ok) throw new Error("Submit qilinmadi");
 
-      router.push(`/exams/results/${attemptId}`);
+      router.push(`/exams/result/${attemptId}`);
     } catch (err) {
       console.error("Submit xatosi:", err);
       alert("Imtihon yakunlanmadi. Qayta urinib ko'ring.");
@@ -247,12 +248,11 @@ export default function ExamRoomPage() {
     if (currentItemIndex > 0) {
       setCurrentItemIndex((i) => i - 1);
     } else if (currentBlockIndex > 0) {
-      // Oldingi block'ning oxirgi savoliga o'tish
       const prevBlockIndex = currentBlockIndex - 1;
       const prevBlock = attempt?.blocks[prevBlockIndex];
       if (prevBlock) {
-        const prevData = blocksData[prevBlock.block_id];
         switchToBlock(prevBlockIndex);
+        const prevData = blocksData[prevBlock.block_id];
         if (prevData) {
           setCurrentItemIndex(prevData.items.length - 1);
         }
@@ -264,7 +264,6 @@ export default function ExamRoomPage() {
     if (currentItemIndex < currentItems.length - 1) {
       setCurrentItemIndex((i) => i + 1);
     } else if (currentBlockIndex < (attempt?.blocks.length || 0) - 1) {
-      // Keyingi block'ning birinchi savoliga o'tish
       switchToBlock(currentBlockIndex + 1);
     }
   };
@@ -292,10 +291,9 @@ export default function ExamRoomPage() {
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   }
 
-  // ── 10. Passage'ni topish (block ichida birinchi passage) ──
+  // ── 10. Passage'ni topish ──────────────────────────────
   const currentPassage = useMemo(() => {
     if (!currentBlockData) return null;
-    // Block ichida passage_text bor birinchi item'ni topamiz
     const itemWithPassage = currentBlockData.items.find((i) => i.passage_text);
     return itemWithPassage?.passage_text || null;
   }, [currentBlockData]);
@@ -355,7 +353,6 @@ export default function ExamRoomPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Timer */}
             {timeLeft !== null && (
               <div
                 className={`px-3 py-1.5 rounded-lg font-mono text-sm md:text-lg font-bold ${
@@ -370,7 +367,6 @@ export default function ExamRoomPage() {
               </div>
             )}
 
-            {/* Yakunlash tugmasi */}
             <button
               onClick={() => handleSubmit()}
               disabled={submitting}
@@ -388,31 +384,36 @@ export default function ExamRoomPage() {
 
       {/* ── MAIN CONTENT: 2 ustun ──────────────────────── */}
       <div className="flex-1 max-w-7xl mx-auto w-full p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* ═══ CHAP USTUN: PASSAGE ═══ */}
+        {/* ═══ CHAP USTUN: PASSAGE yoki AUDIO ═══ */}
         <div className="lg:sticky lg:top-20 lg:self-start">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-h-[calc(100vh-120px)] overflow-y-auto">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              📖 Passage
-            </h3>
-
-            {currentPassage ? (
+          {currentPassage ? (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-h-[calc(100vh-120px)] overflow-y-auto">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                📖 Passage
+              </h3>
               <p className="text-slate-800 leading-relaxed whitespace-pre-line text-[15px]">
                 {currentPassage}
               </p>
-            ) : (
-              <div className="text-center py-12 text-slate-400">
-                <div className="text-4xl mb-3">📄</div>
-                <p>Bu bo'limda matn yo'q</p>
-              </div>
-            )}
-          </div>
+            </div>
+          ) : currentItem?.audio_url ? (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <h3 className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+                🎧 Audio
+              </h3>
+              <AudioPlayer audioUrl={currentItem.audio_url} />
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center">
+              <div className="text-4xl mb-3">📄</div>
+              <p className="text-slate-400">Bu bo'limda kontent yo'q</p>
+            </div>
+          )}
         </div>
 
         {/* ═══ O'NG USTUN: NAVIGATSIYA + SAVOL ═══ */}
         <div className="space-y-4">
           {/* ── Navigatsiya paneli ─────────────────────── */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-            {/* Block'lar */}
             <div className="mb-4">
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
                 Bloklar
@@ -437,7 +438,6 @@ export default function ExamRoomPage() {
               </div>
             </div>
 
-            {/* Savollar grid */}
             <div>
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
                 Savollar
@@ -470,7 +470,6 @@ export default function ExamRoomPage() {
           {/* ── Savol kartochkasi ──────────────────────── */}
           {currentItem ? (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              {/* Savol raqami */}
               <div className="flex items-center justify-between mb-4">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                   Savol {currentItemIndex + 1} / {currentItems.length}
@@ -480,12 +479,10 @@ export default function ExamRoomPage() {
                 )}
               </div>
 
-              {/* Savol matni */}
               <h3 className="text-lg font-bold text-slate-900 mb-5 leading-snug">
                 {currentItem.question_text || currentItem.title}
               </h3>
 
-              {/* Variantlar */}
               {currentItem.options.length > 0 ? (
                 <div className="space-y-2.5">
                   {currentItem.options.map((option, idx) => {
@@ -525,7 +522,6 @@ export default function ExamRoomPage() {
                 </div>
               )}
 
-              {/* Navigatsiya tugmalari */}
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
                 <button
                   onClick={goToPrevItem}
@@ -570,4 +566,4 @@ export default function ExamRoomPage() {
       </div>
     </main>
   );
-}
+}   

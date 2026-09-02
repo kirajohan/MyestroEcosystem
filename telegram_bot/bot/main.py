@@ -45,19 +45,19 @@ async def main():
     """Initialize and start the bot."""
     logger.info("Starting Myestro Bot...")
 
-    try:
-        logger.info("📚 RAG bilimlar bazasini yuklash boshlandi...")
-        chunk_count = rag_client.load_knowledge()
+    # try:
+    #     logger.info("📚 RAG bilimlar bazasini yuklash boshlandi...")
+    #     chunk_count = rag_client.load_knowledge()
         
-        if chunk_count > 0:
-            logger.info(f"🔄 {chunk_count} ta chunk uchun embedding hisoblanmoqda...")
-            await rag_client.initialize_embeddings()
-            logger.info(f"✅ RAG muvaffaqiyatli ishga tushdi! Jami: {chunk_count} ta chunk")
-        else:
-            logger.warning("⚠️ RAG: knowledge papkasida .md fayllar topilmadi!")
+    #     if chunk_count > 0:
+    #         logger.info(f"🔄 {chunk_count} ta chunk uchun embedding hisoblanmoqda...")
+    #         await rag_client.initialize_embeddings()
+    #         logger.info(f"✅ RAG muvaffaqiyatli ishga tushdi! Jami: {chunk_count} ta chunk")
+    #     else:
+    #         logger.warning("⚠️ RAG: knowledge papkasida .md fayllar topilmadi!")
             
-    except Exception as e:
-        logger.error(f"❌ RAG ishga tushishda jiddiy xato: {e}", exc_info=True)
+    # except Exception as e:
+    #     logger.error(f"❌ RAG ishga tushishda jiddiy xato: {e}", exc_info=True)
 
 
     # Debug: Check BOT_TOKEN

@@ -149,6 +149,43 @@ export async function uploadMedia(
   return res.json();
 }
 
+// ═══════════════════════════════════════════════════════════
+// TELEGRAM AUDIO UPLOAD
+// ═══════════════════════════════════════════════════════════
+export async function uploadAudioToTelegram(
+  file: File
+): Promise<{ file_id: string; file_name: string; duration: number; size_bytes: number }> {
+  const token = typeof window !== "undefined"
+    ? localStorage.getItem("myestro_admin_token")
+    : null;
+
+  if (!token) {
+    throw new Error("Token topilmadi. Qayta login qiling.");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  // ✅ Endi asosiy API orqali (port 8002)
+  const res = await fetch(
+    `${API_URL}/api/v2/exam/admin/media/upload-audio`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    }
+  );
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Telegram upload xatosi: ${res.status} - ${errText}`);
+  }
+
+  return res.json();
+}
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   // Content-Type default qo'yilmaydi — Axios avtomatik aniqlaydi:

@@ -6,47 +6,62 @@ o'tadi, kanalga obuna bo'ladi va AI-suhbat, test/kviz, trening (academy), inbox 
 kontent bilan ishlaydi. Barcha jarayonlar Next.js asosidagi admin panel orqali boshqariladi.
 
 ---
-
-## 🧭 Arxitektura ko'rinishi
-
-```
 MyestroEco/
+├── .github/workflows/deploy.yml       # CI/CD (SSH deploy + alembic upgrade)
+├── .vscode/settings.json
+├── .env.example                       # (yangi) — template, sekretsiz
+├── .env                               # sekretlar (gitignore'da)
+├── .gitignore
+├── docker-compose.yml                 # 6 servis: postgres, redis, backend, bot, admin, exam
+├── README.md                          # umumiy obzor (yangilanadi)
+├── PROJECT_STRUCTURE.md               # (yangi) — shu struttura hujjati
 │
-├── telegram_bot/               # Python — asosiy backend va bot
-│   ├── backend/                #   REST API — FastAPI 2.1.0
+├── admin/                             # Next.js 14 — Admin Panel
+│   ├── app/
+│   │   ├── api/                       #   proksi-routes (18 ta)
+│   │   ├── login/  dashboard/  users/  broadcast/  bot-texts/
+│   │   │   content/  inbox/  tests/  exam/
+│   │   ├── layout.tsx  page.tsx  globals.css
+│   ├── components/                    #   UI + feature (broadcast, tests, users, ...)
+│   ├── context/  hooks/  lib/  providers/  types/
+│   └── Dockerfile  package.json  tsconfig.json  ...
+│
+├── exam/                              # Next.js — Landing + Exam
+│   ├── app/
+│   │   ├── (landing)/                 #   page.tsx (Aurora, Sections, Footer)
+│   │   ├── login/  cabinet/  exams/
+│   │   │   └── [attemptId]/  results/[attemptId]/
+│   │   ├── layout.tsx  globals.css  providers.tsx
+│   ├── components/                    #   AudioPlayer + landing/*
+│   ├── lib/  public/
+│   ├── middleware.ts  next.config.js  ...
+│   └── README.md                      # (yangi)
+│
+├── telegram_bot/                      # Python monorepo
+│   ├── backend/                       #   FastAPI REST API (2.1.0)
 │   │   ├── app/
-│   │   │   ├── api/            #   Routers (17 ta)
-│   │   │   ├── models/         #   ORM modellar
-│   │   │   ├── schemas/        #   Pydantic schemalar
-│   │   │   ├── services/       #   Biznes-logika
-│   │   │   ├── core/           #   Security, deps, exceptions
-│   │   │   └── websocket/      #   Admin realtime (admin_ws)
-│   │   ├── migrations/         #   Alembic version'lar + script
-│   │   └── scripts/            #   admin, seed, migrate skriptlar
-│   ├── bot/                    #   Telegram bot (aiogram 3.30)
-│   │   ├── handlers/           #   24 handler/router
-│   │   ├── keyboards/          #   Reply & inline klaviaturalar
-│   │   ├── middlewares/        #   DB, guard, channel-check, AI-guard
-│   │   ├── services/           #   AI, broadcast worker, content uploader
-│   │   ├── states/             #   FSM holatlari (registration, test)
-│   │   ├── utils/              #   AI client, i18n, cache, helpers
-│   │   └── workers/            #   inbox_delivery (fon vazifa)
-│   └── shared/                 #   Umumiy kutubxona (ai_client, json_logger)
+│   │   │   ├── api/                   #     auth, users, content, stats, exam_v2, ...
+│   │   │   ├── core/                  #     security, deps, exceptions, session_deps
+│   │   │   ├── models/  schemas/  services/  websocket/
+│   │   ├── migrations/                #   Alembic (versions/, env.py)
+│   │   ├── scripts/                   #   admin, seed, migrate skriptlar
+│   │   └── alembic.ini  Dockerfile  requirements.txt
+│   ├── bot/                           #   aiogram bot
+│   │   ├── handlers/  keyboards/  middlewares/  services/
+│   │   ├── states/  utils/  workers/
+│   │   └── main.py  config.py  database.py  Dockerfile
+│   ├── shared/                        #   ai_client, json_logger
+│   ├── knowledge/                     #   RAG — 7 ta .md fayl + _index.yaml
+│   └── requirements.txt
 │
-├── admin/                      # Web Admin Panel (Next.js 14 + TypeScript)
-│   ├── app/                    #   App Router sahifalari + API proxy routes
-│   ├── components/             #   UI, layout, dashboard, broadcast, ...
-│   ├── context/ hooks/ providers/ lib/ tests/
-│   └── package.json
+├── migrations/                        # SQL sxema
+│   ├── init.sql                       #   20+ jadval + default admin
+│   ├── versions/                      #   000–007 + ...
+│   └── run_migrations.sh / .bat / README.md
 │
-├── migrations/init.sql         # DB sxema (20+ jadval) + default admin
-├── docker-compose.yml         # 5 servis (postgres, redis, backend, bot, admin)
-├── .github/workflows/deploy.yml  # GitHub Actions — SSH deploy + migratsiya
-├── Dockerfile / start.sh / Procfile
-└── .env                        # Muhit o'zgaruvchilari (secretlar!)
-```
+└── scripts/                           # root-level util skriptlar
+    └── migrate_sql.py
 
----
 
 ## 🧱 Texnologik stack
 

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { uploadMedia } from "@/lib/api";
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
 interface AudioUploadProps {
@@ -36,6 +37,7 @@ export default function AudioUpload({ currentUrl, onUpload, onRemove }: AudioUpl
     setError("");
 
     try {
+      // ✅ Server'ga yuklash
       const result = await uploadMedia(file, "audio");
       setAudioUrl(result.url);
       onUpload(result.url);

@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { motion } from "framer-motion";
 import { getMe, logout } from "@/lib/api";
 
 interface UserInfo {
@@ -8,15 +11,64 @@ interface UserInfo {
   full_name: string | null;
   cefr_level: string | null;
   role: string;
+  telegram_photo_url?: string | null;
 }
 
 const SECTIONS = [
-  { key: "full", title: "Full Exam", desc: "To'liq imtihon sikli", icon: "🎯", color: "bg-indigo-500" },
-  { key: "listening", title: "Listening", desc: "Tinglab tushunish", icon: "🎧", color: "bg-blue-500" },
-  { key: "reading", title: "Reading", desc: "O'qib tushunish", icon: "📖", color: "bg-emerald-500" },
-  { key: "writing", title: "Writing", desc: "Yozma ish", icon: "✍️", color: "bg-amber-500" },
-  { key: "speaking", title: "Speaking", desc: "Og'zaki nutq", icon: "🎤", color: "bg-rose-500" },
+  {
+    key: "full",
+    title: "Full Exam",
+    desc: "To'liq imtihon sikli — barcha 4 ko'nikma",
+    icon: "🎯",
+    gradient: "from-indigo-500 to-purple-600",
+    span: "md:col-span-2",
+  },
+  {
+    key: "listening",
+    title: "Listening",
+    desc: "Tinglab tushunish mashqlari",
+    icon: "🎧",
+    gradient: "from-blue-500 to-cyan-500",
+    span: "",
+  },
+  {
+    key: "reading",
+    title: "Reading",
+    desc: "O'qib tushunish mashqlari",
+    icon: "📖",
+    gradient: "from-emerald-500 to-teal-500",
+    span: "",
+  },
+  {
+    key: "writing",
+    title: "Writing",
+    desc: "Yozma ish — AI baholash bilan",
+    icon: "✍️",
+    gradient: "from-amber-500 to-orange-500",
+    span: "",
+  },
+  {
+    key: "speaking",
+    title: "Speaking",
+    desc: "Og'zaki nutq — AI baholash bilan",
+    icon: "🎤",
+    gradient: "from-rose-500 to-pink-500",
+    span: "",
+  },
 ];
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
 
 export default function CabinetPage() {
   const [user, setUser] = useState<UserInfo | null>(null);
@@ -25,15 +77,10 @@ export default function CabinetPage() {
   useEffect(() => {
     async function loadUser() {
       const res = await getMe();
-
       if (res.ok && res.data) {
         setUser(res.data as UserInfo);
         setLoading(false);
       } else {
-        // ⚠️ Session yaroqsiz (masalan, Redis tozalangan).
-        // Avval logout qilib cookie'ni o'chiramiz, keyin login'ga qaytamiz.
-        // window.location.replace → middleware qayta ishlaydi,
-        // lekin cookie o'chirilgani uchun loop BO'LMAYDI.
         await logout();
         window.location.replace("/login");
       }
@@ -48,28 +95,53 @@ export default function CabinetPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
-        <p className="text-slate-500">Yuklanmoqda...</p>
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-rose-50">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="relative w-16 h-16 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full border-4 border-orange-200"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-orange-600 border-t-transparent animate-spin"></div>
+          </div>
+          <p className="text-slate-600 font-medium">Yuklanmoqda...</p>
+        </motion.div>
       </main>
     );
   }
 
+  const displayName = user?.full_name || "Foydalanuvchi";
+  const greeting = getGreeting();
+
   return (
-    <main className="min-h-screen">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <h1 className="text-xl font-bold text-primary-700">Maestro Exam</h1>
+    <main className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-rose-50">
+      {/* ═══ HEADER ═══ */}
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt="Maestro Exam"
+              width={40}
+              height={40}
+              className="rounded-xl"
+            />
+            <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-rose-500 bg-clip-text text-transparent">
+              Maestro Exam
+            </span>
+          </Link>
+
           <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="font-medium">{user?.full_name || "Foydalanuvchi"}</p>
-              <p className="text-sm text-slate-500">
+            <div className="hidden md:flex flex-col items-end">
+              <p className="font-semibold text-slate-900">{displayName}</p>
+              <p className="text-xs text-slate-500">
                 Daraja: {user?.cefr_level || "—"}
               </p>
             </div>
             <button
               onClick={handleLogout}
-              className="text-sm text-slate-600 hover:text-red-600 transition-colors"
+              className="text-sm font-medium text-slate-600 hover:text-orange-600 px-3 py-2 rounded-lg hover:bg-orange-50 transition-colors"
             >
               Chiqish
             </button>
@@ -77,42 +149,152 @@ export default function CabinetPage() {
         </div>
       </header>
 
-      {/* Sections */}
-      <div className="max-w-6xl mx-auto p-6">
-        <h2 className="text-2xl font-bold mb-6">Imtihon bo'limlari</h2>
+      <div className="max-w-7xl mx-auto px-6 py-8 md:py-12">
+        {/* ═══ HERO / GREETING ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10"
+        >
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500 via-orange-600 to-rose-500 p-8 md:p-12 text-white shadow-2xl">
+            {/* Background decoration */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {SECTIONS.map((section) => (
-                <a
-                  key={section.key}
-                  href={`/exams?type=${section.key}`}
-                  className="card text-left hover:shadow-md hover:-translate-y-0.5 transition-all duration-150"
-                >
-              <div className={`w-12 h-12 ${section.color} rounded-lg flex items-center justify-center text-2xl mb-4`}>
-                {section.icon}
+            <div className="relative z-10">
+              <p className="text-orange-100 text-sm md:text-base mb-2">
+                {greeting}
+              </p>
+              <h1 className="text-3xl md:text-5xl font-bold mb-3">
+                {displayName} 👋
+              </h1>
+              <p className="text-orange-100 text-base md:text-lg max-w-2xl">
+                Ingliz tilingizni yanada mukammallashtiring. Bugun qaysi ko'nikmani
+                mashq qilasiz?
+              </p>
+
+              <div className="flex flex-wrap gap-3 mt-6">
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/30">
+                  <div className="text-xs text-orange-100">Daraja</div>
+                  <div className="font-bold">{user?.cefr_level || "—"}</div>
+                </div>
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/30">
+                  <div className="text-xs text-orange-100">Rol</div>
+                  <div className="font-bold capitalize">{user?.role || "user"}</div>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold">{section.title}</h3>
-              <p className="text-sm text-slate-500 mt-1">{section.desc}</p>
-            </a>
-          ))}
-        </div>
-      </div>
-      <a
-        href="/results"
-        className="block bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow"
-      >
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl">
-            📊
+            </div>
           </div>
+        </motion.div>
+
+        {/* ═══ SECTIONS TITLE ═══ */}
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-lg font-bold text-slate-900">Mening natijalarim</h3>
-            <p className="text-sm text-slate-500">
-              Yakunlangan va davom etayotgan imtihonlaringiz
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900">
+              Imtihon bo'limlari
+            </h2>
+            <p className="text-slate-500 text-sm mt-1">
+              O'zingizga kerakli yo'nalishni tanlang
             </p>
           </div>
         </div>
-      </a>
+
+        {/* ═══ SECTIONS GRID ═══ */}
+        <motion.div
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10"
+        >
+          {SECTIONS.map((section) => (
+            <motion.div key={section.key} variants={item} className={section.span}>
+              <Link
+                href={`/exams?type=${section.key}`}
+                className="group relative block h-full bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+              >
+                {/* Hover gradient background */}
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br ${section.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}
+                ></div>
+
+                <div className="relative z-10">
+                  <div
+                    className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${section.gradient} flex items-center justify-center text-2xl mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}
+                  >
+                    {section.icon}
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-orange-600 transition-colors">
+                    {section.title}
+                  </h3>
+                  <p className="text-sm text-slate-500">{section.desc}</p>
+
+                  <div className="mt-4 flex items-center text-sm font-semibold text-orange-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Boshlash
+                    <svg
+                      className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 8l4 4m0 0l-4 4m4-4H3"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* ═══ MY RESULTS ═══ */}
+        <Link
+          href="/exams/results"
+          className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white hover:shadow-2xl transition-all duration-300 block"
+        >
+          <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/20 rounded-full blur-3xl"></div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-2xl">
+                📊
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">Mening natijalarim</h3>
+                <p className="text-sm text-slate-400">
+                  Tarix va davom etayotgan imtihonlar
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center text-sm font-semibold text-orange-400 group-hover:translate-x-1 transition-transform">
+              Ko'rish
+              <svg
+                className="w-4 h-4 ml-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 8l4 4m0 0l-4 4m4-4H3"
+                />
+              </svg>
+            </div>
+          </div>
+        </Link>
+      </div>
     </main>
   );
+}
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 6) return "Xayrli tun";
+  if (hour < 12) return "Xayrli tong";
+  if (hour < 18) return "Xayrli kun";
+  return "Xayrli kech";
 }

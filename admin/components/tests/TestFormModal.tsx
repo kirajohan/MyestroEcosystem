@@ -28,7 +28,7 @@ export default function TestFormModal({ isOpen, onClose, onSuccess, editingTest 
         title: editingTest.title,
         description: editingTest.description || '',
         cefr_level: editingTest.cefr_level,
-        passing_score: editingTest.passing_score,
+        passing_score: editingTest.passing_score ?? 70,
         is_active: editingTest.is_active,
       });
     } else {

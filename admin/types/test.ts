@@ -1,95 +1,86 @@
-// admin/types/test.ts
-
-// ══════════════════════════════════════════════════════════════
-// TEST MODULE TYPES
-// ══════════════════════════════════════════════════════════════
-
-// CEFR darajalar
 export type CefrLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 
 export const CEFR_LEVELS: CefrLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
-// ─── TEST (asosiy ma'lumotlar) ─────────────────────────────────
-
-export interface Test {
-  id: number;
-  title: string;
-  description: string | null;
-  cefr_level: CefrLevel;
-  passing_score: number; // 0-100 foiz
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+// ═══════════════════════════════════════════════════════════
+// TestOption — Javob varianti
+// ═══════════════════════════════════════════════════════════
+export interface TestOption {
+  id?: number;
+  text: string;
+  is_correct: boolean;
+  order?: number;
 }
 
-// Test yaratish payload
-export interface TestCreate {
-  title: string;
-  description?: string | null;
-  cefr_level: CefrLevel;
-  passing_score?: number; // default: 60
-  is_active?: boolean; // default: true
-}
-
-// Test yangilash payload
-export interface TestUpdate {
-  title?: string;
-  description?: string | null;
-  cefr_level?: CefrLevel;
-  passing_score?: number;
-  is_active?: boolean;
-}
-
-// ─── TEST QUESTION (savol) ─────────────────────────────────────
-
+// ═══════════════════════════════════════════════════════════
+// TestQuestion — Alohida savol (test ichidagi)
+// ═══════════════════════════════════════════════════════════
 export interface TestQuestion {
   id: number;
   test_id: number;
   question_text: string;
-  options: string[]; // ["variant1", "variant2", "variant3", "variant4"]
-  correct_option_index: number; // 0, 1, 2, 3
-  explanation: string | null;
-  order_index: number;
-  created_at: string;
+  options: string[];
+  correct_option_index: number;
+  explanation?: string | null;
+  order_index?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
-// Savol yaratish payload
+// ═══════════════════════════════════════════════════════════
+// Test — To'liq test (title, description, questions bilan)
+// ═══════════════════════════════════════════════════════════
+export interface Test {
+  id: number;
+  title: string;
+  description?: string | null;
+  cefr_level: CefrLevel;
+  passing_score: number;
+  time_limit_sec?: number;
+  is_active: boolean;
+  is_published?: boolean;
+  questions?: TestQuestion[];
+  created_at: string;
+  updated_at?: string;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Payloads — API so'rovlari uchun
+// ═══════════════════════════════════════════════════════════
+export interface TestCreate {
+  title: string;
+  description?: string | null;
+  cefr_level: CefrLevel;
+  passing_score: number;
+  is_active: boolean;
+}
+
+export interface TestUpdate {
+  title: string;
+  description?: string | null;
+  cefr_level: CefrLevel;
+  passing_score: number;
+  is_active: boolean;
+}
+
 export interface QuestionCreate {
   question_text: string;
-  options: string[]; // Kamida 2 ta, maksimal 10 ta variant
-  correct_option_index: number; // 0-based index
+  options: string[];
+  correct_option_index: number;
   explanation?: string | null;
   order_index?: number;
 }
 
-// Savol yangilash payload
 export interface QuestionUpdate {
-  question_text?: string;
-  options?: string[];
-  correct_option_index?: number;
+  question_text: string;
+  options: string[];
+  correct_option_index: number;
   explanation?: string | null;
-  order_index?: number;
 }
 
-// ─── TEST WITH QUESTIONS (batafsil) ────────────────────────────
-
-export interface TestWithQuestions extends Test {
-  questions: TestQuestion[];
-}
-
-// ─── API RESPONSE TYPES ────────────────────────────────────────
-
-export interface ApiErrorResponse {
-  detail: string;
-}
-
-export interface TestListResponse {
-  tests: Test[];
-  total: number;
-}
-
-// ─── FORM STATE (frontend uchun) ───────────────────────────────
-
+// ═══════════════════════════════════════════════════════════
+// Form States — Komponentlar uchun
+// ═══════════════════════════════════════════════════════════
 export interface TestFormState {
   title: string;
   description: string;
@@ -98,6 +89,14 @@ export interface TestFormState {
   is_active: boolean;
 }
 
+export const DEFAULT_TEST_FORM: TestFormState = {
+  title: '',
+  description: '',
+  cefr_level: 'A1',
+  passing_score: 70,
+  is_active: true,
+};
+
 export interface QuestionFormState {
   question_text: string;
   options: string[];
@@ -105,17 +104,23 @@ export interface QuestionFormState {
   explanation: string;
 }
 
-export const DEFAULT_TEST_FORM: TestFormState = {
-  title: '',
-  description: '',
-  cefr_level: 'A1',
-  passing_score: 60,
-  is_active: true,
-};
-
 export const DEFAULT_QUESTION_FORM: QuestionFormState = {
   question_text: '',
-  options: ['', '', '', ''],
+  options: ['', ''],
   correct_option_index: 0,
   explanation: '',
 };
+
+// ═══════════════════════════════════════════════════════════
+// API Response types
+// ═══════════════════════════════════════════════════════════
+export interface TestWithQuestions extends Test {
+  questions: TestQuestion[];
+}
+
+export interface TestListResponse {
+  items: Test[];
+  total: number;
+  page?: number;
+  per_page?: number;
+}

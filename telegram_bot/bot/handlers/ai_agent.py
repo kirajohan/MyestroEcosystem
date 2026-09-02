@@ -2,6 +2,7 @@ from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError, Telegra
 import asyncio
 import time
 import logging
+import random  # ✨ YANGI: Tabiiy typing effekti uchun qo'shildi
 from typing import Optional
 from aiogram import Router, F
 from aiogram.types import Message
@@ -109,6 +110,8 @@ async def _safe_edit_text(
             return True
         
         except TelegramBadRequest:
+            # HTML tag yarim ochiq bo'lib qolsa, Telegram xato beradi. 
+            # Keyingi harfda tag yopiladi, shuning uchun bu xatoni e'tiborsiz qoldiramiz.
             return True
         
         except TelegramRetryAfter as e:
@@ -141,7 +144,7 @@ async def _answer_with_memory(
     system_prompt: Optional[str],
     user_prompt: str,
 ) -> str:
-    """Send thinking placeholder, query AI with memory system, and edit message with formatted HTML response."""
+    """Send thinking placeholder, query AI with memory system, and edit message with REALISTIC streaming effect (5-10 chars)."""
     think_text = get_text("ai.thinking", lang)
     sent = await message.answer(think_text)
 
@@ -174,25 +177,35 @@ async def _answer_with_memory(
         footer = f"\n\n<i>Model: {model_used} | Time: {time_ms}ms</i>"
         full_response = header + response_text + footer
 
-        chunk_size = 50
+        # ✨ HAQIQIY TYPING EFFEKTI (5-10 ta harf)
         current_text = ""
         last_edit = 0.0
+        i = 0
+        full_len = len(full_response)
         
-        for i in range(0, len(full_response), chunk_size):
-            current_text = full_response[:i + chunk_size]
+        while i < full_len:
+            # 5 dan 10 gacha tasodifiy belgi olish (tabiiy yozish ritmini beradi)
+            chunk_length = random.randint(5, 10)
+            current_text += full_response[i : i + chunk_length]
+            i += chunk_length
+            
             if len(current_text) > MAX_TEXT_LENGTH:
                 current_text = current_text[:MAX_TEXT_LENGTH]
             
+            # Telegram API limitiga tushmaslik uchun kamida 0.05 soniya kutish
             now = time.monotonic()
-            if now - last_edit >= 0.1:
+            if now - last_edit >= 0.05:
                 await _safe_edit_text(sent, current_text, parse_mode="HTML", retry_count=1)
                 last_edit = now
             
-            await asyncio.sleep(0.05)
+            # Har bir qadamda 0.01 dan 0.03 soniyagacha tasodifiy kutish (inson/AI ritmi)
+            await asyncio.sleep(random.uniform(0.01, 0.03))
 
+        # Yakuniy to'liq matnni yuborish (agar xabar juda uzun bo'lsa, bo'laklarga bo'lamiz)
         if len(full_response) > MAX_TEXT_LENGTH:
-            success = await _safe_edit_text(sent, full_response[:MAX_TEXT_LENGTH], parse_mode="HTML", retry_count=1)
-            if not success:
+            try:
+                await sent.edit_text(full_response[:MAX_TEXT_LENGTH], parse_mode="HTML")
+            except Exception:
                 await message.answer(full_response[:MAX_TEXT_LENGTH], parse_mode="HTML")
             
             remaining = full_response[MAX_TEXT_LENGTH:]
@@ -201,8 +214,9 @@ async def _answer_with_memory(
                 await message.answer(chunk, parse_mode="HTML")
                 await asyncio.sleep(0.5)
         else:
-            success = await _safe_edit_text(sent, full_response, parse_mode="HTML", retry_count=1)
-            if not success:
+            try:
+                await sent.edit_text(full_response, parse_mode="HTML")
+            except Exception:
                 await message.answer(full_response, parse_mode="HTML")
 
         return response_text

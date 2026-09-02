@@ -138,6 +138,8 @@ export default function ItemEditPage() {
 
       const payload = {
         ...formData,
+        audio_file_id: formData.audio_url,  // audio_url o'rniga audio_file_id
+        audio_url: null,  // Eski maydonni tozalash
         options: options.filter((o) => o.text.trim()),
         answer_key: { correct_option_ids: correctIds },
       };

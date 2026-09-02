@@ -1,19 +1,13 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { QueryProvider } from "@/providers/QueryProvider";
-import { AuthProvider } from "@/context/AuthContext";
-import { AuthGuard } from "@/components/AuthGuard";
-import { Toaster } from "sonner";
+import type { Metadata } from 'next';
+import './globals.css';
+import { QueryProvider } from '@/providers/QueryProvider';
+import { AuthProvider } from '@/context/AuthContext';
+import { Toaster } from 'sonner';
 
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Myestro Admin",
-  description: "Admin Panel for Myestro AI Learning Platform",
-   icons: {
-    icon: '/favicon.ico', // yoki '/icon.png'
-  },
+  title: 'Myestro Admin Panel',
+  description: 'Myestro platformasi boshqaruv paneli',
 };
 
 export default function RootLayout({
@@ -22,16 +16,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <QueryProvider>
-          <AuthProvider>
-            <AuthGuard>
-              {children}
-            </AuthGuard>
-            <Toaster position="bottom-right" />
-          </AuthProvider>
-        </QueryProvider>
+    <html lang="uz">
+      <body >
+        <AuthProvider>
+          <QueryProvider>
+            {children}
+            <Toaster position="top-right" richColors />
+          </QueryProvider>
+        </AuthProvider>
       </body>
     </html>
   );

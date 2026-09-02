@@ -1,16 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',          // ← MUHIM: Docker uchun
+  output: 'standalone',
   reactStrictMode: true,
+  
+  // Image optimization'ni o'chirish (sharp kerak emas)
   images: {
-    remotePatterns: [
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '8002',
-        pathname: '/media/**',
-      },
-    ],
+    unoptimized: true,
   },
 };
 
