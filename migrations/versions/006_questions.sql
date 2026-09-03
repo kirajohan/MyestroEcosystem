@@ -38,7 +38,7 @@ ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIM
 -- Mavjud yozuvlar uchun xavfsizlikni ta'minlash (DEFAULT ishlamagan taqdirda)
 UPDATE test_questions SET question_type = 'multiple_choice' WHERE question_type IS NULL;
 UPDATE test_questions SET options = '[]'::jsonb WHERE options IS NULL;
-UPDATE test_questions SET correct_answer = '' WHERE correct_answer IS NULL;
+UPDATE test_questions SET corre ct_answer = '' WHERE correct_answer IS NULL;
 UPDATE test_questions SET points = 1 WHERE points IS NULL;
 UPDATE test_questions SET difficulty = 'medium' WHERE difficulty IS NULL;
 UPDATE test_questions SET order_index = 0 WHERE order_index IS NULL;

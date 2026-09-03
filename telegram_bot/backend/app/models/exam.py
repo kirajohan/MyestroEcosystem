@@ -40,7 +40,9 @@ class ExamBlock(Base):
     order = Column(Integer, nullable=False)
     time_limit_sec = Column(Integer, nullable=False)
     config = Column(JSONB, nullable=True)
-    
+    passage_text = Column(Text, nullable=True)
+    audio_url = Column(String(500), nullable=True)
+    audio_duration_sec = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useCallback, useEffect, useState, FormEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import AudioUpload from "@/app/exam/components/AudioUpload";
@@ -58,7 +58,7 @@ export default function ItemEditPage() {
     { text: "", is_correct: false, order: 4 },
   ]);
 
-  const loadItem = async () => {
+  const loadItem = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(
@@ -88,11 +88,11 @@ export default function ItemEditPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, blockId, itemId]);
 
   useEffect(() => {
     if (itemId && token) loadItem();
-  }, [itemId, token]);
+  }, [itemId, token, loadItem]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     const { name, value, type } = e.target;

@@ -143,6 +143,22 @@
   }
 }
 
+/* ═══ Reading custom neon scrollbar ═══ */
+.reading-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.reading-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.reading-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #f97316, #f43f5e);
+  border-radius: 999px;
+}
+.reading-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #f97316 transparent;
+}
+
 /* ═══════════════════════════════════════════════════════════
    ANIMATIONS
    ═══════════════════════════════════════════════════════════ */

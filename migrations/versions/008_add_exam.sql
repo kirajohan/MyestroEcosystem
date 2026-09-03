@@ -1,0 +1,3 @@
+ALTER TABLE exam_blocks ADD COLUMN IF NOT EXISTS passage_text TEXT;
+ALTER TABLE exam_blocks ADD COLUMN IF NOT EXISTS audio_url VARCHAR(500);
+ALTER TABLE exam_blocks ADD COLUMN IF NOT EXISTS audio_duration_sec INTEGER;

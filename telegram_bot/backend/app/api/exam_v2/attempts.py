@@ -19,7 +19,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.session_deps import get_current_user_from_session
 from app.database import get_async_db
-from app.models.exam import ExamAttempt, ExamAttemptBlock, ExamBlock, ExamItem
+from app.models.exam import ExamAttempt, ExamAttemptBlock, ExamBlock, ExamItem, ExamAnswer
 from app.models.user import User
 
 router = APIRouter()
@@ -269,6 +269,85 @@ async def get_attempt_block(
         "block_type": block.block_type,
         "title": block.title,
         "instructions": block.instructions,
+        "passage_text": block.passage_text,       # ← YANGI
+        "audio_url": block.audio_url,             # ← YANGI
         "time_limit_sec": block.time_limit_sec,
         "items": items_response,
     }
+
+@router.post("/{attempt_id}/answers", summary="Javoblarni saqlash (autosave)")
+async def save_answers(
+    attempt_id: int,
+    payload: dict,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_user_from_session),
+):
+    """
+    Javoblarni saqlaydi (autosave uchun).
+    
+    Payload formati:
+    {
+        "answers": [
+            {"item_id": 1, "selected_options": [5, 6]},  // Reading/Listening
+            {"item_id": 2, "text_answer": "My essay..."}  // Writing
+        ]
+    }
+    """
+    attempt = await get_user_attempt(attempt_id, current_user.id, db)
+    check_deadline(attempt)
+
+    if attempt.status not in ["in_progress", "created"]:
+        raise HTTPException(status_code=400, detail="Attempt faol emas")
+
+    answers_data = payload.get("answers", [])
+    saved_count = 0
+
+    for ans in answers_data:
+        item_id = ans.get("item_id")
+        selected_options = ans.get("selected_options")
+        text_answer = ans.get("text_answer")
+
+        if not item_id:
+            continue
+
+        # Item mavjudligini va shu attempt'ga tegishli ekanligini tekshirish
+        item_stmt = (
+            select(ExamItem)
+            .join(ExamBlock, ExamBlock.id == ExamItem.block_id)
+            .where(
+                ExamItem.id == item_id,
+                ExamBlock.exam_id == attempt.exam_id,
+            )
+        )
+        item_result = await db.execute(item_stmt)
+        item = item_result.scalar_one_or_none()
+
+        if not item:
+            continue
+
+        # Answer topish yoki yaratish
+        answer_stmt = select(ExamAnswer).where(
+            ExamAnswer.attempt_id == attempt_id,
+            ExamAnswer.item_id == item_id,
+        )
+        answer_result = await db.execute(answer_stmt)
+        answer = answer_result.scalar_one_or_none()
+
+        if not answer:
+            answer = ExamAnswer(
+                attempt_id=attempt_id,
+                item_id=item_id,
+            )
+            db.add(answer)
+
+        # Javobni yangilash
+        if selected_options is not None:
+            answer.selected_options = selected_options
+        if text_answer is not None:
+            answer.text_answer = text_answer
+
+        saved_count += 1
+
+    await db.commit()
+
+    return {"saved": saved_count, "status": "ok"}

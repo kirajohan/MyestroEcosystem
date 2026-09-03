@@ -219,6 +219,9 @@ async def list_exam_blocks(
             "title": b.title,
             "description": b.description,
             "instructions": b.instructions,
+            "passage_text": b.passage_text,       # ← YANGI
+            "audio_url": b.audio_url,             # ← YANGI
+            "audio_duration_sec": b.audio_duration_sec,  # ← YANGI
             "order": b.order,
             "time_limit_sec": b.time_limit_sec,
             "config": b.config,
@@ -287,7 +290,6 @@ async def list_block_items(
         for item in items
     ]
 
-
 @router.post(
     "/blocks/{block_id}/items",
     status_code=status.HTTP_201_CREATED,
@@ -299,8 +301,8 @@ async def create_item(
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_admin_user),
 ):
-    """Block ichiga yangi item yaratadi."""
-    from app.models.exam import ExamBlock, ExamItem
+    """Block ichiga yangi item yaratadi (options bilan birga)."""
+    from app.models.exam import ExamBlock, ExamItem, ExamOption
     
     # Block mavjudligini tekshirish
     block_stmt = select(ExamBlock).where(ExamBlock.id == block_id)
@@ -327,6 +329,7 @@ async def create_item(
     if not item_type:
         item_type = f"{block.block_type}_question" if block.block_type in ["listening", "reading"] else f"{block.block_type}_task"
     
+    # Item yaratish
     item = ExamItem(
         block_id=block_id,
         item_type=item_type,
@@ -349,6 +352,25 @@ async def create_item(
     )
     
     db.add(item)
+    await db.flush()  # item.id olish uchun
+    
+    # ✅ YANGI: Options'larni yaratish
+    options_data = payload.get("options", [])
+    created_options = []
+    
+    for idx, opt_data in enumerate(options_data):
+        if not opt_data.get("text", "").strip():
+            continue  # Bo'sh variantlarni o'tkazib yuborish
+        
+        option = ExamOption(
+            item_id=item.id,
+            text=opt_data["text"],
+            is_correct=opt_data.get("is_correct", False),
+            order=opt_data.get("order", idx + 1),
+        )
+        db.add(option)
+        created_options.append(option)
+    
     await db.commit()
     await db.refresh(item)
     
@@ -358,8 +380,8 @@ async def create_item(
         "item_type": item.item_type,
         "title": item.title,
         "order": item.order,
+        "options_count": len(created_options),
     }
-
 
 @router.put(
     "/items/{item_id}",
@@ -371,8 +393,8 @@ async def update_item(
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_admin_user),
 ):
-    """Savol ma'lumotlarini yangilaydi."""
-    from app.models.exam import ExamItem
+    """Savol ma'lumotlarini yangilaydi (options bilan birga)."""
+    from app.models.exam import ExamItem, ExamOption
     
     stmt = select(ExamItem).where(ExamItem.id == item_id)
     result = await db.execute(stmt)
@@ -381,7 +403,7 @@ async def update_item(
     if not item:
         raise HTTPException(status_code=404, detail="Savol topilmadi")
     
-    # Yangilanishi mumkin bo'lgan maydonlar
+    # Item maydonlarini yangilash
     updatable = [
         "title", "instruction", "question_text", "passage_text",
         "audio_url", "audio_duration_sec", "transcript_text",
@@ -396,6 +418,30 @@ async def update_item(
     if "item_type" in payload:
         it = payload["item_type"]
         item.item_type = it.value if hasattr(it, "value") else it
+    
+    # ✅ YANGI: Options'larni yangilash
+    if "options" in payload:
+        # Eski options'larni o'chirish
+        old_opts_stmt = select(ExamOption).where(ExamOption.item_id == item_id)
+        old_opts_result = await db.execute(old_opts_stmt)
+        for old_opt in old_opts_result.scalars().all():
+            await db.delete(old_opt)
+        
+        await db.flush()
+        
+        # Yangi options'larni yaratish
+        options_data = payload.get("options", [])
+        for idx, opt_data in enumerate(options_data):
+            if not opt_data.get("text", "").strip():
+                continue
+            
+            option = ExamOption(
+                item_id=item_id,
+                text=opt_data["text"],
+                is_correct=opt_data.get("is_correct", False),
+                order=opt_data.get("order", idx + 1),
+            )
+            db.add(option)
     
     await db.commit()
     await db.refresh(item)
@@ -587,10 +633,13 @@ async def create_block(
     
     block = ExamBlock(
         exam_id=exam_id,
-        block_type=block_type or exam.exam_type,  # default: exam turi
+        block_type=block_type or exam.exam_type,
         title=payload.get("title", f"Block {next_order}"),
         description=payload.get("description"),
         instructions=payload.get("instructions"),
+        passage_text=payload.get("passage_text"),       # ← YANGI
+        audio_url=payload.get("audio_url"),             # ← YANGI
+        audio_duration_sec=payload.get("audio_duration_sec"),  # ← YANGI
         order=payload.get("order", next_order),
         time_limit_sec=payload.get("time_limit_sec", 0),
         config=payload.get("config"),
@@ -628,7 +677,11 @@ async def update_block(
         raise HTTPException(status_code=404, detail="Block topilmadi")
     
     # Yangilanishi mumkin bo'lgan maydonlar
-    updatable = ["title", "description", "instructions", "order", "time_limit_sec", "config"]
+    updatable = [
+        "title", "description", "instructions",
+        "passage_text", "audio_url", "audio_duration_sec",  # ← YANGI
+        "order", "time_limit_sec", "config"
+    ]   
     for field in updatable:
         if field in payload:
             setattr(block, field, payload[field])

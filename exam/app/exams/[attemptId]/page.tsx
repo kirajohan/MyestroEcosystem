@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { motion } from "framer-motion";
 import { API_URL } from "@/lib/api";
 import AudioPlayer from "@/components/AudioPlayer";
+import QuestionCard from "@/components/exam/QuestionCard";
+import ReadingPassage from "@/components/exam/reading/ReadingPassage";
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -33,6 +36,8 @@ interface BlockData {
   block_type: string;
   title: string;
   instructions?: string;
+  passage_text?: string;
+  audio_url?: string;
   time_limit_sec: number;
   items: Item[];
   loaded: boolean;
@@ -64,7 +69,7 @@ export default function ExamRoomPage() {
   const params = useParams();
   const attemptId = Number(params.attemptId);
 
-  // ── State ──────────────────────────────────────────────
+  // ── Asosiy state ──────────────────────────────────────
   const [attempt, setAttempt] = useState<AttemptInfo | null>(null);
   const [blocksData, setBlocksData] = useState<Record<number, BlockData>>({});
   const [loading, setLoading] = useState(true);
@@ -74,13 +79,53 @@ export default function ExamRoomPage() {
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
 
-  // Javoblar: { item_id: [option_id, ...] }
+  // Javoblar
   const [answers, setAnswers] = useState<Record<number, number[]>>({});
   const [savingItemId, setSavingItemId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Timer
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  // ── Split-pane resizer (Reading uchun) ────────────────
+  const [leftPct, setLeftPct] = useState(50);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  const startDrag = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    draggingRef.current = true;
+
+    const move = (ev: MouseEvent) => {
+      if (!draggingRef.current) return;
+      const rect = gridRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      setLeftPct(Math.min(70, Math.max(30, pct)));
+    };
+
+    const up = () => {
+      draggingRef.current = false;
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  }, []);
 
   // ── 1. Attempt yuklash ─────────────────────────────────
   useEffect(() => {
@@ -104,11 +149,10 @@ export default function ExamRoomPage() {
       setAttempt(data);
 
       if (data.status === "completed" || data.status === "scoring") {
-        router.push(`/exams/result/${attemptId}`);
+        router.push(`/exams/results/${attemptId}`);
         return;
       }
 
-      // Birinchi block'ni yuklash
       if (data.blocks && data.blocks.length > 0) {
         await loadBlock(data.blocks[0].block_id);
       } else {
@@ -133,7 +177,6 @@ export default function ExamRoomPage() {
       );
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
       const data = await res.json();
 
       setBlocksData((prev) => ({
@@ -143,6 +186,8 @@ export default function ExamRoomPage() {
           block_type: data.block_type,
           title: data.title,
           instructions: data.instructions,
+          passage_text: data.passage_text,
+          audio_url: data.audio_url,
           time_limit_sec: data.time_limit_sec,
           items: data.items || [],
           loaded: true,
@@ -159,7 +204,6 @@ export default function ExamRoomPage() {
       if (!attempt) return;
       const block = attempt.blocks[blockIndex];
       if (!block) return;
-
       setCurrentBlockIndex(blockIndex);
       setCurrentItemIndex(0);
       await loadBlock(block.block_id);
@@ -175,9 +219,7 @@ export default function ExamRoomPage() {
       const deadline = new Date(attempt.deadline!).getTime();
       const now = Date.now();
       const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
-
       setTimeLeft(remaining);
-
       if (remaining <= 0) {
         clearInterval(interval);
         handleSubmit(true);
@@ -220,17 +262,14 @@ export default function ExamRoomPage() {
   // ── 6. Submit ──────────────────────────────────────────
   async function handleSubmit(auto = false) {
     if (!auto && !confirm("Imtihonni yakunlashni xohlaysizmi?")) return;
-
     setSubmitting(true);
     try {
       const res = await fetch(
         `${API_URL}/api/v2/exam/attempts/${attemptId}/submit`,
         { method: "POST", credentials: "include" }
       );
-
       if (!res.ok) throw new Error("Submit qilinmadi");
-
-      router.push(`/exams/result/${attemptId}`);
+      router.push(`/exams/results/${attemptId}`);
     } catch (err) {
       console.error("Submit xatosi:", err);
       alert("Imtihon yakunlanmadi. Qayta urinib ko'ring.");
@@ -238,7 +277,7 @@ export default function ExamRoomPage() {
     }
   }
 
-  // ── 7. Navigatsiya funksiyalari ────────────────────────
+  // ── 7. Navigatsiya ─────────────────────────────────────
   const currentBlock = attempt?.blocks[currentBlockIndex];
   const currentBlockData = currentBlock ? blocksData[currentBlock.block_id] : null;
   const currentItems = currentBlockData?.items || [];
@@ -253,9 +292,7 @@ export default function ExamRoomPage() {
       if (prevBlock) {
         switchToBlock(prevBlockIndex);
         const prevData = blocksData[prevBlock.block_id];
-        if (prevData) {
-          setCurrentItemIndex(prevData.items.length - 1);
-        }
+        if (prevData) setCurrentItemIndex(prevData.items.length - 1);
       }
     }
   };
@@ -272,7 +309,7 @@ export default function ExamRoomPage() {
     currentBlockIndex === (attempt?.blocks.length || 0) - 1 &&
     currentItemIndex === currentItems.length - 1;
 
-  // ── 8. Umumiy javob statistikasi ───────────────────────
+  // ── 8. Umumiy statistika ───────────────────────────────
   const totalItems = useMemo(() => {
     let count = 0;
     for (const block of attempt?.blocks || []) {
@@ -284,49 +321,57 @@ export default function ExamRoomPage() {
 
   const answeredCount = Object.values(answers).filter((a) => a.length > 0).length;
 
-  // ── 9. Timer format ────────────────────────────────────
   function formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   }
 
-  // ── 10. Passage'ni topish ──────────────────────────────
-  const currentPassage = useMemo(() => {
-    if (!currentBlockData) return null;
-    const itemWithPassage = currentBlockData.items.find((i) => i.passage_text);
-    return itemWithPassage?.passage_text || null;
-  }, [currentBlockData]);
-
   // ═══════════════════════════════════════════════════════
-  // RENDER: Loading / Error
+  // RENDER: Loading
   // ═══════════════════════════════════════════════════════
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-          <p className="text-slate-500">Imtihon yuklanmoqda...</p>
-        </div>
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 via-orange-50 to-rose-50">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-orange-200 border-t-orange-600"
+          />
+          <p className="text-slate-600 font-medium">Imtihon yuklanmoqda...</p>
+        </motion.div>
       </main>
     );
   }
 
+  // ═══════════════════════════════════════════════════════
+  // RENDER: Error
+  // ═══════════════════════════════════════════════════════
+
   if (error || !attempt) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="bg-white rounded-xl shadow p-8 text-center max-w-md">
-          <div className="text-5xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Xatolik</h2>
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 via-orange-50 to-rose-50 p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl p-8 text-center max-w-md border border-white/50"
+        >
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Xatolik</h2>
           <p className="text-slate-600 mb-6">{error || "Attempt topilmadi"}</p>
           <button
             onClick={() => router.push("/cabinet")}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-semibold"
+            className="bg-gradient-to-r from-orange-600 to-rose-500 text-white px-6 py-2.5 rounded-lg font-semibold"
           >
             Kabinetga qaytish
           </button>
-        </div>
+        </motion.div>
       </main>
     );
   }
@@ -335,235 +380,292 @@ export default function ExamRoomPage() {
   // RENDER: Main
   // ═══════════════════════════════════════════════════════
 
+  const isListening = currentBlockData?.block_type === "listening";
+  const isReading = currentBlockData?.block_type === "reading";
+  const useSplitPane = isReading && isDesktop;
+
   return (
-    <main className="min-h-screen bg-slate-100 flex flex-col">
-      {/* ── HEADER ─────────────────────────────────────── */}
-      <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <main className="min-h-screen flex flex-col bg-gradient-to-br from-slate-100 via-orange-50 to-rose-50 relative overflow-hidden">
+      {/* Background decorative blobs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-orange-200/30 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-rose-200/30 rounded-full blur-3xl" />
+      </div>
+
+      {/* ═══ HEADER ═══ */}
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">📖</span>
+            <motion.div
+              animate={{ rotate: isListening && currentItem ? [0, 5, -5, 0] : 0 }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-2xl"
+            >
+              {isListening ? "🎧" : isReading ? "📖" : "📝"}
+            </motion.div>
             <div>
               <h1 className="font-bold text-slate-900 text-sm md:text-base">
                 {currentBlockData?.title || "Imtihon"}
               </h1>
               <p className="text-xs text-slate-500">
-                Javob berildi: {answeredCount} / {totalItems || "..."}
+                Javob berildi:{" "}
+                <span className="font-semibold text-emerald-600">{answeredCount}</span> /{" "}
+                {totalItems || "..."}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             {timeLeft !== null && (
-              <div
-                className={`px-3 py-1.5 rounded-lg font-mono text-sm md:text-lg font-bold ${
+              <motion.div
+                animate={timeLeft < 60 ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ duration: 1, repeat: timeLeft < 60 ? Infinity : 0 }}
+                className={`px-4 py-2 rounded-xl font-mono text-sm md:text-lg font-bold backdrop-blur-sm border ${
                   timeLeft < 60
-                    ? "bg-red-100 text-red-700 animate-pulse"
+                    ? "bg-red-100/80 text-red-700 border-red-200"
                     : timeLeft < 300
-                    ? "bg-amber-100 text-amber-700"
-                    : "bg-emerald-100 text-emerald-700"
+                    ? "bg-amber-100/80 text-amber-700 border-amber-200"
+                    : "bg-emerald-100/80 text-emerald-700 border-emerald-200"
                 }`}
               >
                 ⏱️ {formatTime(timeLeft)}
-              </div>
+              </motion.div>
             )}
 
-            <button
+            <motion.button
               onClick={() => handleSubmit()}
               disabled={submitting}
-              className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-sm font-semibold transition-colors ${
+              whileHover={{ scale: submitting ? 1 : 1.05 }}
+              whileTap={{ scale: submitting ? 1 : 0.95 }}
+              className={`px-4 md:px-5 py-2 rounded-xl text-sm font-semibold transition-colors ${
                 submitting
                   ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-gradient-to-r from-orange-600 to-rose-500 hover:shadow-lg text-white"
               }`}
             >
               {submitting ? "..." : "🏁 Yakunlash"}
-            </button>
+            </motion.button>
           </div>
         </div>
       </header>
 
-      {/* ── MAIN CONTENT: 2 ustun ──────────────────────── */}
-      <div className="flex-1 max-w-7xl mx-auto w-full p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* ═══ CHAP USTUN: PASSAGE yoki AUDIO ═══ */}
-        <div className="lg:sticky lg:top-20 lg:self-start">
-          {currentPassage ? (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-h-[calc(100vh-120px)] overflow-y-auto">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                📖 Passage
-              </h3>
-              <p className="text-slate-800 leading-relaxed whitespace-pre-line text-[15px]">
-                {currentPassage}
-              </p>
-            </div>
-          ) : currentItem?.audio_url ? (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <h3 className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                🎧 Audio
-              </h3>
-              <AudioPlayer audioUrl={currentItem.audio_url} />
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center">
-              <div className="text-4xl mb-3">📄</div>
-              <p className="text-slate-400">Bu bo'limda kontent yo'q</p>
-            </div>
-          )}
-        </div>
-
-        {/* ═══ O'NG USTUN: NAVIGATSIYA + SAVOL ═══ */}
-        <div className="space-y-4">
-          {/* ── Navigatsiya paneli ─────────────────────── */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-            <div className="mb-4">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                Bloklar
-              </h4>
+      {/* ═══ MAIN CONTENT ═══ */}
+      <div
+        ref={gridRef}
+        className={`relative z-10 flex-1 max-w-7xl mx-auto w-full p-4 grid grid-cols-1 lg:grid-cols-2 gap-4 ${
+          useSplitPane ? "lg:gap-0" : ""
+        }`}
+        style={
+          useSplitPane
+            ? { gridTemplateColumns: `${leftPct}fr 16px ${100 - leftPct}fr` }
+            : undefined
+        }
+      >
+        {/* ═══ LEFT COLUMN: CONTENT (Passage / Audio) ═══ */}
+        <div className="lg:sticky lg:top-20 lg:self-start space-y-4 min-w-0">
+          {/* Block Tabs */}
+          {attempt.blocks.length > 1 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-sm p-3"
+            >
               <div className="flex flex-wrap gap-2">
                 {attempt.blocks.map((block, idx) => (
-                  <button
+                  <motion.button
                     key={block.block_id}
                     onClick={() => switchToBlock(idx)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`relative px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
                       idx === currentBlockIndex
-                        ? "bg-emerald-600 text-white shadow"
-                        : blocksData[block.block_id]?.loaded
-                        ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white shadow-md"
+                        : "bg-white/50 text-slate-600 hover:bg-white"
                     }`}
                   >
                     {idx === currentBlockIndex ? "● " : "○ "}
                     {block.title}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
-            </div>
+            </motion.div>
+          )}
 
-            <div>
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                Savollar
-              </h4>
-              <div className="flex flex-wrap gap-1.5">
-                {currentItems.map((item, idx) => {
-                  const isAnswered = (answers[item.id] || []).length > 0;
-                  const isCurrent = idx === currentItemIndex;
+          {/* Content Area */}
+          {currentBlockData?.passage_text ? (
+            <ReadingPassage
+              text={currentBlockData.passage_text}
+              title={currentBlockData.title}
+            />
+          ) : currentBlockData?.audio_url ? (
+            <AudioPlayer
+              audioUrl={currentBlockData.audio_url}
+              maxListens={3}
+              title={currentBlockData.title}
+            />
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-xl p-8 text-center"
+            >
+              <div className="text-5xl mb-3">📄</div>
+              <p className="text-slate-500">Bu bo'limda kontent yo'q</p>
+            </motion.div>
+          )}
 
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setCurrentItemIndex(idx)}
-                      className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${
-                        isCurrent
-                          ? "bg-blue-600 text-white ring-2 ring-blue-300 scale-110"
-                          : isAnswered
-                          ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                      }`}
-                    >
-                      {idx + 1}
-                    </button>
-                  );
-                })}
+          {/* Instructions */}
+          {currentBlockData?.instructions && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 backdrop-blur-xl"
+            >
+              <div className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-1">
+                📋 Instructions
               </div>
-            </div>
+              <p className="text-sm text-blue-900">{currentBlockData.instructions}</p>
+            </motion.div>
+          )}
+        </div>
+
+        {/* ═══ SPLIT-PANE DIVIDER (faqat Reading + Desktop) ═══ */}
+        {useSplitPane && (
+          <div
+            onMouseDown={startDrag}
+            className="hidden lg:flex items-center justify-center cursor-col-resize group select-none"
+            title="Ustunlar kengligini sozlash"
+          >
+            <div className="w-1.5 h-28 rounded-full bg-slate-300 group-hover:bg-orange-500 group-active:bg-orange-600 transition-colors" />
           </div>
+        )}
 
-          {/* ── Savol kartochkasi ──────────────────────── */}
-          {currentItem ? (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  Savol {currentItemIndex + 1} / {currentItems.length}
-                </span>
-                {savingItemId === currentItem.id && (
-                  <span className="text-xs text-slate-400 animate-pulse">💾 Saqlanmoqda...</span>
-                )}
-              </div>
+        {/* ═══ RIGHT COLUMN: QUESTIONS ═══ */}
+        <div className="space-y-4 min-w-0">
+          {/* Question Navigation */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-xl p-4"
+          >
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
+              Question Navigator
+            </h4>
+            <div className="flex flex-wrap gap-1.5">
+              {currentItems.map((item, idx) => {
+                const isAnswered = (answers[item.id] || []).length > 0;
+                const isCurrent = idx === currentItemIndex;
 
-              <h3 className="text-lg font-bold text-slate-900 mb-5 leading-snug">
-                {currentItem.question_text || currentItem.title}
-              </h3>
-
-              {currentItem.options.length > 0 ? (
-                <div className="space-y-2.5">
-                  {currentItem.options.map((option, idx) => {
-                    const isSelected = answers[currentItem.id]?.includes(option.id);
-                    const letter = String.fromCharCode(65 + idx);
-
-                    return (
-                      <button
-                        key={option.id}
-                        onClick={() => handleSelectOption(currentItem.id, option.id)}
-                        className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-left ${
-                          isSelected
-                            ? "border-emerald-500 bg-emerald-50 shadow-sm"
-                            : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                        }`}
-                      >
-                        <span
-                          className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors ${
-                            isSelected
-                              ? "bg-emerald-500 text-white"
-                              : "bg-slate-200 text-slate-700"
-                          }`}
-                        >
-                          {letter}
-                        </span>
-                        <span className="flex-1 text-slate-800 text-sm md:text-base">
-                          {option.text}
-                        </span>
-                        {isSelected && <span className="text-emerald-600 font-bold text-lg">✓</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-slate-400">
-                  Bu savolda variantlar yo'q
-                </div>
-              )}
-
-              <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
-                <button
-                  onClick={goToPrevItem}
-                  disabled={currentBlockIndex === 0 && currentItemIndex === 0}
-                  className={`px-5 py-2.5 rounded-lg font-semibold text-sm transition-colors ${
-                    currentBlockIndex === 0 && currentItemIndex === 0
-                      ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                      : "bg-slate-200 hover:bg-slate-300 text-slate-800"
-                  }`}
-                >
-                  ◀ Oldingi
-                </button>
-
-                {isLastItem ? (
-                  <button
-                    onClick={() => handleSubmit()}
-                    disabled={submitting}
-                    className={`px-5 py-2.5 rounded-lg font-semibold text-sm transition-colors ${
-                      submitting
-                        ? "bg-slate-300 text-slate-500"
-                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                return (
+                  <motion.button
+                    key={item.id}
+                    onClick={() => setCurrentItemIndex(idx)}
+                    whileHover={{ scale: 1.1, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`relative w-10 h-10 rounded-xl text-sm font-bold transition-all shadow-sm ${
+                      isCurrent
+                        ? "bg-gradient-to-br from-orange-500 to-rose-500 text-white ring-4 ring-orange-200 scale-110"
+                        : isAnswered
+                        ? "bg-gradient-to-br from-emerald-500 to-teal-500 text-white"
+                        : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
                     }`}
                   >
-                    {submitting ? "Yakunlanmoqda..." : "🏁 Yakunlash"}
-                  </button>
-                ) : (
-                  <button
-                    onClick={goToNextItem}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-colors"
-                  >
-                    Keyingi ▶
-                  </button>
-                )}
-              </div>
+                    {idx + 1}
+                    {isAnswered && !isCurrent && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"
+                      />
+                    )}
+                  </motion.button>
+                );
+              })}
             </div>
+
+            {/* Progress bar */}
+            <div className="mt-4 h-2 bg-slate-100 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
+                animate={{
+                  width: `${(answeredCount / (totalItems || 1)) * 100}%`,
+                }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+          </motion.div>
+
+          {/* Current Question */}
+          {currentItem ? (
+            <QuestionCard
+              item={currentItem}
+              itemIndex={currentItemIndex}
+              totalItems={currentItems.length}
+              selectedOptions={answers[currentItem.id] || []}
+              onSelectOption={handleSelectOption}
+              isSaving={savingItemId === currentItem.id}
+            />
           ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center text-slate-400">
-              {currentBlockData?.loaded ? "Savollar yo'q" : "Yuklanmoqda..."}
-            </div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-xl p-12 text-center"
+            >
+              <div className="text-5xl mb-3">📝</div>
+              <p className="text-slate-500">
+                {currentBlockData?.loaded ? "Savollar yo'q" : "Yuklanmoqda..."}
+              </p>
+            </motion.div>
           )}
+
+          {/* Navigation Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between gap-3"
+          >
+            <motion.button
+              onClick={goToPrevItem}
+              disabled={currentBlockIndex === 0 && currentItemIndex === 0}
+              whileHover={{ scale: currentBlockIndex === 0 && currentItemIndex === 0 ? 1 : 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`flex-1 px-5 py-3 rounded-xl font-semibold text-sm transition-all ${
+                currentBlockIndex === 0 && currentItemIndex === 0
+                  ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  : "bg-white text-slate-800 hover:bg-slate-50 shadow-md border border-slate-200"
+              }`}
+            >
+              ◀ Oldingi
+            </motion.button>
+
+            {isLastItem ? (
+              <motion.button
+                onClick={() => handleSubmit()}
+                disabled={submitting}
+                whileHover={{ scale: submitting ? 1 : 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`flex-1 px-5 py-3 rounded-xl font-semibold text-sm transition-all ${
+                  submitting
+                    ? "bg-slate-300 text-slate-500"
+                    : "bg-gradient-to-r from-orange-600 to-rose-500 text-white shadow-lg hover:shadow-xl"
+                }`}
+              >
+                {submitting ? "Yakunlanmoqda..." : "🏁 Yakunlash"}
+              </motion.button>
+            ) : (
+              <motion.button
+                onClick={goToNextItem}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex-1 px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:shadow-lg text-white rounded-xl font-semibold text-sm shadow-md transition-all"
+              >
+                Keyingi ▶
+              </motion.button>
+            )}
+          </motion.div>
         </div>
       </div>
     </main>
   );
-}   
+}
