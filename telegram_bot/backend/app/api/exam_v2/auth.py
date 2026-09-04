@@ -13,6 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # ✅ Faqat SHU IMPORTLAR o'zgartirildi — hamma narsa app.database dan
 from app.database import get_async_db, get_redis
+from fastapi import APIRouter, HTTPException, Depends, Response
+from pydantic import BaseModel
+from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.database import get_async_db
+from app.services.telegram_auth_service import TelegramAuthService
 
 from app.core.security import verify_password
 from app.core.session_deps import (
@@ -111,6 +117,62 @@ async def login(
         token_type="session",
         user=_user_brief(user),
     )
+
+class TelegramLoginRequest(BaseModel):
+    id: int
+    first_name: str
+    last_name: Optional[str] = None
+    username: Optional[str] = None
+    photo_url: Optional[str] = None
+    auth_date: int
+    hash: str
+
+@router.post("/telegram/login")
+async def telegram_login(
+    response: Response,
+    payload: TelegramLoginRequest,
+    db: AsyncSession = Depends(get_async_db),
+    redis: Redis = Depends(get_redis),
+):
+    """Telegram Login Widget orqali kirish"""
+    
+    # 1. Hash validation
+    data = payload.model_dump()
+    if not TelegramAuthService.verify_telegram_hash(data):
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram autentifikatsiyasi muvaffaqiyatsiz"
+        )
+
+    # 2. User topish/yaratish
+    user = await TelegramAuthService.get_or_create_user(db, data)
+
+    # 3. Session yaratish va cookie o'rnatish
+    token = await session_service.create_session(redis, user.id)
+
+    # HttpOnly cookie o'rnatamiz
+    response.set_cookie(
+        key=SESSION_COOKIE,
+        value=token,
+        httponly=True,
+        secure=False,  # Production: True
+        samesite="lax",
+        max_age=SESSION_TTL_SECONDS,
+        path="/",
+    )
+
+    return {
+        "status": "ok",
+        "user": {
+            "id": user.id,
+            "telegram_id": user.telegram_id,
+            "full_name": user.full_name,
+            "username": user.telegram_username,
+            "avatar_url": user.avatar_url,
+            "cefr_level": user.cefr_level,
+            "role": user.role,
+        },
+    }
 
 
 @router.post("/logout", summary="Chiqish")

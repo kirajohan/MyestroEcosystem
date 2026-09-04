@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 interface ReadingPassageProps {
   text: string;
   title?: string;
+  instruction?: string;  // ← YANGI
+
 }
 
 const HIGHLIGHT_COLORS = [
@@ -14,7 +16,12 @@ const HIGHLIGHT_COLORS = [
   { name: "Purple", value: "rgba(216, 180, 254, 0.55)" },
 ];
 
-export default function ReadingPassage({ text, title = "Passage" }: ReadingPassageProps) {
+export default function ReadingPassage({ 
+  text, 
+  title = "Passage",
+  instruction  // ← YANGI
+}: ReadingPassageProps) {
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const dictRef = useRef<HTMLDivElement>(null);
@@ -208,6 +215,26 @@ export default function ReadingPassage({ text, title = "Passage" }: ReadingPassa
             </button>
           </div>
         </div>
+
+        {/* ── Instructions (passage tepasida) ── */}
+        {instruction && (
+          <div
+            className={`px-5 py-3 border-b text-sm ${
+              focusMode
+                ? "bg-blue-950/40 border-white/10 text-blue-300"
+                : "bg-gradient-to-r from-blue-50 to-indigo-50 border-slate-200/60 text-blue-900"
+            }`}
+          >
+            <div
+              className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${
+                focusMode ? "text-blue-400" : "text-blue-700"
+              }`}
+            >
+              📋 Instructions
+            </div>
+            <p className="leading-relaxed">{instruction}</p>
+          </div>
+        )}
 
         {/* ── Reading progress bar ── */}
         <div className={`h-1 ${focusMode ? "bg-white/10" : "bg-slate-200/60"}`}>

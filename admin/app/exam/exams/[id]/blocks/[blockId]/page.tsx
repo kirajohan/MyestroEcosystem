@@ -21,6 +21,8 @@ interface Item {
   title: string;
   instruction?: string;
   question_text?: string;
+  min_words?: number;
+  max_words?: number;
   max_score: number;
   order: number;
   options: Option[];
@@ -73,7 +75,7 @@ export default function BlockEditPage() {
   const [savingItem, setSavingItem] = useState(false);
   const [error, setError] = useState("");
 
-  // Block form data — passage va audio endi bu yerda!
+  // Block form data
   const [blockForm, setBlockForm] = useState({
     title: "",
     description: "",
@@ -85,16 +87,16 @@ export default function BlockEditPage() {
     time_limit_sec: 600,
   });
 
-  // Item form data — endi passage va audio YO'Q
+  // Item form data — min_words va max_words qo'shildi
   const [itemForm, setItemForm] = useState({
     item_type: "reading_question",
     title: "",
     instruction: "",
     question_text: "",
+    min_words: 80,
+    max_words: 120,
     max_score: 1,
     order: 1,
-    min_words: "",
-    max_words: "" ,
   });
 
   const [itemOptions, setItemOptions] = useState<Option[]>([
@@ -237,6 +239,8 @@ export default function BlockEditPage() {
       title: item.title || "",
       instruction: item.instruction || "",
       question_text: item.question_text || "",
+      min_words: item.min_words || 80,
+      max_words: item.max_words || 120,
       max_score: item.max_score || 1,
       order: item.order || 1,
     });
@@ -263,6 +267,8 @@ export default function BlockEditPage() {
       title: "",
       instruction: "",
       question_text: "",
+      min_words: 80,
+      max_words: 120,
       max_score: 1,
       order: items.length + 1,
     });
@@ -349,6 +355,7 @@ export default function BlockEditPage() {
   const isListening = blockForm.block_type === "listening";
   const isReading = blockForm.block_type === "reading";
   const showOptions = itemForm.item_type === "reading_question" || itemForm.item_type === "listening_question";
+  const isWriting = itemForm.item_type === "writing_task";
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -597,6 +604,57 @@ export default function BlockEditPage() {
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5"
                 />
               </div>
+
+              {/* ═══ WRITING TASK SOZLAMALARI ═══ */}
+              {isWriting && (
+                <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <h3 className="font-semibold mb-3 text-purple-900">✍️ Writing Task Sozlamalari</h3>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">
+                        Min sozlar soni
+                      </label>
+                      <input
+                        type="number"
+                        name="min_words"
+                        value={itemForm.min_words}
+                        onChange={handleItemChange}
+                        min={0}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">
+                        Max sozlar soni
+                      </label>
+                      <input
+                        type="number"
+                        name="max_words"
+                        value={itemForm.max_words}
+                        onChange={handleItemChange}
+                        min={1}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">
+                      Writing topshirigi <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      name="question_text"
+                      value={itemForm.question_text}
+                      onChange={handleItemChange}
+                      required
+                      rows={4}
+                      placeholder="Write an email to your friend about your last holiday. Write 80-120 words."
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Variantlar — faqat reading/listening uchun */}
               {showOptions && (

@@ -26,6 +26,8 @@ interface Item {
   question_text?: string;
   passage_text?: string;
   audio_url?: string;
+  min_words?: number;
+  max_words?: number;
   max_score: number;
   order: number;
   options: Option[];
@@ -60,6 +62,11 @@ interface AttemptInfo {
   blocks: AttemptBlock[];
 }
 
+interface AnswerData {
+  selected_options: number[];
+  text_answer: string;
+}
+
 // ═══════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════
@@ -79,15 +86,15 @@ export default function ExamRoomPage() {
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
 
-  // Javoblar
-  const [answers, setAnswers] = useState<Record<number, number[]>>({});
+  // Javoblar — yangi struktura: { item_id: { selected_options: [], text_answer: "" } }
+  const [answers, setAnswers] = useState<Record<number, AnswerData>>({});
   const [savingItemId, setSavingItemId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Timer
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
-  // ── Split-pane resizer (Reading uchun) ────────────────
+  // ── Split-pane resizer (Reading/Writing uchun) ────────
   const [leftPct, setLeftPct] = useState(50);
   const [isDesktop, setIsDesktop] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -229,15 +236,15 @@ export default function ExamRoomPage() {
     return () => clearInterval(interval);
   }, [attempt?.deadline]);
 
-  // ── 5. Javob tanlash + Autosave ────────────────────────
+  // ── 5. Javob tanlash (Reading/Listening) + Autosave ────
   const handleSelectOption = useCallback(
     async (itemId: number, optionId: number) => {
       setAnswers((prev) => {
-        const current = prev[itemId] || [];
-        const newSelected = current.includes(optionId)
-          ? current.filter((id) => id !== optionId)
-          : [optionId];
-        return { ...prev, [itemId]: newSelected };
+        const current = prev[itemId] || { selected_options: [], text_answer: "" };
+        const newSelected = current.selected_options.includes(optionId)
+          ? current.selected_options.filter((id) => id !== optionId)
+          : [...current.selected_options, optionId];
+        return { ...prev, [itemId]: { ...current, selected_options: newSelected } };
       });
 
       setSavingItemId(itemId);
@@ -259,7 +266,34 @@ export default function ExamRoomPage() {
     [attemptId]
   );
 
-  // ── 6. Submit ──────────────────────────────────────────
+  // ── 6. Writing answer saqlash (autosave) ──────────────
+  const handleSaveText = useCallback(
+    async (itemId: number, text: string) => {
+      setAnswers((prev) => {
+        const current = prev[itemId] || { selected_options: [], text_answer: "" };
+        return { ...prev, [itemId]: { ...current, text_answer: text } };
+      });
+
+      setSavingItemId(itemId);
+      try {
+        await fetch(`${API_URL}/api/v2/exam/attempts/${attemptId}/answers`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            answers: [{ item_id: itemId, text_answer: text }],
+          }),
+        });
+      } catch (err) {
+        console.error("Writing answer saqlanmadi:", err);
+      } finally {
+        setSavingItemId(null);
+      }
+    },
+    [attemptId]
+  );
+
+  // ── 7. Submit ──────────────────────────────────────────
   async function handleSubmit(auto = false) {
     if (!auto && !confirm("Imtihonni yakunlashni xohlaysizmi?")) return;
     setSubmitting(true);
@@ -277,7 +311,7 @@ export default function ExamRoomPage() {
     }
   }
 
-  // ── 7. Navigatsiya ─────────────────────────────────────
+  // ── 8. Navigatsiya ─────────────────────────────────────
   const currentBlock = attempt?.blocks[currentBlockIndex];
   const currentBlockData = currentBlock ? blocksData[currentBlock.block_id] : null;
   const currentItems = currentBlockData?.items || [];
@@ -309,7 +343,7 @@ export default function ExamRoomPage() {
     currentBlockIndex === (attempt?.blocks.length || 0) - 1 &&
     currentItemIndex === currentItems.length - 1;
 
-  // ── 8. Umumiy statistika ───────────────────────────────
+  // ── 9. Umumiy statistika ───────────────────────────────
   const totalItems = useMemo(() => {
     let count = 0;
     for (const block of attempt?.blocks || []) {
@@ -319,7 +353,9 @@ export default function ExamRoomPage() {
     return count;
   }, [attempt, blocksData]);
 
-  const answeredCount = Object.values(answers).filter((a) => a.length > 0).length;
+  const answeredCount = Object.values(answers).filter(
+    (a) => a.selected_options.length > 0 || (a.text_answer && a.text_answer.trim().length > 0)
+  ).length;
 
   function formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);
@@ -382,7 +418,15 @@ export default function ExamRoomPage() {
 
   const isListening = currentBlockData?.block_type === "listening";
   const isReading = currentBlockData?.block_type === "reading";
-  const useSplitPane = isReading && isDesktop;
+  const isWriting = currentBlockData?.block_type === "writing";
+  
+  // ✅ YANGI: Writing uchun ham split-pane yoqiladi
+  const useSplitPane = (isReading || isWriting) && isDesktop;
+
+  // ✅ YANGI: Content mavjudligini tekshirish
+  const hasContent = !!(currentBlockData?.passage_text || currentBlockData?.audio_url);
+  const hasInstructions = !!(currentBlockData?.instructions);
+  const showNavigator = currentItems.length > 1; // ✅ Writing'da 1 ta item bo'lsa navigator yashiriladi
 
   return (
     <main className="min-h-screen flex flex-col bg-gradient-to-br from-slate-100 via-orange-50 to-rose-50 relative overflow-hidden">
@@ -401,7 +445,7 @@ export default function ExamRoomPage() {
               transition={{ duration: 2, repeat: Infinity }}
               className="text-2xl"
             >
-              {isListening ? "🎧" : isReading ? "📖" : "📝"}
+              {isListening ? "🎧" : isReading ? "📖" : isWriting ? "✍️" : "📝"}
             </motion.div>
             <div>
               <h1 className="font-bold text-slate-900 text-sm md:text-base">
@@ -461,7 +505,7 @@ export default function ExamRoomPage() {
             : undefined
         }
       >
-        {/* ═══ LEFT COLUMN: CONTENT (Passage / Audio) ═══ */}
+        {/* ═══ LEFT COLUMN: CONTENT (Passage / Audio / Instructions) ═══ */}
         <div className="lg:sticky lg:top-20 lg:self-start space-y-4 min-w-0">
           {/* Block Tabs */}
           {attempt.blocks.length > 1 && (
@@ -491,11 +535,12 @@ export default function ExamRoomPage() {
             </motion.div>
           )}
 
-          {/* Content Area */}
+          {/* Content Area — ✅ "Kontent yo'q" fallback OLINDI */}
           {currentBlockData?.passage_text ? (
             <ReadingPassage
               text={currentBlockData.passage_text}
               title={currentBlockData.title}
+              instruction={currentBlockData.instructions}
             />
           ) : currentBlockData?.audio_url ? (
             <AudioPlayer
@@ -503,34 +548,35 @@ export default function ExamRoomPage() {
               maxListens={3}
               title={currentBlockData.title}
             />
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-xl p-8 text-center"
-            >
-              <div className="text-5xl mb-3">📄</div>
-              <p className="text-slate-500">Bu bo'limda kontent yo'q</p>
-            </motion.div>
-          )}
+          ) : null}
 
-          {/* Instructions */}
-          {currentBlockData?.instructions && (
+          {/* Instructions — ✅ Faqat content yo'q bo'lsa yoki Writing uchun ko'rsatiladi */}
+          {hasInstructions && (!hasContent || isWriting) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 backdrop-blur-xl"
+              className={`backdrop-blur-xl rounded-2xl border p-6 ${
+                isWriting
+                  ? "bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200"
+                  : "bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200"
+              }`}
             >
-              <div className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-1">
-                📋 Instructions
+              <div className={`text-xs font-bold uppercase tracking-widest mb-3 ${
+                isWriting ? "text-purple-700" : "text-blue-700"
+              }`}>
+                {isWriting ? "✍️ Writing Task" : "📋 Instructions"}
               </div>
-              <p className="text-sm text-blue-900">{currentBlockData.instructions}</p>
+              <p className={`leading-relaxed ${
+                isWriting ? "text-purple-900 text-base" : "text-blue-900 text-sm"
+              }`}>
+                {currentBlockData.instructions}
+              </p>
             </motion.div>
           )}
         </div>
 
-        {/* ═══ SPLIT-PANE DIVIDER (faqat Reading + Desktop) ═══ */}
+        {/* ═══ SPLIT-PANE DIVIDER (Reading + Writing + Desktop) ═══ */}
         {useSplitPane && (
           <div
             onMouseDown={startDrag}
@@ -543,58 +589,64 @@ export default function ExamRoomPage() {
 
         {/* ═══ RIGHT COLUMN: QUESTIONS ═══ */}
         <div className="space-y-4 min-w-0">
-          {/* Question Navigation */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-xl p-4"
-          >
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
-              Question Navigator
-            </h4>
-            <div className="flex flex-wrap gap-1.5">
-              {currentItems.map((item, idx) => {
-                const isAnswered = (answers[item.id] || []).length > 0;
-                const isCurrent = idx === currentItemIndex;
+          {/* Question Navigation — ✅ Faqat 1 tadan ko'p item bo'lsa ko'rinadi */}
+          {showNavigator && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-xl p-4"
+            >
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
+                Question Navigator
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                {currentItems.map((item, idx) => {
+                  const answer = answers[item.id];
+                  const isAnswered = answer && (
+                    answer.selected_options.length > 0 || 
+                    (answer.text_answer && answer.text_answer.trim().length > 0)
+                  );
+                  const isCurrent = idx === currentItemIndex;
 
-                return (
-                  <motion.button
-                    key={item.id}
-                    onClick={() => setCurrentItemIndex(idx)}
-                    whileHover={{ scale: 1.1, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={`relative w-10 h-10 rounded-xl text-sm font-bold transition-all shadow-sm ${
-                      isCurrent
-                        ? "bg-gradient-to-br from-orange-500 to-rose-500 text-white ring-4 ring-orange-200 scale-110"
-                        : isAnswered
-                        ? "bg-gradient-to-br from-emerald-500 to-teal-500 text-white"
-                        : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
-                    }`}
-                  >
-                    {idx + 1}
-                    {isAnswered && !isCurrent && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"
-                      />
-                    )}
-                  </motion.button>
-                );
-              })}
-            </div>
+                  return (
+                    <motion.button
+                      key={item.id}
+                      onClick={() => setCurrentItemIndex(idx)}
+                      whileHover={{ scale: 1.1, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      className={`relative w-10 h-10 rounded-xl text-sm font-bold transition-all shadow-sm ${
+                        isCurrent
+                          ? "bg-gradient-to-br from-orange-500 to-rose-500 text-white ring-4 ring-orange-200 scale-110"
+                          : isAnswered
+                          ? "bg-gradient-to-br from-emerald-500 to-teal-500 text-white"
+                          : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+                      }`}
+                    >
+                      {idx + 1}
+                      {isAnswered && !isCurrent && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"
+                        />
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
 
-            {/* Progress bar */}
-            <div className="mt-4 h-2 bg-slate-100 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
-                animate={{
-                  width: `${(answeredCount / (totalItems || 1)) * 100}%`,
-                }}
-                transition={{ duration: 0.3 }}
-              />
-            </div>
-          </motion.div>
+              {/* Progress bar */}
+              <div className="mt-4 h-2 bg-slate-100 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
+                  animate={{
+                    width: `${(answeredCount / (totalItems || 1)) * 100}%`,
+                  }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+            </motion.div>
+          )}
 
           {/* Current Question */}
           {currentItem ? (
@@ -602,8 +654,10 @@ export default function ExamRoomPage() {
               item={currentItem}
               itemIndex={currentItemIndex}
               totalItems={currentItems.length}
-              selectedOptions={answers[currentItem.id] || []}
+              selectedOptions={answers[currentItem.id]?.selected_options || []}
               onSelectOption={handleSelectOption}
+              onSaveText={handleSaveText}
+              textAnswer={answers[currentItem.id]?.text_answer || ""}
               isSaving={savingItemId === currentItem.id}
             />
           ) : (

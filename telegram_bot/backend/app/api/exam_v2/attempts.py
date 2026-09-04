@@ -11,7 +11,7 @@ from sqlalchemy import func
 from app.models.exam import Exam
 
 from datetime import datetime, timezone
-
+from app.services.exam_ai_service import evaluate_writing
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +21,8 @@ from app.core.session_deps import get_current_user_from_session
 from app.database import get_async_db
 from app.models.exam import ExamAttempt, ExamAttemptBlock, ExamBlock, ExamItem, ExamAnswer
 from app.models.user import User
-
+import logging
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -349,5 +350,61 @@ async def save_answers(
         saved_count += 1
 
     await db.commit()
+
+    # ✅ YANGI: Writing javoblari uchun AI evaluation trigger
+    for ans in answers_data:
+        item_id = ans.get("item_id")
+        text_answer = ans.get("text_answer")
+
+        if not text_answer or not text_answer.strip():
+            continue
+
+        # Item turini tekshirish
+        item_stmt = select(ExamItem).where(ExamItem.id == item_id)
+        item_result = await db.execute(item_stmt)
+        item = item_result.scalar_one_or_none()
+
+        if not item or item.item_type != "writing_task":
+            continue
+
+        # Faqat yetarli uzunlikdagi matnlarni baholash (min 20 so'z)
+        word_count = len(text_answer.strip().split())
+        if word_count < 20:
+            continue
+
+        # Avvalgi AI natijani o'chirish (qayta yozilganda)
+        answer_stmt = select(ExamAnswer).where(
+            ExamAnswer.attempt_id == attempt_id,
+            ExamAnswer.item_id == item_id,
+        )
+        answer_result = await db.execute(answer_stmt)
+        answer = answer_result.scalar_one_or_none()
+
+        if not answer:
+            continue
+
+        # AI evaluation chaqirish
+        logger.info(f"🤖 Evaluating writing for item {item_id}, attempt {attempt_id}")
+
+        ai_result = await evaluate_writing(
+            task_instruction=item.question_text or item.title or "",
+            student_text=text_answer,
+            cefr_level="B1",  # TODO: exam'dan olish kerak
+            min_words=item.min_words,
+            max_words=item.max_words,
+        )
+
+        # Natijani saqlash
+        if "error" not in ai_result:
+            answer.ai_score = ai_result.get("overall_score", 0)
+            answer.final_score = ai_result.get("overall_score", 0)
+            answer.ai_status = "completed"
+            answer.feedback = ai_result
+        else:
+            answer.ai_status = "error"
+            answer.feedback = {"error": ai_result.get("error")}
+
+        await db.commit()
+        logger.info(f"✅ AI evaluation saved for item {item_id}: score={answer.ai_score}")
 
     return {"saved": saved_count, "status": "ok"}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence, useScroll, useTransform, useInView, MotionValue } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform, useInView, MotionValue, useSpring } from "framer-motion";
 import { useTheme } from "@/app/providers";
 
 // ═══════════════════════════════════════════════════════════
@@ -58,58 +58,165 @@ export function KineticHero() {
 // SPOTLIGHT CARD — Cursor tracking gradient
 // ═══════════════════════════════════════════════════════════
 
-interface SpotlightCardProps {
-  children: React.ReactNode;
-  className?: string;
-  variant?: "dark" | "light" | "auto";
-}
+// exam/components/landing/Sections.tsx ichida yoki alohida faylda
 
-export function SpotlightCard({
-  children,
-  className = "",
-  variant = "dark",
-}: SpotlightCardProps) {
-  const [pos, setPos] = useState({ x: 0, y: 0 });
+
+export function SpotlightCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [hover, setHover] = useState(false);
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  const handleMouse = (e: React.MouseEvent) => {
+
+  // 3D Tilt Physics (Spring fizikasi bilan)
+  const rotateX = useSpring(0, { stiffness: 300, damping: 30 });
+  const rotateY = useSpring(0, { stiffness: 300, damping: 30 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!ref.current) return;
     const rect = ref.current.getBoundingClientRect();
-    setPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    setMousePosition({ x, y });
+
+    // 3D Tilt hisoblash
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    rotateX.set(((y - centerY) / centerY) * -10); // -10 dan 10 gacha
+    rotateY.set(((x - centerX) / centerX) * 10);
   };
 
-  // Variant bo'yicha fon rangini aniqlash
-  const bgClass =
-    variant === "auto"
-      ? isDark
-        ? "bg-slate-900"
-        : "bg-white border border-slate-200"
-      : variant === "dark"
-      ? "bg-slate-900"
-      : "bg-white border border-slate-200";
+  const handleMouseLeave = () => {
+    rotateX.set(0);
+    rotateY.set(0);
+  };
 
   return (
     <motion.div
       ref={ref}
-      onMouseMove={handleMouse}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      className={`relative overflow-hidden rounded-2xl ${bgClass} ${className}`}
-      whileHover={{ scale: 1.02 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        rotateX,
+        rotateY,
+        transformStyle: "preserve-3d",
+      }}
+      className={`relative group rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden ${className}`}
     >
+      {/* 1. Spotlight & Radial Glow */}
       <div
-        className="pointer-events-none absolute inset-0 transition-opacity duration-300"
+        className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
         style={{
-          opacity: hover ? 1 : 0,
-          background: `radial-gradient(600px circle at ${pos.x}px ${pos.y}px, rgba(251,146,60,0.15), transparent 40%)`,
+          background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.1), transparent 40%)`,
         }}
       />
-      <div className="relative z-10 h-full">{children}</div>
-      <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10" />
+
+      {/* 5. Dynamic Border Gradient Shift (Ichki chegara) */}
+      <div className="absolute inset-0 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors duration-300 pointer-events-none" />
+
+      {/* Content Container (3D effect uchun z-index) */}
+      <div className="relative z-10 h-full p-8 flex flex-col justify-between" style={{ transform: "translateZ(20px)" }}>
+        {children}
+      </div>
+    </motion.div>
+  );
+}
+
+
+
+// 1. HorizontalRoulette - Harakatlanuvchi konteyner
+export function HorizontalRoulette({ items }: { items: any[] }) {
+  const targetRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+    offset: ["start end", "end start"],
+  });
+
+  // Scroll qilganda chapdan o'ngga siljiydi
+  const x = useTransform(scrollYProgress, [0, 1], ["5%", "-60%"]);
+
+  return (
+    <div ref={targetRef} className="relative h-[500px] overflow-hidden flex items-center">
+      <motion.div style={{ x }} className="flex gap-8 pl-[50vw] absolute left-0">
+        {items.map((item, idx) => (
+          <RouletteCard key={idx} item={item} />
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
+// 2. RouletteCard + SpotlightCard Effektlari (Birlashtirilgan)
+// exam/components/landing/Sections.tsx ichidagi RouletteCard
+
+function RouletteCard({ item }: { item: any }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  // 3D Tilt Physics
+  const rotateX = useSpring(0, { stiffness: 300, damping: 30 });
+  const rotateY = useSpring(0, { stiffness: 300, damping: 30 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setMousePosition({ x, y });
+
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    rotateX.set(((y - centerY) / centerY) * -10);
+    rotateY.set(((x - centerX) / centerX) * 10);
+  };
+
+  const handleMouseLeave = () => {
+    rotateX.set(0);
+    rotateY.set(0);
+  };
+
+  return (
+    <motion.div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+      className="relative w-[320px] h-[420px] rounded-3xl bg-slate-900 border border-slate-800 p-8 flex flex-col justify-between shrink-0 group overflow-hidden transition-colors hover:border-white/30"
+    >
+      {/* 1. Sekin Animatsiyali Gradient Background */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${item.color} animate-slow-gradient opacity-20`} />
+      
+      {/* Spotlight Effect: Sichqonchaga ergashuvchi nur */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl z-0"
+        style={{
+          background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.15), transparent 40%)`,
+        }}
+      />
+
+      {/* Content (3D chuqurlik uchun translateZ) */}
+      <div className="relative z-10 h-full flex flex-col justify-between" style={{ transform: "translateZ(20px)" }}>
+        
+        {/* 2. Harakatlanuvchi Ikonka (Suzish effekti) */}
+        <motion.div 
+          animate={{ y: [-5, 5, -5] }}
+          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }} /* 4 soniya (sekinroq) */
+          className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center text-3xl shadow-lg mb-6 relative`}
+        >
+          {item.icon}
+          {/* Aura zarrachalari ham sekin pulsatsiya qiladi */}
+          <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${item.color} blur-xl opacity-40 animate-slow-gradient`} />
+        </motion.div>
+
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-3">{item.title}</h3>
+          <p className="text-slate-400 leading-relaxed text-sm">{item.desc}</p>
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-slate-800 flex items-center justify-between">
+          <span className="text-xs text-slate-500 uppercase tracking-wider">Feature</span>
+          <span className="text-emerald-400 text-sm font-semibold">Batafsil →</span>
+        </div>
+      </div>
     </motion.div>
   );
 }
@@ -657,3 +764,4 @@ export function AudioWaveform({ barCount = 20 }: AudioWaveformProps) {
     </div>
   );
 }
+

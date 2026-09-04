@@ -8,8 +8,8 @@ import Header from "@/components/landing/Header";
 import Footer from "@/components/landing/Footer";
 import FAQ from "@/components/landing/FAQ";
 import {
+  HorizontalRoulette,
   KineticHero,
-  SpotlightCard,
   GlowButton,
   AnimatedCounter,
   FloatingWords,
@@ -21,11 +21,53 @@ import {
   AudioWaveform,
 } from "@/components/landing/Sections";
 
+
+
 const FEATURES = [
-  { icon: "🎧", title: "Listening", desc: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.", color: "from-blue-500 to-cyan-500", span: "md:col-span-2 md:row-span-2" },
-  { icon: "📖", title: "Reading", desc: "Sed do eiusmod tempor incididunt ut labore.", color: "from-emerald-500 to-teal-500", span: "md:col-span-1" },
-  { icon: "✍️", title: "Writing", desc: "Ut enim ad minim veniam, quis nostrud.", color: "from-amber-500 to-orange-500", span: "md:col-span-1" },
-  { icon: "🎤", title: "Speaking", desc: "Duis aute irure dolor in reprehenderit.", color: "from-rose-500 to-pink-500", span: "md:col-span-2" },
+  // Asosiy Ko'nikmalar
+  { 
+    icon: "🎧", 
+    title: "Listening", 
+    desc: "Haqiqiy audio materiallar orqali tinglab tushunishni rivojlantiring.", 
+    color: "from-blue-500 to-cyan-500" 
+  },
+  { 
+    icon: "📖", 
+    title: "Reading", 
+    desc: "Qiziqarli matnlar bilan so'z boyligingizni oshiring.", 
+    color: "from-emerald-500 to-teal-500" 
+  },
+  { 
+    icon: "✍️", 
+    title: "Writing", 
+    desc: "AI yordamida insholaringizni tekshirtiring va grammatikani to'g'rilang.", 
+    color: "from-amber-500 to-orange-500" 
+  },
+  { 
+    icon: "🎤", 
+    title: "Speaking", 
+    desc: "Ovozli suhbatlar orqali talaffuzingizni mukammallashtiring.", 
+    color: "from-rose-500 to-pink-500" 
+  },
+  // Xalqaro Standartlar
+  { 
+    icon: "🇬🇧", 
+    title: "IELTS", 
+    desc: "Academic va General Training uchun maxsus tayyorgarlik va strategiyalar.", 
+    color: "from-red-500 to-orange-500" 
+  },
+  { 
+    icon: "🇪🇺", 
+    title: "CEFR", 
+    desc: "A1 dan C2 gacha Yevropa standartlari bo'yicha aniq baholash tizimi.", 
+    color: "from-blue-600 to-indigo-600" 
+  },
+  { 
+    icon: "🇺🇸", 
+    title: "TOEFL", 
+    desc: "Amerika universitetlari uchun iBT formatida puxta mashqlar.", 
+    color: "from-green-500 to-emerald-600" 
+  },
 ];
 
 const STATS = [
@@ -130,44 +172,28 @@ export default function LandingPage() {
         items={["Grammar", "Vocabulary", "Speaking", "Listening", "Writing", "Reading", "IELTS", "Business English", "Pronunciation", "Idioms"]}
       />
 
-      {/* ═══ FEATURES ═══ */}
-      <section id="features" className="relative max-w-7xl mx-auto px-6 py-24">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-base-primary text-4xl md:text-5xl font-bold mb-4">
-            Barcha imkoniyatlar{" "}
-            <span className="text-gradient-brand">bir joyda</span>
-          </h2>
-          <p className="text-base-secondary text-lg max-w-2xl mx-auto">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-          </p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[180px]">
-          {FEATURES.map((feature, idx) => (
-            <SpotlightCard key={feature.title} className={feature.span}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                className="h-full p-8 flex flex-col justify-between text-white"
-              >
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center text-3xl`}>
-                  {feature.icon}
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold mb-2">{feature.title}</h3>
-                  <p className="text-white/80">{feature.desc}</p>
-                </div>
-              </motion.div>
-            </SpotlightCard>
-          ))}
+      {/* ═══ FEATURES (Faqat HorizontalRoulette) ═══ */}
+      <section id="features" className="relative py-24 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 mb-12 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              Barcha imkoniyatlar{" "}
+              <span className="bg-gradient-to-r from-orange-500 to-rose-500 bg-clip-text text-transparent">
+                bir joyda
+              </span>
+            </h2>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+              Myestro platformasi sizning ingliz tili bilimingizni yangi bosqichga olib chiqadi.
+            </p>
+          </motion.div>
         </div>
+        
+        {/* Faqat HorizontalRoulette, ichida RouletteCard va SpotlightCard ishlaydi */}
+        <HorizontalRoulette items={FEATURES} />
       </section>
 
       {/* ═══ DEMO ═══ */}

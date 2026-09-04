@@ -220,3 +220,16 @@ html.dark :focus-visible {
 body.no-scroll {
   overflow: hidden;
 }
+
+/* ... mavjud kodlar ... */
+
+/* Sekin gradient animatsiyasi (10 soniya) */
+@keyframes slow-gradient {
+  0% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+  100% { opacity: 0.3; transform: scale(1); }
+}
+
+.animate-slow-gradient {
+  animation: slow-gradient 10s ease-in-out infinite;
+}
