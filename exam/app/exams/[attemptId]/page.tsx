@@ -654,6 +654,8 @@ export default function ExamRoomPage() {
               item={currentItem}
               itemIndex={currentItemIndex}
               totalItems={currentItems.length}
+              attemptId={attemptId}                    // ← YANGI
+              apiUrl={API_URL}                         // ← YANGI
               selectedOptions={answers[currentItem.id]?.selected_options || []}
               onSelectOption={handleSelectOption}
               onSaveText={handleSaveText}

@@ -231,7 +231,7 @@ export default function LoginPage() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-4 bg-white text-slate-400">
-                  yoki telefon orqali
+                  telefon orqali kirish 
                 </span>
               </div>
             </div>

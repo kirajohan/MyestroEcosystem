@@ -11,7 +11,7 @@ export default function ExamLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-dark-50">
+    <div className="flex min-h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <div className="hidden md:block w-60 shrink-0">
         <Sidebar />
@@ -26,7 +26,7 @@ export default function ExamLayout({
         <Header />
 
         {/* Scrollable Content */}
-        <main className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 p-4 md:p-6">
           {children}
         </main>
       </div>

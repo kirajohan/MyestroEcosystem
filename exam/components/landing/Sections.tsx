@@ -124,23 +124,22 @@ export function SpotlightCard({ children, className = "" }: { children: React.Re
 
 
 // 1. HorizontalRoulette - Harakatlanuvchi konteyner
+
+
 export function HorizontalRoulette({ items }: { items: any[] }) {
   const targetRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: targetRef,
-    offset: ["start end", "end start"],
-  });
-
-  // Scroll qilganda chapdan o'ngga siljiydi
-  const x = useTransform(scrollYProgress, [0, 1], ["5%", "-60%"]);
 
   return (
     <div ref={targetRef} className="relative h-[500px] overflow-hidden flex items-center">
-      <motion.div style={{ x }} className="flex gap-8 pl-[50vw] absolute left-0">
-        {items.map((item, idx) => (
-          <RouletteCard key={idx} item={item} />
-        ))}
-      </motion.div>
+      {/* Faqat CSS animatsiya, scroll harakati yo'q */}
+      <div className="flex gap-8 absolute left-0 animate-slow-scroll">
+        {/* 3 marta takrorlash - cheksiz loop */}
+        {[...Array(3)].flatMap((_, repeatIdx) =>
+          items.map((item, idx) => (
+            <RouletteCard key={`${repeatIdx}-${idx}`} item={item} />
+          ))
+        )}
+      </div>
     </div>
   );
 }

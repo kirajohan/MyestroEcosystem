@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import OptionButton from "./OptionButton";
 import WritingEditor from "./writing/WritingEditor";
+import SpeakingRecorder from "./speaking/SpeakingRecorder";
 
 interface Option {
   id: number;
@@ -19,6 +20,8 @@ interface Item {
   question_text?: string;
   min_words?: number;
   max_words?: number;
+  preparation_time_sec?: number;
+  answer_time_sec?: number;
   max_score: number;
   order: number;
   options: Option[];
@@ -28,6 +31,8 @@ interface QuestionCardProps {
   item: Item;
   itemIndex: number;
   totalItems: number;
+  attemptId: number;
+  apiUrl: string;
   selectedOptions: number[];
   onSelectOption: (itemId: number, optionId: number) => void;
   onSaveText?: (itemId: number, text: string) => void;
@@ -39,6 +44,8 @@ export default function QuestionCard({
   item,
   itemIndex,
   totalItems,
+  attemptId,
+  apiUrl,
   selectedOptions,
   onSelectOption,
   onSaveText,
@@ -47,6 +54,7 @@ export default function QuestionCard({
 }: QuestionCardProps) {
   const [justAnswered, setJustAnswered] = useState<number | null>(null);
   const isWriting = item.item_type === "writing_task";
+  const isSpeaking = item.item_type === "speaking_task";
 
   const handleSelect = (optionId: number) => {
     setJustAnswered(optionId);
@@ -67,7 +75,18 @@ export default function QuestionCard({
         exit={{ opacity: 0, x: -30, filter: "blur(10px)" }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        {isWriting ? (
+        {isSpeaking ? (
+          /* ═══ SPEAKING TASK ═══ */
+          <SpeakingRecorder
+            itemId={item.id}
+            attemptId={attemptId}
+            topic={item.question_text || item.title}
+            instruction={item.instruction}
+            preparationTimeSec={item.preparation_time_sec || 30}
+            answerTimeSec={item.answer_time_sec || 60}
+            apiUrl={apiUrl}
+          />
+        ) : isWriting ? (
           /* ═══ WRITING TASK ═══ */
           <WritingEditor
             itemId={item.id}
@@ -80,7 +99,7 @@ export default function QuestionCard({
             instruction={item.instruction || item.question_text}
           />
         ) : (
-          /* ═══ READING / LISTENING QUESTION ═══ */
+          /* ═══ READING / LISTENING ═══ */
           <div className="relative overflow-hidden rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200 shadow-xl p-6 md:p-8">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/10 to-rose-500/10 rounded-full blur-2xl pointer-events-none" />
 

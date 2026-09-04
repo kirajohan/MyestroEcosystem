@@ -6,7 +6,24 @@
    GLOBAL DARK MODE STYLES
    Barcha matn va fon uchun default dark mode
    ═══════════════════════════════════════════════════════════ */
+/* Sekin avtomatik scroll (faqat scroll bo'lmaganda ishlaydi) */
+@keyframes slow-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-33.33%); /* 3 marta takrorlangani uchun 1/3 */
+  }
+}
 
+.animate-slow-scroll {
+  animation: slow-scroll 60s linear infinite;
+}
+
+/* Hover qilganda to'xtatish */
+.animate-slow-scroll:hover {
+  animation-play-state: paused;
+}
 @layer base {
   /* Light mode (default) */
   html {
@@ -232,4 +249,25 @@ body.no-scroll {
 
 .animate-slow-gradient {
   animation: slow-gradient 10s ease-in-out infinite;
+}
+
+/* Sekin avtomatik scroll */
+@keyframes slow-scroll {
+  0% { 
+    transform: translateX(0); 
+  }
+  100% { 
+    transform: translateX(-33.33%); /* 3 marta takrorlangani uchun 1/3 */
+  }
+}
+
+.animate-slow-scroll {
+  animation: slow-scroll 60s linear infinite;
+  /* Boshlang'ich holatda birinchi karta markazda turishi uchun */
+  padding-left: calc(50vw - 160px); /* 160px = karta kengligi (320px) / 2 */
+}
+
+/* Hover qilganda to'xtatish */
+.animate-slow-scroll:hover {
+  animation-play-state: paused;
 }

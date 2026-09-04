@@ -170,6 +170,8 @@ class ExamAnswer(Base):
     selected_options = Column(JSONB, nullable=True)
     text_answer = Column(Text, nullable=True)
     audio_url = Column(String, nullable=True)
+    audio_file_id = Column(String(255))  # ← YANGI QO'SHISH
+
     transcript_text = Column(Text, nullable=True)
     auto_score = Column(Float, nullable=True)
     ai_score = Column(Float, nullable=True)

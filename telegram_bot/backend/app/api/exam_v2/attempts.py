@@ -369,7 +369,7 @@ async def save_answers(
 
         # Faqat yetarli uzunlikdagi matnlarni baholash (min 20 so'z)
         word_count = len(text_answer.strip().split())
-        if word_count < 20:
+        if word_count < 1:
             continue
 
         # Avvalgi AI natijani o'chirish (qayta yozilganda)

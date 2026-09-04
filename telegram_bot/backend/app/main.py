@@ -94,6 +94,7 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json",
         lifespan=lifespan,
     )
+
     
     # Media fayllar uchun static serving
     media_dir = Path("/app/media")

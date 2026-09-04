@@ -14,14 +14,15 @@ import {
   AnimatedCounter,
   FloatingWords,
   InfiniteMarquee,
-  CardStack,
-  QuizCard,
-  TextReveal,
+  // CardStack,
+  // QuizCard,
+  // TextReveal,
   CompareSlider,
-  AudioWaveform,
+  // AudioWaveform,~
 } from "@/components/landing/Sections";
-
-
+// Import qismiga qo'shing:
+import { InteractiveDemoSection } from "@/components/landing/interactiveDemo";
+import { MethodSection } from "@/components/landing/MethodSection";
 
 const FEATURES = [
   // Asosiy Ko'nikmalar
@@ -197,67 +198,12 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ DEMO ═══ */}
-      <section className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
-        <div className="relative max-w-7xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <div className="inline-block bg-orange-500/20 text-orange-400 text-sm font-semibold px-4 py-2 rounded-full mb-4">
-              Sinab ko'ring
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Interaktiv{" "}
-              <span className="bg-gradient-to-r from-orange-500 to-amber-400 bg-clip-text text-transparent">
-                o'rganish
-              </span>
-            </h2>
-          </motion.div>
+          
+          <InteractiveDemoSection />
+      
+{/* ═══ METHOD (Yangi) ═══ */}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-            <div>
-              <h3 className="text-2xl font-bold text-white mb-3">🎴 Flashcards</h3>
-              <p className="text-slate-400 mb-6">Lorem ipsum dolor sit amet.</p>
-              <CardStack />
-            </div>
-            <div>
-              <h3 className="text-2xl font-bold text-white mb-3">🧠 Quick Quiz</h3>
-              <p className="text-slate-400 mb-6">Sed do eiusmod tempor.</p>
-              <QuizCard />
-            </div>
-          </div>
-
-          <div className="mt-16 text-center">
-            <h3 className="text-xl font-bold text-white mb-4">🎤 Speaking Practice</h3>
-            <div className="inline-flex items-center gap-4 bg-white/5 backdrop-blur-sm px-8 py-4 rounded-2xl border border-white/10">
-              <AudioWaveform />
-              <span className="text-white/80">Lorem ipsum dolor...</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ METHOD ═══ */}
-      <section id="method" className="relative py-24">
-        <div className="max-w-5xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-base-primary text-4xl md:text-5xl font-bold mb-4">
-              Bizning <span className="text-gradient-brand">metodika</span>
-            </h2>
-          </motion.div>
-          <TextReveal
-            text="Biz isbotlangan til o'rganish metodlarini zamonaviy AI texnologiyalari bilan birlashtirib, shaxsiylashtirilgan feedback, real vaqtda tuzatish va tez o'sishni ta'minlaymiz."
-          />
-        </div>
-      </section>
+          <MethodSection />
 
       {/* ═══ BEFORE/AFTER ═══ */}
       <section id="results" className="relative py-24">

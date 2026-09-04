@@ -51,6 +51,7 @@ services:
     environment:
       DATABASE_URL: postgresql://myestro:myestro_password@postgres:5432/myestro
       REDIS_URL: redis://redis:6379/0
+          - MEDIA_DIR=/app/media           # ← QO'SHISH
     volumes:
       - exam_media:/app/media          # ← Media uchun volume
     depends_on:

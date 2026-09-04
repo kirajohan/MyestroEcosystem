@@ -365,24 +365,29 @@ async def get_result(
             if item.answer_key:
                 correct_option_ids = item.answer_key.get("correct_option_ids", [])
 
+            options_list = item.options if hasattr(item, 'options') else []
             items_data.append({
-                "item_id": item.id,
+                "id": item.id,
                 "item_type": item.item_type,
                 "title": item.title,
+                "instruction": item.instruction,
                 "question_text": item.question_text,
+                "max_score": float(item.max_score or 1),
                 "order": item.order,
-                "max_score": item.max_score,
-                "user_selected": answer.selected_options if answer else [],
-                "user_text": answer.text_answer if answer else None,
-                "correct_option_ids": correct_option_ids,  # ✅ Natijada ko'rsatiladi
-                "auto_score": answer.auto_score if answer else None,
-                "ai_score": answer.ai_score if answer else None,
-                "final_score": answer.final_score if answer else 0,
-                "is_correct": (
-                    answer.auto_score is not None and 
-                    answer.auto_score >= (item.max_score or 1.0)
-                ) if answer and item.item_type in ["reading_question", "listening_question"] else None,
-                "ai_status": answer.ai_status if answer else None,
+                # ═══ SPEAKING UCHUN YANGI ═══
+                "preparation_time_sec": item.preparation_time_sec or 30,
+                "answer_time_sec": item.answer_time_sec or 60,
+                # ═══ WRITING UCHUN ═══
+                "min_words": item.min_words,
+                "max_words": item.max_words,
+                "options": [
+                    {
+                        "id": opt.id,
+                        "text": opt.text,
+                        "order": opt.order,
+                    }
+                    for opt in options_list
+                ],
             })
 
         blocks_data.append({
@@ -423,4 +428,137 @@ async def get_result(
         "started_at": attempt.started_at.isoformat() if attempt.started_at else None,
         "submitted_at": attempt.submitted_at.isoformat() if attempt.submitted_at else None,
         "blocks": blocks_data,
+    }
+
+
+# ═══════════════════════════════════════════════════════════
+# SPEAKING AUDIO UPLOAD
+# ═══════════════════════════════════════════════════════════
+
+from fastapi import UploadFile, File
+from app.services.exam.media_servicea import MediaService
+from app.models.exam import ExamItem, ExamAnswer, ExamAIJob, ExamMedia
+from sqlalchemy import select
+
+
+@router.post(
+    "/{attempt_id}/answers/{item_id}/audio",
+    summary="Speaking audio yuklash",
+)
+async def upload_speaking_audio(
+    attempt_id: int,
+    item_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_user_from_session),
+):
+    """
+    Speaking task uchun audio faylni yuklaydi.
+
+    Jarayon:
+    1. Attempt va Item tekshiriladi
+    2. Audio validation qilinadi (format, hajm)
+    3. Fayl saqlanadi
+    4. Answer yaratiladi/yangilanadi
+    5. Transcribe AI job yaratiladi
+    """
+
+    # ── 1. Attempt tekshirish ─────────────────────────────
+    attempt = await db.get(ExamAttempt, attempt_id)
+    if not attempt or attempt.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Attempt topilmadi")
+
+    if attempt.status not in ("in_progress", "created"):
+        raise HTTPException(
+            status_code=400,
+            detail="Attempt yakunlangan, audio yuklab bo'lmaydi",
+        )
+
+    # ── 2. Item tekshirish (speaking task ekanligini) ─────
+    item = await db.get(ExamItem, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item topilmadi")
+
+    if item.item_type != "speaking_task":
+        raise HTTPException(
+            status_code=400,
+            detail="Bu item speaking task emas",
+        )
+
+    # ── 3. Audio faylni saqlash ───────────────────────────
+    saved = await MediaService.save_exam_audio(
+        file=file,
+        attempt_id=attempt_id,
+        item_id=item_id,
+    )
+
+    # ── 4. Answer topish yoki yaratish ────────────────────
+    result = await db.execute(
+        select(ExamAnswer).where(
+            ExamAnswer.attempt_id == attempt_id,
+            ExamAnswer.item_id == item_id,
+        )
+    )
+    answer = result.scalar_one_or_none()
+
+    if answer:
+        # Mavjud answer'ni yangilash
+        answer.audio_url = saved["url"]
+        answer.audio_file_id = saved["file_id"]
+        answer.ai_status = "pending"
+    else:
+        # Yangi answer yaratish
+        answer = ExamAnswer(
+            attempt_id=attempt_id,
+            item_id=item_id,
+            audio_url=saved["url"],
+            audio_file_id=saved["file_id"],
+            ai_status="pending",
+        )
+        db.add(answer)
+        await db.flush()
+        await db.refresh(answer)
+
+    # ── 5. ExamMedia yozuv qo'shish ───────────────────────
+    media = ExamMedia(
+        owner_type="answer",
+        owner_id=answer.id,
+        file_type="audio",
+        file_name=saved["file_name"],
+        file_path=saved["file_path"],
+        mime_type=saved["mime_type"],
+        size_bytes=saved["size_bytes"],
+    )
+    db.add(media)
+
+    # ── 6. Transcribe AI job yaratish ─────────────────────
+    ai_job = ExamAIJob(
+        attempt_id=attempt_id,
+        answer_id=answer.id,
+        job_type="transcribe",
+        status="pending",
+        provider="whisper",
+        request_payload={
+            "audio_url": saved["url"],
+            "file_id": saved["file_id"],
+        },
+    )
+    db.add(ai_job)
+
+    await db.commit()
+
+    return {
+        "status": "ok",
+        "answer_id": answer.id,
+        "audio": {
+            "file_id": saved["file_id"],
+            "url": saved["url"],
+            "size_bytes": saved["size_bytes"],
+            "mime_type": saved["mime_type"],
+        },
+        "ai_job": {
+            "id": ai_job.id,
+            "type": ai_job.job_type,
+            "status": ai_job.status,
+        },
     }
