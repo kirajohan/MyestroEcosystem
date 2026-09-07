@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     CHANNEL_URL: str = os.getenv("CHANNEL_URL", "")  # e.g., https://t.me/testmyestro
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    WEBAPP_URL: str = os.getenv("WEBAPP_URL", "https://a1b2c3d4.ngrok-free.app")
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     OPENROUTER_BASE_URL: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
     BACKEND_URL: str = os.getenv("BACKEND_URL", "http://localhost:8002")
@@ -20,8 +21,9 @@ class Settings(BaseSettings):
     # Bot Settings (Phase 2)
     BOT_GLOBAL_ENABLED: str = os.getenv("BOT_GLOBAL_ENABLED", "true")
     AI_GLOBAL_ENABLED: str = os.getenv("AI_GLOBAL_ENABLED", "true")
-    ADMIN_IDS: str = os.getenv("ADMIN_IDS", "123456789")  # Comma-separated
+    ADMIN_IDS: str = os.getenv("ADMIN_IDS", "[REDACTED]")  # Comma-separated
     MEDIA_UPLOAD: str = os.getenv("MEDIA_UPLOAD", "-1004443633577")  # Telegram channel ID for media uploads
+
     @property
     def admin_ids_list(self) -> list[int]:
         """Parse ADMIN_IDS string to list of integers."""

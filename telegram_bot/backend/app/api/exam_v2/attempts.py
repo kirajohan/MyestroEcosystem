@@ -9,7 +9,7 @@ from typing import Optional
 from fastapi import Query
 from sqlalchemy import func
 from app.models.exam import Exam
-
+from app.services.exam_scoring_service import submit_and_score_attempt
 from datetime import datetime, timezone
 from app.services.exam_ai_service import evaluate_writing
 from fastapi import APIRouter, Depends, HTTPException
@@ -285,6 +285,7 @@ async def save_answers(
 ):
     """
     Javoblarni saqlaydi (autosave uchun).
+    ⚠️ AI evaluation BU YERDA EMAS — faqat submit_attempt'da!
     
     Payload formati:
     {
@@ -351,60 +352,70 @@ async def save_answers(
 
     await db.commit()
 
-    # ✅ YANGI: Writing javoblari uchun AI evaluation trigger
-    for ans in answers_data:
-        item_id = ans.get("item_id")
-        text_answer = ans.get("text_answer")
-
-        if not text_answer or not text_answer.strip():
-            continue
-
-        # Item turini tekshirish
-        item_stmt = select(ExamItem).where(ExamItem.id == item_id)
-        item_result = await db.execute(item_stmt)
-        item = item_result.scalar_one_or_none()
-
-        if not item or item.item_type != "writing_task":
-            continue
-
-        # Faqat yetarli uzunlikdagi matnlarni baholash (min 20 so'z)
-        word_count = len(text_answer.strip().split())
-        if word_count < 1:
-            continue
-
-        # Avvalgi AI natijani o'chirish (qayta yozilganda)
-        answer_stmt = select(ExamAnswer).where(
-            ExamAnswer.attempt_id == attempt_id,
-            ExamAnswer.item_id == item_id,
-        )
-        answer_result = await db.execute(answer_stmt)
-        answer = answer_result.scalar_one_or_none()
-
-        if not answer:
-            continue
-
-        # AI evaluation chaqirish
-        logger.info(f"🤖 Evaluating writing for item {item_id}, attempt {attempt_id}")
-
-        ai_result = await evaluate_writing(
-            task_instruction=item.question_text or item.title or "",
-            student_text=text_answer,
-            cefr_level="B1",  # TODO: exam'dan olish kerak
-            min_words=item.min_words,
-            max_words=item.max_words,
-        )
-
-        # Natijani saqlash
-        if "error" not in ai_result:
-            answer.ai_score = ai_result.get("overall_score", 0)
-            answer.final_score = ai_result.get("overall_score", 0)
-            answer.ai_status = "completed"
-            answer.feedback = ai_result
-        else:
-            answer.ai_status = "error"
-            answer.feedback = {"error": ai_result.get("error")}
-
-        await db.commit()
-        logger.info(f"✅ AI evaluation saved for item {item_id}: score={answer.ai_score}")
-
     return {"saved": saved_count, "status": "ok"}
+
+
+@router.post("/{attempt_id}/submit", summary="Imtihonni yakunlash")
+async def submit_attempt(
+    attempt_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_user_from_session),
+):
+    """
+    Imtihonni yakunlaydi va scoring'ni ishga tushiradi.
+    
+    Jarayon:
+    1. Attempt status'ni "submitted" qilish
+    2. Listening/Reading auto-scoring
+    3. Writing/Speaking AI evaluation trigger
+    4. Yakuniy ballarni hisoblash
+    
+    Return:
+    - status: "completed" yoki "scoring"
+    - total_score
+    - pending_ai: AI hali tugatmagan javoblar soni
+    """
+    attempt = await get_user_attempt(attempt_id, current_user.id, db)
+    check_deadline(attempt)
+
+    if attempt.status not in ["in_progress", "created"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Attempt allaqachon yakunlangan: {attempt.status}"
+        )
+
+    # 1. Attempt'ni "submitted" qilish
+    attempt.status = "submitted"
+    attempt.submitted_at = func.now()
+    await db.commit()
+
+    logger.info(f"📝 Attempt {attempt_id} submitted by user {current_user.id}")
+
+    # 2. Scoring service'ni chaqirish
+    try:
+        result = await submit_and_score_attempt(attempt_id, db)
+        
+        return {
+            "attempt_id": attempt_id,
+            "status": result["final"]["status"],
+            "total_score": result["final"]["total_score"],
+            "max_possible": result["final"]["max_possible"],
+            "percentage": result["final"]["percentage"],
+            "scored_items": result["auto_scoring"]["scored"],
+            "pending_ai": result["final"]["pending_ai"],
+            "submitted_at": attempt.submitted_at.isoformat() if attempt.submitted_at else None
+        }
+    
+    except Exception as e:
+        logger.error(f"❌ Scoring failed for attempt {attempt_id}: {e}")
+        
+        # Xato bo'lsa ham, attempt'ni "scoring" holatida qoldirish
+        attempt.status = "scoring"
+        await db.commit()
+        
+        return {
+            "attempt_id": attempt_id,
+            "status": "scoring",
+            "error": str(e),
+            "message": "Scoring jarayoni davom etmoqda"
+        }

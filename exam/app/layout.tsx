@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="uz" suppressHydrationWarning>
       <head>
         {/* Preload font */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <script src="https://telegram.org/js/telegram-web-app.js" />
       </head>
       <body className="antialiased relative min-h-screen">
         <ThemeProvider>

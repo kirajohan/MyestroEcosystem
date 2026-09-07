@@ -107,3 +107,4 @@ class AdminLoginResponse(BaseModel):
     success: bool
     user: UserResponse
     access_token: Optional[str] = None  # JWT access token (admin panel uchun)
+    refresh_token: Optional[str] = None   

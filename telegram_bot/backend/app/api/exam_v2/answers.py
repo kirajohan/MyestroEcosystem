@@ -146,6 +146,30 @@ async def save_answers(
         if not item:
             continue  # Item topilmasa, o'tkazib yuboramiz
 
+
+            # YANGI: Reading/Listening uchun auto-scoring
+            if item.item_type in ("reading_question", "listening_question"):
+                score_result = await ScoringService.score_answer(
+                    db=db,
+                    item_id=item.id,
+                    selected_option_ids=payload.selected_options or [],
+                )
+                auto_score = score_result["auto_score"]
+            else:
+                auto_score = None
+
+            # Answer yaratish/yangilash
+            # ...
+            answer.auto_score = auto_score
+            
+            await db.commit()
+            
+            return {
+                "answer_id": answer.id,
+                "auto_score": auto_score,
+                "is_correct": score_result.get("is_correct") if auto_score is not None else None,
+            }
+        
         # Mavjud javob bormi?
         existing_stmt = select(ExamAnswer).where(
             ExamAnswer.attempt_id == attempt_id,

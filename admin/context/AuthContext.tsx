@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface AuthUser {
@@ -15,6 +15,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshToken: () => Promise<string | null>;
   error: string | null;
   user: AuthUser | null;
   token: string | null;
@@ -23,6 +24,7 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'myestro_admin_token';
+const REFRESH_TOKEN_KEY = 'myestro_admin_refresh_token';
 const USER_KEY = 'myestro_admin_user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -30,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [refreshTokenValue, setRefreshTokenValue] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -37,9 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const storedToken = localStorage.getItem(TOKEN_KEY);
+      const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
       const storedUser = localStorage.getItem(USER_KEY);
+      
       if (storedToken && storedUser) {
         setToken(storedToken);
+        setRefreshTokenValue(storedRefreshToken);
         setUser(JSON.parse(storedUser));
         setIsLoggedIn(true);
       }
@@ -49,6 +55,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, []);
+
+  // Auto-refresh token before expiry (every 14 minutes for 15min token)
+  useEffect(() => {
+    if (!isLoggedIn || !refreshTokenValue) return;
+
+    const refreshInterval = setInterval(async () => {
+      try {
+        const newToken = await refreshToken();
+        if (!newToken) {
+          logout();
+        }
+      } catch (err) {
+        console.error('Auto-refresh failed:', err);
+        logout();
+      }
+    }, 14 * 60 * 1000); // 14 minutes
+
+    return () => clearInterval(refreshInterval);
+  }, [isLoggedIn, refreshTokenValue]);
 
   const login = async (email: string, password: string) => {
     setError(null);
@@ -66,9 +91,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const adminToken = data.token;
+      const adminRefreshToken = data.refresh_token;
+      
       if (!adminToken || !adminToken.startsWith('eyJ')) {
         throw new Error("Backend haqiqiy token qaytarmadi");
       }
+      
       const adminUser: AuthUser = {
         id: data.user?.id ?? 0,
         email: data.user?.email ?? email,
@@ -77,9 +105,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       localStorage.setItem(TOKEN_KEY, adminToken);
+      if (adminRefreshToken) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, adminRefreshToken);
+      }
       localStorage.setItem(USER_KEY, JSON.stringify(adminUser));
 
       setToken(adminToken);
+      setRefreshTokenValue(adminRefreshToken);
       setUser(adminUser);
       setIsLoggedIn(true);
       router.push('/dashboard');
@@ -89,10 +121,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const currentRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+      if (!currentRefreshToken) {
+        return null;
+      }
+
+      const res = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: currentRefreshToken }),
+      });
+
+      if (!res.ok) {
+        return null;
+      }
+
+      const data = await res.json();
+      const newAccessToken = data.access_token;
+      const newRefreshToken = data.refresh_token;
+
+      if (newAccessToken) {
+        localStorage.setItem(TOKEN_KEY, newAccessToken);
+        if (newRefreshToken) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+        }
+        setToken(newAccessToken);
+        if (newRefreshToken) {
+          setRefreshTokenValue(newRefreshToken);
+        }
+        return newAccessToken;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return null;
+    }
+  }, []);
+
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setToken(null);
+    setRefreshTokenValue(null);
     setUser(null);
     setIsLoggedIn(false);
     router.push('/login');
@@ -103,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     login,
     logout,
+    refreshToken,
     error,
     user,
     token,

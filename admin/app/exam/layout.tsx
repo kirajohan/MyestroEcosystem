@@ -11,9 +11,9 @@ export default function ExamLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50">
       {/* Desktop Sidebar */}
-      <div className="hidden md:block w-60 shrink-0">
+      <div className="hidden md:block w-60 vw-60">
         <Sidebar />
       </div>
 

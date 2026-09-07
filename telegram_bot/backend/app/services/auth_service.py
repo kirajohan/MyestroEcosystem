@@ -24,38 +24,37 @@ def authenticate_user(db: DBSession, email: str, password: str) -> User:
         raise UnauthorizedException("Invalid email or password")
     return user
 
+from app.core.security import create_access_token, hash_password
 
 def authenticate_admin(db: DBSession, email: str, password: str) -> dict:
-    from app.core.security import create_access_token, hash_password
-    
     user = db.query(User).filter(User.email == email, User.is_active == True).first()
     if not user or not user.password_hash:
         raise UnauthorizedException("Invalid email or password")
 
-    # --- УМНАЯ ПРОВЕРКА И АВТО-ИСПРАВЛЕНИЕ ПАРОЛЕЙ ---
-    # Хэши bcrypt всегда начинаются с $ (например, $2b$12$...)
+    # --- Aqlli parol tekshiruvi ---
     if not user.password_hash.startswith("$"):
-        # Если пароль в базе не начинается с $, значит это обычный текст
         if user.password_hash == password:
-            # Пароль верный! Хэшируем его и сохраняем, чтобы починить базу навсегда
             user.password_hash = hash_password(password)
             db.commit()
             db.refresh(user)
         else:
             raise UnauthorizedException("Invalid email or password")
     else:
-        # Если в базе нормальный хэш, проверяем стандартным способом
         if not verify_password(password, user.password_hash):
             raise UnauthorizedException("Invalid email or password")
-    # -------------------------------------------------
 
     if user.role not in ["admin", "superadmin"]:
         raise ForbiddenException("Admin access required")
 
-    # Generate JWT access token for admin panel
+    # ✅ IKKALA token yaratish
     access_token = create_access_token(user.id, user.email, user.role)
-    return {"user": user, "access_token": access_token}
+    refresh_token = create_refresh_token(user.id)  # ← YANGI
 
+    return {
+        "user": user,
+        "access_token": access_token,
+        "refresh_token": refresh_token,  # ← YANGI
+    }
 
 
 def register_user(db: DBSession, user_data: dict) -> User:
@@ -174,3 +173,49 @@ def authenticate_by_phone(db: DBSession, phone: str, telegram_id: int, password:
         if not verify_password(password, user.password_hash):
             return None
     return user
+
+from jose import JWTError, jwt
+from app.core.security import (
+    hash_password, verify_password,
+    create_access_token, create_refresh_token,
+    REFRESH_SECRET, ALGORITHM,
+)
+
+
+def refresh_access_token(db: DBSession, refresh_token_str: str) -> dict | None:
+    """Refresh token orqali yangi access token yaratish."""
+    try:
+        # Refresh token'ni decode qilish
+        payload = jwt.decode(refresh_token_str, REFRESH_SECRET, algorithms=[ALGORITHM])
+        user_id_str = payload.get("sub")
+        token_type = payload.get("type")
+
+        if user_id_str is None or token_type != "refresh":
+            return None
+
+        user_id = int(user_id_str)
+
+        # Foydalanuvchini topish
+        user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+        if not user:
+            return None
+
+        # Yangi access token (15 min)
+        new_access_token = create_access_token(
+            user_id=user.id,
+            email=user.email,
+            role=user.role or "admin",
+        )
+
+        # Yangi refresh token (7 kun) — refresh rotation
+        new_refresh_token = create_refresh_token(user_id=user.id)
+
+        return {
+            "user": user,
+            "access_token": new_access_token,
+            "refresh_token": new_refresh_token,
+        }
+
+    except (JWTError, ValueError, TypeError) as e:
+        print(f"[REFRESH] Token decode error: {e}", file=sys.stderr)
+        return None

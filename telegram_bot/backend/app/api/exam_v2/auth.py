@@ -30,6 +30,8 @@ from app.models.user import User
 from app.schemas.exam import PhoneLoginRequest, TelegramLoginResponse, UserBrief
 from app.services import session_service
 from app.services.session_service import SESSION_TTL_SECONDS
+from app.services.telegram_webapp_service import TelegramWebAppService
+
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +59,61 @@ def _user_brief(user: User) -> UserBrief:
         avatar_url=user.avatar_url,
         role=user.role,
     )
+
+
+
+
+
+class WebAppLoginRequest(BaseModel):
+    init_data: str
+
+
+@router.post("/telegram/webapp")
+async def webapp_login(
+    response: Response,
+    payload: WebAppLoginRequest,
+    db: AsyncSession = Depends(get_async_db),
+    redis: Redis = Depends(get_redis),
+):
+    """Telegram Mini App initData orqali kirish."""
+    
+    # 1. initData validatsiyasi
+    telegram_user = TelegramWebAppService.validate_init_data(payload.init_data)
+    
+    if not telegram_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Telegram autentifikatsiyasi muvaffaqiyatsiz",
+        )
+
+    # 2. User topish/yaratish
+    user = await TelegramAuthService.get_or_create_user(db, telegram_user)
+
+    # 3. Session yaratish va cookie o'rnatish
+    token = await session_service.create_session(redis, user.id)
+
+    response.set_cookie(
+        key=SESSION_COOKIE,
+        value=token,
+        httponly=True,
+        secure=True,  # HTTPS uchun
+        samesite="lax",
+        max_age=SESSION_TTL_SECONDS,
+        path="/",
+    )
+
+    return {
+        "status": "ok",
+        "user": {
+            "id": user.id,
+            "telegram_id": user.telegram_id,
+            "full_name": user.full_name,
+            "username": user.telegram_username,
+            "avatar_url": user.avatar_url,
+            "cefr_level": user.cefr_level,
+        },
+    }
+
 
 
 @router.post(

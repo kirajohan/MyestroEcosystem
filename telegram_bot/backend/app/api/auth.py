@@ -42,8 +42,8 @@ def admin_login(data: AdminLoginRequest, db: DBSession = Depends(get_db)):
         success=True,
         user=UserResponse.model_validate(result["user"]),
         access_token=result.get("access_token"),
+        refresh_token=result.get("refresh_token"),  # ← YANGI
     )
-
 
 @router.post("/otp/send")
 def send_otp(data: OTPSendRequest, r: Redis = Depends(get_redis)):
@@ -111,3 +111,22 @@ def phone_login(data: dict, db: DBSession = Depends(get_db)):
     if not user:
         raise UnauthorizedException("User not found with this phone or wrong password")
     return AdminLoginResponse(success=True, user=UserResponse.model_validate(user))
+
+
+@router.post("/refresh", response_model=AdminLoginResponse)
+def refresh_token(data: dict, db: DBSession = Depends(get_db)):
+    """Refresh token orqali yangi access token olish"""
+    refresh_token = data.get("refresh_token")
+    if not refresh_token:
+        raise UnauthorizedException("Refresh token majburiy")
+    
+    result = auth_service.refresh_access_token(db, refresh_token)
+    if not result:
+        raise UnauthorizedException("Refresh token yaroqsiz")
+    
+    return AdminLoginResponse(
+        success=True,
+        user=UserResponse.model_validate(result["user"]),
+        access_token=result["access_token"],
+        refresh_token=result.get("refresh_token"),
+    )

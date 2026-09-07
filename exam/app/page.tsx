@@ -17,12 +17,12 @@ import {
   // CardStack,
   // QuizCard,
   // TextReveal,
-  CompareSlider,
   // AudioWaveform,~
 } from "@/components/landing/Sections";
 // Import qismiga qo'shing:
 import { InteractiveDemoSection } from "@/components/landing/interactiveDemo";
 import { MethodSection } from "@/components/landing/MethodSection";
+import { LearningJourney } from "@/components/landing/LearningJourney";
 
 const FEATURES = [
   // Asosiy Ko'nikmalar
@@ -86,9 +86,56 @@ const TESTIMONIALS = [
 ];
 
 const FAQ_ITEMS = [
-  { q: "Lorem ipsum dolor sit amet?", a: "Consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." },
-  { q: "Sed do eiusmod tempor?", a: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris." },
-  { q: "Duis aute irure dolor?", a: "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia." },
+  { 
+    q: "🚀 Myestro nima va qanday ishlaydi?", 
+    a: "Myestro — bu AI yordamida ingliz tilini o'rganish platformasi. Siz Telegram bot orqali AI o'qituvchi bilan suhbatlashasiz, imtihonlar topshirasiz va o'z progressingizni kuzatasiz.",
+    highlight: "💡 AI sizning xatolaringizni darhol tuzatadi va tushuntiradi."
+  },
+  { 
+    q: "🎯 Qanday darajadagilar uchun mos?", 
+    a: "Platforma boshlang'ich (A1) dan yuqori (C1) darajagacha bo'lgan barcha foydalanuvchilar uchun mo'ljallangan. Ro'yxatdan o'tishda sizning darajangiz aniqlanadi va shunga mos kontent taqdim etiladi.",
+    highlight: "📊 CEFR standartlari bo'yicha A1, A2, B1, B2, C1 darajalari mavjud."
+  },
+  { 
+    q: "💰 Narxlari qanday va qanday to'lash mumkin?", 
+    a: "Hozirda platforma bepul beta-versiyada ishlaydi. Kelajakda oylik obuna modellari joriy etiladi. To'lovlar Click, Payme va xalqaro kartalar orqali amalga oshiriladi.",
+    highlight: "🎁 Hozir ro'yxatdan o'ting va birinchi 3 oy bepul foydalaning!"
+  },
+  { 
+    q: "🤖 AI qanday yordam beradi?", 
+    a: "AI o'qituvchi sizning har bir xatongizni tahlil qiladi, grammatik tuzatishlar kiritadi, yangi so'zlar taklif qiladi va shaxsiylashtirilgan mashqlar beradi. Bu xuddi shaxsiy repetitor bilan ishlashga o'xshaydi.",
+    highlight: "⚡ AI 24/7 ishlaydi va istalgan vaqtda yordam berishga tayyor."
+  },
+  { 
+    q: "📱 Qanday qurilmalarda ishlaydi?", 
+    a: "Platforma Telegram bot orqali ishlagani uchun istalgan qurilmada (telefon, planshet, kompyuter) ishlaydi. Internet ulanishi bo'lsa bas.",
+    highlight: "🌍 Qayerda bo'lsangiz ham o'rganishingiz mumkin."
+  },
+  { 
+    q: "📊 Natijalarimni qanday kuzataman?", 
+    a: "Shaxsiy kabintingizda barcha imtihon natijalaringiz, progressingiz va CEFR darajangiz o'zgarishi ko'rsatiladi. Haftalik va oylik hisobotlar ham mavjud.",
+    highlight: "📈 Har hafta progressingizni ko'rib, motivatsiyangiz oshadi."
+  },
+  { 
+    q: "🎓 Sertifikat berasizlarmi?", 
+    a: "Hozircha rasmiy sertifikat berilmaydi, lekin kelajakda IELTS va CEFR standartlariga mos sertifikatlar joriy etiladi. Hozircha sizning natijalaringiz va progressingiz platformada saqlanadi.",
+    highlight: "🏆 Kelajakda xalqaro e'tirof etilgan sertifikatlar rejalashtirilgan."
+  },
+  { 
+    q: "🔒 Ma'lumotlarim xavfsizmi?", 
+    a: "Ha, barcha ma'lumotlar shifrlangan holda saqlanadi. Biz GDPR va maxfiylik siyosatiga qat'iy rioya qilamiz. Sizning ma'lumotlaringiz faqat sizga xizmat ko'rsatish uchun ishlatiladi.",
+    highlight: "🛡️ Ma'lumotlaringiz to'liq himoyalangan va uchinchi tomonlarga berilmaydi."
+  },
+  { 
+    q: "👥 Guruh darslari bormi?", 
+    a: "Hozircha faqat individual AI o'qituvchi bilan ishlash mavjud. Kelajakda guruh darslari va jonli darslar qo'shiladi.",
+    highlight: "🤝 Guruh darslari 2025-yilda joriy etiladi."
+  },
+  { 
+    q: "❓ Yana savollarim bo'lsa, kimga murojaat qilaman?", 
+    a: "Bot orqali admin bilan bog'lanishingiz mumkin. Shuningdek, Telegram kanalimizda yangiliklar va yordam materiallari mavjud.",
+    highlight: "💬 @myestro_support — biz doimo yordam berishga tayyormiz!"
+  }
 ];
 
 export default function LandingPage() {
@@ -200,27 +247,14 @@ export default function LandingPage() {
       {/* ═══ DEMO ═══ */}
           
           <InteractiveDemoSection />
-      
-{/* ═══ METHOD (Yangi) ═══ */}
-
+          
+      {/* ═══ METHOD (Yangi) ═══ */}
+  
           <MethodSection />
 
       {/* ═══ BEFORE/AFTER ═══ */}
-      <section id="results" className="relative py-24">
-        <div className="max-w-5xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-base-primary text-4xl md:text-5xl font-bold mb-4">
-              <span className="text-gradient-brand">Transformatsiya</span>ni ko'ring
-            </h2>
-          </motion.div>
-          <CompareSlider />
-        </div>
-      </section>
+      {/* ═══ LEARNING JOURNEY TIMELINE ═══ */}
+          <LearningJourney />
 
       {/* ═══ TESTIMONIALS ═══ */}
       <section className="relative py-24 max-w-7xl mx-auto px-6">

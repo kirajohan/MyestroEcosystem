@@ -123,35 +123,41 @@ export function SpotlightCard({ children, className = "" }: { children: React.Re
 
 
 
-// 1. HorizontalRoulette - Harakatlanuvchi konteyner
-
+// 1. HorizontalRoulette - Harakatlanuvchi konteyne
 
 export function HorizontalRoulette({ items }: { items: any[] }) {
   const targetRef = useRef<HTMLDivElement>(null);
+  
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+    offset: ["start end", "end start"],
+  });
+
+  // Scroll tezligi (mobil va desktop uchun bir xil)
+  const scrollX = useTransform(scrollYProgress, [0, 1], ["10%", "-150%"]);
 
   return (
-    <div ref={targetRef} className="relative h-[500px] overflow-hidden flex items-center">
-      {/* Faqat CSS animatsiya, scroll harakati yo'q */}
-      <div className="flex gap-8 absolute left-0 animate-slow-scroll">
-        {/* 3 marta takrorlash - cheksiz loop */}
+    // ✅ MOBIL UCHUN BALANDLIK KICHRAYTIRILDI: h-[400px] -> md:h-[500px]
+    <div ref={targetRef} className="relative h-[400px] md:h-[500px] overflow-hidden flex items-center">
+      {/* ✅ MOBIL UCHUN ORALIQLAR KICHRAYTIRILDI: gap-4 -> md:gap-8 */}
+      <motion.div
+        style={{ x: scrollX }}
+        className="flex gap-4 md:gap-8 pl-[50vw] absolute left-0 animate-slow-scroll"
+      >
         {[...Array(3)].flatMap((_, repeatIdx) =>
           items.map((item, idx) => (
             <RouletteCard key={`${repeatIdx}-${idx}`} item={item} />
           ))
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }
-
-// 2. RouletteCard + SpotlightCard Effektlari (Birlashtirilgan)
-// exam/components/landing/Sections.tsx ichidagi RouletteCard
 
 function RouletteCard({ item }: { item: any }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
-  // 3D Tilt Physics
   const rotateX = useSpring(0, { stiffness: 300, damping: 30 });
   const rotateY = useSpring(0, { stiffness: 300, damping: 30 });
 
@@ -179,41 +185,49 @@ function RouletteCard({ item }: { item: any }) {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-      className="relative w-[320px] h-[420px] rounded-3xl bg-slate-900 border border-slate-800 p-8 flex flex-col justify-between shrink-0 group overflow-hidden transition-colors hover:border-white/30"
+      // ✅ MOBIL UCHUN O'LCHAMLAR IXCHAMLASHTIRILDI:
+      // Kenglik: w-[280px] -> md:w-[320px]
+      // Balandlik: h-[340px] -> md:h-[420px]
+      // Padding: p-5 -> md:p-8
+      className="relative w-[280px] md:w-[320px] h-[340px] md:h-[420px] rounded-2xl md:rounded-3xl bg-slate-900 border border-slate-800 p-5 md:p-8 flex flex-col justify-between shrink-0 group overflow-hidden transition-colors hover:border-white/30"
     >
-      {/* 1. Sekin Animatsiyali Gradient Background */}
+      {/* Animatsiyali Gradient Background */}
       <div className={`absolute inset-0 bg-gradient-to-br ${item.color} animate-slow-gradient opacity-20`} />
       
-      {/* Spotlight Effect: Sichqonchaga ergashuvchi nur */}
+      {/* Spotlight Effect */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl z-0"
+        className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl md:rounded-3xl z-0"
         style={{
           background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.15), transparent 40%)`,
         }}
       />
 
-      {/* Content (3D chuqurlik uchun translateZ) */}
+      {/* Content */}
       <div className="relative z-10 h-full flex flex-col justify-between" style={{ transform: "translateZ(20px)" }}>
         
-        {/* 2. Harakatlanuvchi Ikonka (Suzish effekti) */}
+        {/* Harakatlanuvchi Ikonka */}
         <motion.div 
           animate={{ y: [-5, 5, -5] }}
-          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }} /* 4 soniya (sekinroq) */
-          className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center text-3xl shadow-lg mb-6 relative`}
+          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+          // ✅ IKONKA O'LCHAMI: w-12 h-12 -> md:w-16 md:h-16
+          className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center text-2xl md:text-3xl shadow-lg mb-4 md:mb-6 relative`}
         >
           {item.icon}
-          {/* Aura zarrachalari ham sekin pulsatsiya qiladi */}
-          <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${item.color} blur-xl opacity-40 animate-slow-gradient`} />
+          <div className={`absolute inset-0 rounded-xl md:rounded-2xl bg-gradient-to-br ${item.color} blur-xl opacity-40 animate-slow-gradient`} />
         </motion.div>
 
         <div>
-          <h3 className="text-2xl font-bold text-white mb-3">{item.title}</h3>
-          <p className="text-slate-400 leading-relaxed text-sm">{item.desc}</p>
+          {/* ✅ SARLAVHA VA MATN O'LCHAMI KICHRAYTIRILDI */}
+          <h3 className="text-lg md:text-2xl font-bold text-white mb-2 md:mb-3">{item.title}</h3>
+          <p className="text-slate-400 leading-relaxed text-xs md:text-sm line-clamp-4">
+            {item.desc}
+          </p>
         </div>
 
-        <div className="mt-6 pt-6 border-t border-slate-800 flex items-center justify-between">
-          <span className="text-xs text-slate-500 uppercase tracking-wider">Feature</span>
-          <span className="text-emerald-400 text-sm font-semibold">Batafsil →</span>
+        {/* ✅ PASTKI QISM ORALIG'I */}
+        <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-slate-800 flex items-center justify-between">
+          <span className="text-[10px] md:text-xs text-slate-500 uppercase tracking-wider">Feature</span>
+          <span className="text-emerald-400 text-xs md:text-sm font-semibold">Batafsil →</span>
         </div>
       </div>
     </motion.div>

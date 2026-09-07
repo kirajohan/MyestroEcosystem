@@ -1,7 +1,6 @@
 """
 AI Evaluation Service for Writing & Speaking.
 OpenRouter API orqali ishlaydi — Fallback tizimi bilan.
-Telegram bot'dagi kabi bir nechta modellarni sinab ko'radi.
 """
 
 import json
@@ -17,14 +16,13 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # ═══════════════════════════════════════════════════════════
-# FALLBACK MODELS — Telegram bot'dagi kabi ketma-ket sinab ko'riladi
+# FALLBACK MODELS — Faqat ishonchli modellar
 # ═══════════════════════════════════════════════════════════
 FALLBACK_MODELS: List[str] = [
-    "openai/gpt-4o-mini",                         # ✅ Ishlagan, arzon ($0.15/1M tokens)
-    "meta-llama/llama-3.3-70b-instruct:free",     # ✅ Free tier
-    "qwen/qwen-2.5-72b-instruct:free",            # ✅ Free tier
-    "deepseek/deepseek-chat",                     # ✅ Juda arzon ($0.14/1M tokens)
-    "mistralai/mistral-7b-instruct:free",         # ✅ Free tier
+    "openai/gpt-4o-mini",                         # ✅ Asosiy — tez, arzon
+    "anthropic/claude-3.5-sonnet",                # ✅ Zaxira 1
+    "meta-llama/llama-3.1-70b-instruct",          # ✅ Zaxira 2
+    "google/gemini-pro-1.5",                      # ✅ Zaxira 3
 ]
 
 
@@ -50,7 +48,7 @@ async def _call_openrouter(
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                "temperature": 0.3,
+                "temperature": 0.2,  # Kamroq randomness
                 "response_format": {"type": "json_object"},
             },
         )
@@ -63,7 +61,6 @@ async def _call_openrouter(
         data = response.json()
         content = data["choices"][0]["message"]["content"]
 
-        # JSON parse qilish
         try:
             result = json.loads(content)
         except json.JSONDecodeError as e:
@@ -73,40 +70,118 @@ async def _call_openrouter(
         return result
 
 
+def _validate_writing_input(student_text: str, min_words: Optional[int]) -> Dict[str, Any]:
+    """
+    Writing matnini AI'ga yuborishdan oldin tekshirish.
+    """
+    if not student_text or not student_text.strip():
+        return {
+            "valid": False,
+            "score": 0,
+            "reason": "No text provided"
+        }
+    
+    word_count = len(student_text.strip().split())
+    
+    # Minimal word count tekshiruvi
+    effective_min = min_words if min_words and min_words > 0 else 20
+    
+    if word_count < effective_min:
+        return {
+            "valid": False,
+            "score": 0,
+            "reason": f"Too short: {word_count} words (minimum {effective_min} required)",
+            "word_count": word_count
+        }
+    
+    return {
+        "valid": True,
+        "word_count": word_count
+    }
+
+
 async def evaluate_writing(
     task_instruction: str,
     student_text: str,
     cefr_level: str,
     min_words: Optional[int] = None,
     max_words: Optional[int] = None,
+    max_score: float = 100.0,
     system_prompt: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Writing matnini AI orqali baholaydi.
-    Fallback tizimi — agar birinchi model ishlamasa, keyingisini sinaydi.
+    
+    Args:
+        max_score: Maksimal ball (item.max_score dan keladi, odatda 1-10)
     """
     if not OPENROUTER_API_KEY:
         logger.error("❌ OPENROUTER_API_KEY not set!")
         return {"error": "API key not configured", "overall_score": 0}
 
+    # ═══════════════════════════════════════════════════════
+    # PRE-VALIDATION: AI'ga yuborishdan oldin tekshirish
+    # ═══════════════════════════════════════════════════════
+    validation = _validate_writing_input(student_text, min_words)
+    
+    if not validation["valid"]:
+        logger.warning(f"⚠️ Writing validation failed: {validation['reason']}")
+        return {
+            "overall_score": 0,
+            "cefr_estimate": "A1",
+            "criteria": [
+                {
+                    "name": "Task Completion",
+                    "score": 0,
+                    "max_score": 10,
+                    "comment": validation["reason"]
+                }
+            ],
+            "corrections": [],
+            "strengths": [],
+            "weaknesses": [validation["reason"]],
+            "recommendations": ["Write more content to meet the minimum requirement"],
+            "model_used": "validation",
+            "validation_failed": True
+        }
+
     # System prompt tayyorlash
     if not system_prompt:
-        system_prompt = f"""You are an expert English language examiner specializing in CEFR assessment.
+        system_prompt = f"""You are a strict English language examiner specializing in CEFR assessment.
 
-Evaluate the student's writing based on CEFR {cefr_level} criteria.
+CRITICAL RULES:
+1. The response MUST be written in English. If it's in another language (like Uzbek, Russian, etc.), give 0 points.
+2. The response must meet the minimum word requirement: {min_words or 20} words minimum.
+3. Be STRICT and REALISTIC in scoring. Don't give high scores for poor quality.
+4. If the text is too short, off-topic, or not in English, give very low scores (0-20 range).
+
+Evaluate based on CEFR {cefr_level} criteria.
 
 TASK: {task_instruction}
-{"MIN WORDS: " + str(min_words) if min_words else ""}
-{"MAX WORDS: " + str(max_words) if max_words else ""}
+MINIMUM WORDS: {min_words or 20}
+{"MAXIMUM WORDS: " + str(max_words) if max_words else "No maximum"}
 
-You MUST respond with ONLY valid JSON (no markdown, no explanation, no code blocks):
+SCORING SCALE:
+- 0-20: Very poor (wrong language, too short, completely off-topic)
+- 21-40: Poor (many errors, hard to understand)
+- 41-60: Fair (some errors, basic communication)
+- 61-80: Good (few errors, clear communication)
+- 81-100: Excellent (native-like quality)
+
+You MUST respond with ONLY valid JSON (no markdown, no explanation):
 {{
-  "overall_score": <0-100 integer>,
+  "overall_score": <0-100 integer, BE STRICT>,
   "cefr_estimate": "<A1|A2|B1|B2|C1|C2>",
   "criteria": [
     {{
       "name": "Task Achievement",
       "score": <0-10>,
+      "max_score": 10,
+      "comment": "<brief comment>"
+    }},
+    {{
+      "name": "Language (Must be English)",
+      "score": <0-10, 0 if not English>,
       "max_score": 10,
       "comment": "<brief comment>"
     }},
@@ -136,15 +211,15 @@ You MUST respond with ONLY valid JSON (no markdown, no explanation, no code bloc
       "explanation": "<why>"
     }}
   ],
-  "strengths": ["<strength 1>", "<strength 2>"],
-  "weaknesses": ["<weakness 1>", "<weakness 2>"],
-  "recommendations": ["<tip 1>", "<tip 2>"]
+  "strengths": ["<strength 1>"],
+  "weaknesses": ["<weakness 1>"],
+  "recommendations": ["<tip 1>"]
 }}"""
 
-    user_prompt = f"Evaluate this writing:\n\n{student_text}"
+    user_prompt = f"Student's writing ({validation['word_count']} words):\n\n{student_text}"
 
     # ═══════════════════════════════════════════════════════
-    # FALLBACK LOOP — har bir modelni sinab ko'ramiz
+    # FALLBACK LOOP
     # ═══════════════════════════════════════════════════════
     last_error = None
 
@@ -159,8 +234,20 @@ You MUST respond with ONLY valid JSON (no markdown, no explanation, no code bloc
             if "criteria" not in result:
                 result["criteria"] = []
 
+            # ═══════════════════════════════════════════════════════
+            # SCORE NORMALIZATION: AI 0-100 qaytaradi, lekin item max_score boshqa
+            # Masalan: AI 74 qaytardi, lekin item max_score = 1
+            # Normalize: 74/100 * 1 = 0.74
+            # ═══════════════════════════════════════════════════════
+            ai_score_100 = result.get("overall_score", 0)
+            
+            # Normalize to max_score
+            normalized_score = (ai_score_100 / 100.0) * max_score
+            result["overall_score_normalized"] = round(normalized_score, 2)
+            result["overall_score_100"] = ai_score_100  # Original 0-100 score
+            
             result["model_used"] = model
-            logger.info(f"✅ Success with {model}: score={result.get('overall_score')}")
+            logger.info(f"✅ Success with {model}: score={ai_score_100}/100 → {normalized_score:.2f}/{max_score}")
             return result
 
         except Exception as e:
@@ -173,6 +260,7 @@ You MUST respond with ONLY valid JSON (no markdown, no explanation, no code bloc
     return {
         "error": f"All models failed. Last: {last_error}",
         "overall_score": 0,
+        "overall_score_normalized": 0,
         "criteria": [],
         "model_used": None,
     }
