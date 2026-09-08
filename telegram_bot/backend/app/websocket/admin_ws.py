@@ -96,3 +96,16 @@ async def admin_websocket(websocket: WebSocket, db: DBSession = Depends(get_db))
         logger.error(f"WebSocket error: {e}")
     finally:
         manager.disconnect(websocket)
+
+
+
+
+async def broadcast_inbox_update(event_type: str, data: dict):
+    """Broadcast inbox updates to all connected admin clients."""
+    message = {
+        "type": "inbox_update",
+        "event": event_type,  # new_message, message_read, message_replied
+        "data": data,
+    }
+    await manager.broadcast(message)
+    logger.info(f"Broadcast inbox {event_type} to {len(manager.active_connections)} clients")   

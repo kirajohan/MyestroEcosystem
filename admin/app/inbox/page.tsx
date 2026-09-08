@@ -23,6 +23,8 @@ interface Message {
   admin_reply: string | null;
   created_at: string;
 }
+import { useInboxWebSocket } from '@/hooks/useInboxWebSocket';
+
 
 export default function InboxPage() {
   const [selectedMessage, setSelectedMessage] = useState<number | null>(null);
@@ -31,6 +33,9 @@ export default function InboxPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { token } = useAuth();
+
+  // WebSocket for real-time updates
+  useInboxWebSocket();
 
   // Fetch inbox messages
   const { data: messages = [], isLoading: isLoadingMessages, refetch } = useQuery({

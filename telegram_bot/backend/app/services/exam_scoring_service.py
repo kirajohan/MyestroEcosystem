@@ -151,12 +151,22 @@ async def trigger_writing_evaluation(
             )
             
             # Natijani saqlash
+
             if "error" not in ai_result:
-                answer.ai_score = ai_result.get("overall_score", 0)
-                answer.final_score = ai_result.get("overall_score", 0)
+                # ✅ Normalized score ishlatamiz (AI 0-100 qaytaradi, lekin item.max_score boshqa)
+                normalized_score = ai_result.get("overall_score_normalized")
+                
+                # Agar normalized yo'q bo'lsa, o'zimiz hisoblaymiz (fallback)
+                if normalized_score is None:
+                    ai_score_100 = ai_result.get("overall_score", 0)
+                    normalized_score = (ai_score_100 / 100.0) * float(item.max_score or 1)
+                
+                answer.ai_score = normalized_score
+                answer.final_score = normalized_score
                 answer.ai_status = "completed"
                 answer.feedback = ai_result
-                logger.info(f"✅ AI evaluation saved for answer {answer.id}: score={answer.ai_score}")
+                
+                logger.info(f"✅ AI score saved: {ai_result.get('overall_score_100')}/100 → {normalized_score}/{item.max_score}")            
             else:
                 answer.ai_status = "error"
                 answer.feedback = {"error": ai_result.get("error")}

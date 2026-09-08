@@ -12,6 +12,12 @@ export interface TestOption {
   order?: number;
 }
 
+export interface AITestGenerateRequest {
+  title: string;
+  cefr_level: CefrLevel;
+  num_questions: number;
+  topic: string;
+}
 // ═══════════════════════════════════════════════════════════
 // TestQuestion — Alohida savol (test ichidagi)
 // ═══════════════════════════════════════════════════════════

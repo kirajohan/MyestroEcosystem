@@ -8,9 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies (context is telegram_bot/, so bot/requirements.txt)
+# Install Python dependencies (bot + backend)
 COPY bot/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY backend/requirements.txt ./backend_requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -r backend_requirements.txt
 
 # Copy shared module from telegram_bot root
 COPY shared/ ./shared/

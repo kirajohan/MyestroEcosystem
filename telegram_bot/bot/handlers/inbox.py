@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 from app.models import InboxMessage
+from app.websocket.admin_ws import broadcast_inbox_update
 
 class InboxState(StatesGroup):
     """User states for inbox interaction."""
@@ -20,7 +21,7 @@ class InboxState(StatesGroup):
 
 
 async def send_to_inbox(user_id: int, subject: str, message: str, db_session):
-    """Store user message in inbox."""
+    """Store user message in inbox and broadcast to admin."""
     
     try:
         inbox_msg = InboxMessage(
@@ -33,6 +34,16 @@ async def send_to_inbox(user_id: int, subject: str, message: str, db_session):
         
         db_session.add(inbox_msg)
         await db_session.commit()
+        await db_session.refresh(inbox_msg)
+        
+        # ✅ Broadcast to admin WebSocket
+        await broadcast_inbox_update("new_message", {
+            "message_id": inbox_msg.id,
+            "user_id": user_id,
+            "subject": subject,
+            "message": message,
+            "created_at": inbox_msg.created_at.isoformat() if inbox_msg.created_at else None,
+        })
         
         logger.info(f"Message from user {user_id} stored in inbox: {subject}")
         return inbox_msg.id
@@ -42,6 +53,7 @@ async def send_to_inbox(user_id: int, subject: str, message: str, db_session):
         await db_session.rollback()
         return None
 
+    
 
 @router.message(Command("inbox"))
 async def cmd_inbox_start(message: types.Message, state: FSMContext):

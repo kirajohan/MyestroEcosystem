@@ -42,9 +42,12 @@ Myestro — bu AI yordamida ingliz tilini o'rganish platformasi. Bizning maqsadi
 - **Premium rejasi:** cheksiz AI suhbatlar — $9.99/oy
 
 ## Aloqa
-- Telegram: @myestro_support
-- Email: support@myestro.com
-- Sayt: myestro.com
+- Telegram kanal : https://t.me/myestro_academy
+- Telegram admin: @myestro_admin 
+- Email: myestroacademy@gmail.com
+- Sayt: myestro.uz
+- instagram , Facebook , Twitter , tiktok : hozircha mavjud emas 
+
 
 ## Missiyamiz
 Har bir insonga sifatli ingliz tili ta'limini arzon va qulay qilish. AI orqali shaxsiy yondashuvni ta'minlash.

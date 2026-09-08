@@ -388,3 +388,104 @@ async def create_test_attempt(
         await db.rollback()
         print(f"Error in create_test_attempt: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+# ... (mavjud importlar ostiga qo'shing)
+import json
+from app.services.ai_service import ask_ai  # Sizning loyihangizdagi AI client import yo'li
+
+# ══════════════════════════════════════════════════════════════
+# AI GENERATION SCHEMAS
+# ══════════════════════════════════════════════════════════════
+
+class AITestGenerateRequest(BaseModel):
+    title: str
+    cefr_level: str
+    num_questions: int = 5
+    topic: Optional[str] = "General English"
+
+
+class GeneratedQuestion(BaseModel):
+    question_text: str
+    options: list[str]
+    correct_option_index: int
+    explanation: Optional[str] = ""
+    difficulty: str = "medium"
+
+
+# ══════════════════════════════════════════════════════════════
+# AI GENERATE ENDPOINT
+# ══════════════════════════════════════════════════════════════
+
+@router.post("/ai-generate", response_model=TestOut, status_code=201)
+async def ai_generate_and_create_test(
+    req: AITestGenerateRequest,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """AI yordamida test va uning savollarini avtomatik yaratish."""
+    try:
+        # 1. AI uchun qat'iy prompt
+        system_prompt = """Sen professional ingliz tili o'qituvchisisan. Faqat va faqat JSON formatida javob qaytar. Boshqa hech qanday matn yozma.
+        JSON quyidagi formatda bo'lishi shart:
+        [
+          {
+            "question_text": "Savol matni",
+            "options": ["Variant A", "Variant B", "Variant C", "Variant D"],
+            "correct_option_index": 0,
+            "explanation": "Qisqa tushuntirish",
+            "difficulty": "medium"
+          }
+        ]"""
+        
+        user_prompt = f"""{req.cefr_level} darajasi uchun '{req.topic}' mavzusida {req.num_questions} ta multiple-choice test savoli yarat. 
+        To'g'ri javob indeksi 0 dan 3 gacha bo'lishi kerak."""
+
+        # 2. AI dan javob olish
+        ai_response = await ask_ai(prompt=user_prompt, system_prompt=system_prompt, model="openai/gpt-4o-mini")
+        
+        # 3. JSON ni tozalash va parse qilish
+        clean_json = ai_response.strip().replace("```json", "").replace("```", "").strip()
+        questions_data = json.loads(clean_json)
+        
+        if not isinstance(questions_data, list) or len(questions_data) == 0:
+            raise HTTPException(status_code=500, detail="AI noto'g'ri format qaytardi")
+
+        # 4. Testni bazaga saqlash
+        new_test = Test(
+            title=req.title,
+            description=f"AI tomonidan yaratilgan: {req.topic} ({req.cefr_level})",
+            cefr_level=req.cefr_level.upper(),
+            passing_score=60,
+            is_active=True,
+            total_duration=req.num_questions * 2,  # Har bir savolga 2 daqiqa
+            status="active"
+        )
+        db.add(new_test)
+        await db.flush()  # ID olish uchun
+
+        # 5. Savollarni bazaga saqlash
+        for idx, q_data in enumerate(questions_data):
+            new_question = TestQuestion(
+                test_id=new_test.id,
+                question_text=q_data.get("question_text", ""),
+                question_type="multiple_choice",
+                options=q_data.get("options", []),
+                correct_answer=str(q_data.get("correct_option_index", 0)),
+                explanation=q_data.get("explanation", ""),
+                points=1,
+                difficulty=q_data.get("difficulty", "medium"),
+                order_index=idx + 1
+            )
+            db.add(new_question)
+
+        await db.commit()
+        await db.refresh(new_test)
+        
+        return new_test
+
+    except json.JSONDecodeError:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="AI JSON formatida javob bermadi. Qayta urinib ko'ring.")
+    except Exception as e:
+        await db.rollback()
+        print(f"AI Generate Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Xatolik: {str(e)}")

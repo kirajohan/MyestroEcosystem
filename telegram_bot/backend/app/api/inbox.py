@@ -70,7 +70,6 @@ class UpdateMessageStatus(BaseModel):
 # ══════════════════════════════════════════════════════════════
 # ENDPOINTS
 # ══════════════════════════════════════════════════════════════
-
 @router.get("/messages", response_model=List[InboxMessageResponse])
 async def get_inbox_messages(
     status: Optional[str] = None,
@@ -79,12 +78,8 @@ async def get_inbox_messages(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    """Get all inbox messages (admin only).
-    
-    Optional filters:
-    - status: 'new', 'read', 'replied', 'closed'
-    """
-    from app.models import InboxMessage
+    """Get all inbox messages with history."""
+    from app.models import InboxMessage, InboxMessageHistory
     
     query = select(InboxMessage).order_by(InboxMessage.created_at.desc())
     
@@ -96,16 +91,33 @@ async def get_inbox_messages(
     result = db.execute(query)
     messages = result.scalars().all()
     
-    # Convert to response format
     response = []
     for msg in messages:
+        # Get last admin reply from history
+        history_result = db.execute(
+            select(InboxMessageHistory)
+            .where(
+                InboxMessageHistory.inbox_message_id == msg.id,
+                InboxMessageHistory.message_type == "admin_reply",
+            )
+            .order_by(InboxMessageHistory.created_at.desc())
+            .limit(1)
+        )
+        last_reply = history_result.scalar_one_or_none()
+        
+        # Get user info
+        user_result = db.execute(
+            select(User).where(User.id == msg.user_id)
+        )
+        user = user_result.scalar_one_or_none()
+        
         response.append(InboxMessageResponse(
             id=msg.id,
             user_id=msg.user_id,
-            user_name=msg.user.full_name if hasattr(msg, 'user') else None,
+            user_name=user.full_name if user else None,
             subject=msg.subject,
             user_message=msg.user_message,
-            admin_reply=msg.admin_reply,
+            admin_reply=last_reply.message_text if last_reply else msg.admin_reply,
             status=msg.status,
             is_read=msg.is_read,
             created_at=msg.created_at.isoformat() if msg.created_at else "",
@@ -182,10 +194,11 @@ async def send_reply(
     payload: AdminReply,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
-    redis=Depends(get_redis),  # Redis dependency qo'shing
+    redis=Depends(get_redis),
 ):
     """Send admin reply to user (admin only)."""
     from app.models import InboxMessage, InboxMessageHistory
+    from app.websocket.admin_ws import broadcast_inbox_update
     import json
     
     msg = db.execute(
@@ -209,14 +222,16 @@ async def send_reply(
         msg.admin_reply = payload.reply
         msg.admin_id = admin.id
         msg.status = "replied"
+        msg.is_replied = True  # ← YANGI
         msg.updated_at = datetime.utcnow()
         
         db.commit()
+        db.refresh(msg)
         
         # 3. Queue for bot to send via Telegram
         queue_payload = {
             "inbox_message_id": message_id,
-            "telegram_id": msg.user.telegram_id,  # User telegram ID
+            "telegram_id": msg.user.telegram_id,
             "text": payload.reply,
             "admin_name": admin.full_name,
         }
@@ -225,6 +240,13 @@ async def send_reply(
             "inbox:admin_replies",
             json.dumps(queue_payload)
         )
+        
+        # 4. ✅ Broadcast to WebSocket clients
+        await broadcast_inbox_update("message_replied", {
+            "message_id": message_id,
+            "status": "replied",
+            "admin_reply": payload.reply,
+        })
         
         logger.info(f"Admin {admin.id} replied to message {message_id}, queued for delivery")
         
@@ -239,7 +261,6 @@ async def send_reply(
         logger.error(f"Failed to send reply: {e}")
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to send reply")
-
 
     
 @router.patch("/messages/{message_id}/status")

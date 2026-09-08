@@ -22,7 +22,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from bot.config import settings
 from bot.handlers import voice
-
+from handlers import messages  # ← YANGI IMPORT
 from bot.middlewares.ai_guard import AIGuardMiddleware
 from bot.middlewares.channel_check import ChannelCheckMiddleware
 from bot.middlewares.bot_guard import BotGuardMiddleware
@@ -122,7 +122,7 @@ async def main():
     dp.include_router(document.router)
     dp.include_router(sticker.router)
     dp.include_router(video.router)
-
+    dp.include_router(messages.router)  
     # ══════════════════════════════════════════════════════════
     # MESSAGE MIDDLEWARES
     # ══════════════════════════════════════════════════════════

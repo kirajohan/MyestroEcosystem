@@ -134,4 +134,10 @@ export const testsApi = {
       method: 'DELETE',
     });
   },
+    generateWithAI: async (data: import('@/types/test').AITestGenerateRequest): Promise<Test> => {
+    return request<Test>('/api/tests/ai-generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
 };
