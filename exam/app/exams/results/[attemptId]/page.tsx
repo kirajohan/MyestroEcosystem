@@ -6,35 +6,46 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { API_URL } from "@/lib/api";
 
-// ─── Interfaces (Backend rejasiga to'liq mos) ───────────────────────────────
+// ─── Interfaces (Backend JSON'iga 100% moslashtirildi) ───────────────────────
 interface AiFeedback {
   overall_score?: number;
+  overall_score_100?: number;
+  overall_score_normalized?: number;
   cefr_estimate?: string;
   criteria?: { name: string; score: number; max_score: number; comment: string }[];
   corrections?: { original: string; corrected: string; explanation: string }[];
   strengths?: string[];
   weaknesses?: string[];
   recommendations?: string[];
+  model_used?: string;
+}
+
+interface ResultAnswer {
+  id: number;
+  selected_options: number[] | null;
+  text_answer: string | null;
+  audio_url: string | null;
+  transcript_text: string | null;
+  auto_score: number | null;
+  ai_score: number | null;
+  final_score: number | null;
+  ai_status: "pending" | "processing" | "completed" | "error" | "needs_review";
+  feedback?: AiFeedback;
 }
 
 interface ResultItem {
-  item_id: number;
+  id: number; // Backend 'id' qaytaradi, 'item_id' emas
   item_type: string;
   title: string;
+  instruction?: string;
   question_text?: string;
   order: number;
   max_score: number;
-  user_selected?: number[];
-  user_text?: string;
-  audio_url?: string;
-  transcript_text?: string;
+  min_words?: number;
+  max_words?: number;
   correct_option_ids?: number[];
-  auto_score?: number;
-  ai_score?: number;
-  final_score: number;
-  is_correct?: boolean;
-  ai_status?: "pending" | "processing" | "completed" | "error" | "needs_review";
-  ai_feedback?: AiFeedback;
+  options?: { id: number; text: string; order: number }[];
+  answer?: ResultAnswer; // ✅ MUHIM: Barcha javob va AI ma'lumotlari shu ichida
 }
 
 interface ResultBlock {
@@ -236,27 +247,19 @@ export default function ResultPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   
-  // ✅ Polling uchun ref ishlatamiz (infinite loop oldini olish uchun)
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const isPollingRef = useRef(false);
 
-  // Dastlabki yuklash
   useEffect(() => {
     loadResult();
     return () => {
-      // Cleanup polling on unmount
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-      }
+      if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, [attemptId]);
 
-  // ✅ Polling mexanizmi - alohida useEffect
   useEffect(() => {
-    // Agar result mavjud bo'lmasa yoki status "scoring" bo'lmasa, polling kerak emas
     if (!result || result.status !== "scoring") {
       if (pollingRef.current) {
-        console.log("✅ Polling to'xtatildi");
         clearInterval(pollingRef.current);
         pollingRef.current = null;
         isPollingRef.current = false;
@@ -264,31 +267,18 @@ export default function ResultPage() {
       return;
     }
 
-    // Agar allaqachon polling bo'layotgan bo'lsa, qayta boshlamaymiz
-    if (isPollingRef.current) {
-      return;
-    }
+    if (isPollingRef.current) return;
 
-    console.log("🔄 AI baholamoqda, polling boshlandi...");
     isPollingRef.current = true;
-
     pollingRef.current = setInterval(async () => {
-      console.log("🔍 Status tekshirilmoqda...");
       try {
-        const res = await fetch(`${API_URL}/api/v2/exam/attempts/${attemptId}/result`, {
-          credentials: "include",
-        });
+        const res = await fetch(`${API_URL}/api/v2/exam/attempts/${attemptId}/result`, { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
-          
-          // Faqat status yoki natija o'zgargan bo'lsa yangilaymiz
           if (data.status !== result?.status || data.total_score !== result?.total_score) {
-            console.log("📊 Natija yangilandi:", data.status);
             setResult(data);
           }
-          
           if (data.status === "completed") {
-            console.log("✅ AI baholash tugadi!");
             if (pollingRef.current) {
               clearInterval(pollingRef.current);
               pollingRef.current = null;
@@ -299,7 +289,7 @@ export default function ResultPage() {
       } catch (err) {
         console.error("Polling xatosi:", err);
       }
-    }, 3000); // Har 3 sekundda
+    }, 3000);
 
     return () => {
       if (pollingRef.current) {
@@ -310,7 +300,6 @@ export default function ResultPage() {
     };
   }, [result?.status, attemptId]);
 
-  // Confetti animation
   useEffect(() => {
     if (result && result.status === "completed" && result.percentage >= 70 && !hasCelebrated.current) {
       hasCelebrated.current = true;
@@ -318,36 +307,18 @@ export default function ResultPage() {
     }
   }, [result]);
 
-  // ✅ Yuklash funksiyasi - polling uchun optimallashtirilgan
   async function loadResult(isPolling = false) {
-    // Polling paytida loading state'ni o'zgartirmaymiz
-    if (!isPolling) {
-      setLoading(true);
-    }
+    if (!isPolling) setLoading(true);
     setError("");
-    
     try {
-      const res = await fetch(`${API_URL}/api/v2/exam/attempts/${attemptId}/result`, { 
-        credentials: "include" 
-      });
-      
-      if (!res.ok) {
-        if (res.status === 400) throw new Error("Attempt hali yakunlanmagan yoki topilmadi");
-        throw new Error(`HTTP ${res.status}`);
-      }
-      
+      const res = await fetch(`${API_URL}/api/v2/exam/attempts/${attemptId}/result`, { credentials: "include" });
+      if (!res.ok) throw new Error(res.status === 400 ? "Attempt hali yakunlanmagan" : `HTTP ${res.status}`);
       const data = await res.json();
       setResult(data);
     } catch (err) {
-      console.error("Natija yuklanmadi:", err);
-      // Polling paytida error ko'rsatmaymiz
-      if (!isPolling) {
-        setError(err instanceof Error ? err.message : "Natija yuklanmadi");
-      }
+      if (!isPolling) setError(err instanceof Error ? err.message : "Natija yuklanmadi");
     } finally {
-      if (!isPolling) {
-        setLoading(false);
-      }
+      if (!isPolling) setLoading(false);
     }
   }
 
@@ -355,7 +326,7 @@ export default function ResultPage() {
     return (
       <main className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 h-12 border-b-2 border-orange-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4" />
           <p className="text-slate-500">Natija yuklanmoqda...</p>
         </div>
       </main>
@@ -379,10 +350,11 @@ export default function ResultPage() {
 
   if (!result) return null;
 
+  // ✅ Yangilangan hisoblash mantig'i (item.answer orqali)
   const autoGradedItems = result.blocks.flatMap((b) => (isAutoGraded(b.block_type) ? b.items : []));
-  const correctAutoItems = autoGradedItems.filter((i) => i.is_correct).length;
+  const correctAutoItems = autoGradedItems.filter((i) => i.answer?.auto_score === i.max_score).length;
   const totalAutoItems = autoGradedItems.length;
-  const pendingAiBlocks = result.blocks.filter((b) => isAiGraded(b.block_type) && b.items.some((i) => i.ai_status !== "completed")).length;
+  const pendingAiBlocks = result.blocks.filter((b) => isAiGraded(b.block_type) && b.items.some((i) => i.answer?.ai_status !== "completed")).length;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -397,18 +369,16 @@ export default function ResultPage() {
 
       <div className="max-w-4xl mx-auto p-6 space-y-8">
         
-        {/* Global AI Scoring Banner */}
         {result.status === "scoring" && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl flex items-center gap-3">
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full flex-shrink-0" />
             <div>
               <p className="font-semibold">Natijalar to'liq tayyor emas</p>
-              <p className="text-sm text-amber-700">Writing va Speaking qismlari hali AI tomonidan baholanmoqda. Sahifani birozdan keyin yangilab ko'ring.</p>
+              <p className="text-sm text-amber-700">Writing va Speaking qismlari hali AI tomonidan baholanmoqda. Sahifa avtomatik yangilanadi.</p>
             </div>
           </motion.div>
         )}
 
-        {/* Umumiy Ball va Statistika */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-400 via-rose-500 to-purple-500" />
           
@@ -445,17 +415,16 @@ export default function ResultPage() {
             </div>
           </div>
 
-          {/* Dinamik statistika (Faqat Auto-graded uchun To'g'ri/Xato ko'rsatamiz) */}
           {totalAutoItems > 0 && (
-            <div className="flex items-center justify-center gap-6 text-sm bg-slate-50 p-4 rounded-xl inline-flex">
+            <div className="flex items-center justify-center gap-6 text-sm bg-slate-50 p-4 rounded-xl inline-flex flex-wrap">
               <span className="text-slate-600">📝 Test savollari: <strong className="text-slate-900">{totalAutoItems}</strong></span>
-              <span className="w-px h-4 bg-slate-300"></span>
+              <span className="w-px h-4 bg-slate-300 hidden sm:block"></span>
               <span className="text-emerald-600">✅ To'g'ri: <strong>{correctAutoItems}</strong></span>
-              <span className="w-px h-4 bg-slate-300"></span>
+              <span className="w-px h-4 bg-slate-300 hidden sm:block"></span>
               <span className="text-red-600">❌ Xato: <strong>{totalAutoItems - correctAutoItems}</strong></span>
               {pendingAiBlocks > 0 && (
                 <>
-                  <span className="w-px h-4 bg-slate-300"></span>
+                  <span className="w-px h-4 bg-slate-300 hidden sm:block"></span>
                   <span className="text-amber-600">⏳ AI baholamoqda: <strong>{pendingAiBlocks} bo'lim</strong></span>
                 </>
               )}
@@ -463,7 +432,6 @@ export default function ResultPage() {
           )}
         </motion.div>
 
-        {/* Blocklar */}
         <div className="space-y-6">
           {result.blocks.map((block, index) => (
             <TiltCard key={block.block_id} delay={index * 0.1}>
@@ -485,28 +453,31 @@ export default function ResultPage() {
               <div className="space-y-4">
                 <AnimatePresence>
                   {block.items.map((item, itemIndex) => {
+                    const answer = item.answer; // ✅ Qisqa o'zgaruvchi
+
                     // 1. AUTO-GRADED (Listening / Reading)
                     if (isAutoGraded(block.block_type)) {
+                      const isCorrect = answer?.auto_score === item.max_score;
                       return (
                         <motion.div
-                          key={item.item_id}
+                          key={item.id}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: itemIndex * 0.05 }}
                           className={`border rounded-xl p-4 transition-all duration-300 ${
-                            item.is_correct ? "border-emerald-200 bg-emerald-50/50" : "border-red-200 bg-red-50/50"
+                            isCorrect ? "border-emerald-200 bg-emerald-50/50" : "border-red-200 bg-red-50/50"
                           }`}
                         >
                           <div className="flex items-start gap-4">
-                            <span className="text-2xl flex-shrink-0 mt-1">{item.is_correct ? "✅" : "❌"}</span>
+                            <span className="text-2xl flex-shrink-0 mt-1">{isCorrect ? "✅" : "❌"}</span>
                             <div className="flex-1">
                               <h4 className="font-semibold text-slate-900 mb-2 text-base">{item.order}. {item.question_text || item.title}</h4>
-                              {item.user_selected && item.user_selected.length > 0 && (
+                              {answer?.selected_options && answer.selected_options.length > 0 && (
                                 <p className="text-sm text-slate-600 mb-1">
-                                  Sizning javobingiz: <span className={item.is_correct ? "text-emerald-700 font-bold" : "text-red-700 font-bold"}>Variant {item.user_selected.join(", ")}</span>
+                                  Sizning javobingiz: <span className={isCorrect ? "text-emerald-700 font-bold" : "text-red-700 font-bold"}>Variant {answer.selected_options.join(", ")}</span>
                                 </p>
                               )}
-                              {!item.is_correct && item.correct_option_ids && item.correct_option_ids.length > 0 && (
+                              {!isCorrect && item.correct_option_ids && item.correct_option_ids.length > 0 && (
                                 <p className="text-sm text-emerald-700 mt-2 flex items-center gap-2">
                                   <span className="text-lg">💡</span>
                                   <span>To'g'ri javob: <span className="font-bold">Variant {item.correct_option_ids.join(", ")}</span></span>
@@ -514,7 +485,7 @@ export default function ResultPage() {
                               )}
                               <div className="flex items-center gap-3 mt-3">
                                 <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-200 text-slate-700">
-                                  Ball: {item.final_score} / {item.max_score}
+                                  Ball: {answer?.final_score || 0} / {item.max_score}
                                 </span>
                               </div>
                             </div>
@@ -524,10 +495,10 @@ export default function ResultPage() {
                     }
 
                     // 2. AI-GRADED (Writing / Speaking) - Pending State
-                    if (isAiGraded(block.block_type) && item.ai_status !== "completed") {
+                    if (isAiGraded(block.block_type) && (!answer || answer.ai_status !== "completed")) {
                       return (
                         <motion.div
-                          key={item.item_id}
+                          key={item.id}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           className="border border-amber-200 bg-amber-50/50 rounded-xl p-6 text-center"
@@ -542,18 +513,18 @@ export default function ResultPage() {
                     // 3. AI-GRADED (Writing / Speaking) - Completed State
                     return (
                       <motion.div
-                        key={item.item_id}
+                        key={item.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: itemIndex * 0.05 }}
                         className="border border-slate-200 bg-white rounded-xl p-5 shadow-sm"
                       >
                         {/* User Input Display */}
-                        {block.block_type === "writing" && item.user_text && (
+                        {block.block_type === "writing" && answer?.text_answer && (
                           <div className="mb-4">
                             <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Sizning javobingiz</h5>
                             <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-slate-800 text-sm leading-relaxed whitespace-pre-wrap">
-                              {item.user_text}
+                              {answer.text_answer}
                             </div>
                           </div>
                         )}
@@ -561,10 +532,10 @@ export default function ResultPage() {
                         {block.block_type === "speaking" && (
                           <div className="mb-4">
                             <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Sizning javobingiz</h5>
-                            {item.audio_url && <audio controls src={item.audio_url} className="w-full mb-3 h-10" />}
-                            {item.transcript_text ? (
+                            {answer?.audio_url && <audio controls src={answer.audio_url} className="w-full mb-3 h-10" />}
+                            {answer?.transcript_text ? (
                               <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-slate-800 text-sm leading-relaxed italic">
-                                "{item.transcript_text}"
+                                "{answer.transcript_text}"
                               </div>
                             ) : (
                               <p className="text-sm text-slate-500 italic">Transkript mavjud emas</p>
@@ -573,13 +544,13 @@ export default function ResultPage() {
                         )}
 
                         {/* AI Feedback Display */}
-                        {item.ai_feedback && <AiFeedbackView feedback={item.ai_feedback} />}
+                        {answer?.feedback && <AiFeedbackView feedback={answer.feedback} />}
                         
                         <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
                           <span className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                             🤖 AI Yakuniy ball
                           </span>
-                          <span className="text-lg font-bold text-orange-600">{item.final_score} / {item.max_score}</span>
+                          <span className="text-lg font-bold text-orange-600">{answer?.final_score || 0} / {item.max_score}</span>
                         </div>
                       </motion.div>
                     );
@@ -590,7 +561,6 @@ export default function ResultPage() {
           ))}
         </div>
 
-        {/* Harakat Tugmalari */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="flex flex-col sm:flex-row gap-4 pb-12">
           <button onClick={() => router.push("/cabinet")} className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 py-3.5 rounded-xl font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]">
             🏠 Kabinetga qaytish

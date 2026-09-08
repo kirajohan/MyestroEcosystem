@@ -611,14 +611,27 @@ async def create_block(
 ):
     """Exam ichida yangi block yaratadi."""
     
-    # Exam mavjudligini tekshirish
+    # 1. Exam mavjudligini tekshirish
     exam_stmt = select(Exam).where(Exam.id == exam_id)
     exam_result = await db.execute(exam_stmt)
     exam = exam_result.scalar_one_or_none()
     if not exam:
         raise HTTPException(status_code=404, detail="Exam topilmadi")
     
-    # Keyingi order raqamini topish
+    # 2. Block type ni olish va tekshirish
+    block_type = payload.get("block_type")
+    if hasattr(block_type, "value"):
+        block_type = block_type.value
+    
+    # ✅ MUHIM: block_type "full" bo'la olmaydi! Faqat skill nomlari bo'lishi kerak.
+    valid_block_types = ["listening", "reading", "writing", "speaking"]
+    if not block_type or block_type not in valid_block_types:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Noto'g'ri block_type. Quyidagilardan biri bo'lishi kerak: {', '.join(valid_block_types)}"
+        )
+    
+    # 3. Keyingi order raqamini topish
     max_order_stmt = select(func.max(ExamBlock.order)).where(
         ExamBlock.exam_id == exam_id
     )
@@ -626,20 +639,16 @@ async def create_block(
     max_order = max_order_result.scalar() or 0
     next_order = max_order + 1
     
-    # Enum qiymatlarni string ga o'tkazish
-    block_type = payload.get("block_type")
-    if hasattr(block_type, "value"):
-        block_type = block_type.value
-    
+    # 4. Block yaratish
     block = ExamBlock(
         exam_id=exam_id,
-        block_type=block_type or exam.exam_type,
-        title=payload.get("title", f"Block {next_order}"),
+        block_type=block_type,  # ✅ Endi faqat to'g'ri qiymat tushadi
+        title=payload.get("title", f"{block_type.capitalize()} Section"),
         description=payload.get("description"),
         instructions=payload.get("instructions"),
-        passage_text=payload.get("passage_text"),       # ← YANGI
-        audio_url=payload.get("audio_url"),             # ← YANGI
-        audio_duration_sec=payload.get("audio_duration_sec"),  # ← YANGI
+        passage_text=payload.get("passage_text"),
+        audio_url=payload.get("audio_url"),
+        audio_duration_sec=payload.get("audio_duration_sec"),
         order=payload.get("order", next_order),
         time_limit_sec=payload.get("time_limit_sec", 0),
         config=payload.get("config"),
@@ -656,7 +665,6 @@ async def create_block(
         "title": block.title,
         "order": block.order,
     }
-
 
 @router.put(
     "/blocks/{block_id}",

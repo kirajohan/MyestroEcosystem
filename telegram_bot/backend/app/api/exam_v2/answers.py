@@ -321,6 +321,14 @@ async def submit_attempt(
 # ═══════════════════════════════════════════════════════════════
 # GET /result — Natija
 # ═══════════════════════════════════════════════════════════════
+#    @router.get("/{attempt_id}/result", summary="Natijani olish")
+# async def get_result(
+#     attempt_id: int,
+#     db: AsyncSession = Depends(get_async_db),
+#     current_user: User = Depends(get_current_user_from_session),
+# ):
+#     # ... (attempt, exam, blocks, items, answers ni olish qismi o'z holicha qoladi) ...
+    
 
 @router.get("/{attempt_id}/result", summary="Natijani olish")
 async def get_result(
@@ -371,7 +379,6 @@ async def get_result(
     answers = answers_result.scalars().all()
     answers_map = {ans.item_id: ans for ans in answers}
 
-    # Block'lar bo'yicha guruhlash
     blocks_data = []
     for ab in attempt_blocks:
         block = blocks_map.get(ab.block_id)
@@ -384,12 +391,28 @@ async def get_result(
         for item in sorted(block_items, key=lambda i: i.order):
             answer = answers_map.get(item.id)
             
-            # To'g'ri javob ID larini aniqlash
             correct_option_ids = []
             if item.answer_key:
                 correct_option_ids = item.answer_key.get("correct_option_ids", [])
 
             options_list = item.options if hasattr(item, 'options') else []
+            
+            # ✅ 4. MUHIM: Foydalanuvchi javobi va AI feedback ma'lumotlarini qo'shish
+            answer_data = None
+            if answer:
+                answer_data = {
+                    "id": answer.id,
+                    "selected_options": answer.selected_options,
+                    "text_answer": answer.text_answer,
+                    "audio_url": answer.audio_url,
+                    "transcript_text": answer.transcript_text,
+                    "auto_score": answer.auto_score,
+                    "ai_score": answer.ai_score,
+                    "final_score": answer.final_score,
+                    "ai_status": answer.ai_status,
+                    "feedback": answer.feedback,  # ✅ corrections, strengths, weaknesses shu yerda
+                }
+
             items_data.append({
                 "id": item.id,
                 "item_type": item.item_type,
@@ -398,32 +421,33 @@ async def get_result(
                 "question_text": item.question_text,
                 "max_score": float(item.max_score or 1),
                 "order": item.order,
-                # ═══ SPEAKING UCHUN YANGI ═══
                 "preparation_time_sec": item.preparation_time_sec or 30,
                 "answer_time_sec": item.answer_time_sec or 60,
-                # ═══ WRITING UCHUN ═══
                 "min_words": item.min_words,
                 "max_words": item.max_words,
+                "correct_option_ids": correct_option_ids,
                 "options": [
                     {
                         "id": opt.id,
                         "text": opt.text,
                         "order": opt.order,
+                        "is_correct": opt.is_correct,  # ✅ Natijada to'g'ri/noto'g'riligini ko'rsatish
                     }
                     for opt in options_list
                 ],
+                "answer": answer_data,  # ✅ Frontend shu orqali AI bahosini oladi
             })
 
         blocks_data.append({
             "block_id": ab.block_id,
             "block_type": block.block_type,
             "title": block.title,
-            "score": ab.score,
-            "status": ab.status,
+            "score": ab.score,       # ✅ Endi bu null bo'lmaydi
+            "status": ab.status,     # ✅ Endi bu "completed" bo'ladi
             "items": items_data,
         })
 
-    # CEFR estimate (oddiy formula)
+    # CEFR hisoblash (endi percentage to'g'ri bo'lgani uchun bu ham to'g'ri ishlaydi)
     percentage = 0
     if attempt.total_score is not None:
         max_score_stmt = select(func.sum(ExamItem.max_score)).where(
@@ -446,14 +470,13 @@ async def get_result(
         "exam_title": exam.title if exam else None,
         "exam_type": exam.exam_type if exam else None,
         "status": attempt.status,
-        "total_score": attempt.total_score,
+        "total_score": round(attempt.total_score or 0, 2),
         "percentage": round(percentage, 1),
         "cefr_estimate": cefr_estimate,
         "started_at": attempt.started_at.isoformat() if attempt.started_at else None,
         "submitted_at": attempt.submitted_at.isoformat() if attempt.submitted_at else None,
         "blocks": blocks_data,
     }
-
 
 # ═══════════════════════════════════════════════════════════
 # SPEAKING AUDIO UPLOAD

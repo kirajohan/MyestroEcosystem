@@ -264,3 +264,131 @@ You MUST respond with ONLY valid JSON (no markdown, no explanation):
         "criteria": [],
         "model_used": None,
     }
+
+# app/services/exam_ai_service.py faylining oxiriga qo'shing
+
+async def evaluate_speaking(
+    task_instruction: str,
+    transcript_text: str,
+    cefr_level: str,
+    duration_sec: Optional[int] = None,
+    max_score: float = 100.0,
+    system_prompt: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Speaking (gapirish) javobini AI orqali baholaydi (Transkript asosida).
+    """
+    if not OPENROUTER_API_KEY:
+        return {"error": "API key not configured", "overall_score": 0}
+
+    if not transcript_text or not transcript_text.strip():
+        return {
+            "overall_score": 0,
+            "cefr_estimate": "A1",
+            "criteria": [{"name": "Task Achievement", "score": 0, "max_score": 10, "comment": "No transcript provided."}],
+            "strengths": [],
+            "weaknesses": ["Audio was empty or could not be transcribed."],
+            "recommendations": ["Please ensure your microphone is working and speak clearly."],
+            "model_used": "validation"
+        }
+
+    word_count = len(transcript_text.strip().split())
+
+    if not system_prompt:
+        system_prompt = f"""You are a strict CEFR-certified English speaking examiner.
+You are evaluating a SPEAKING transcript (not a written essay). 
+Focus on how a spoken response would be evaluated based on this transcript.
+
+CRITICAL RULES:
+1. Evaluate based on CEFR {cefr_level} speaking criteria.
+2. Be STRICT and REALISTIC. Do not give high scores for very short or irrelevant answers.
+3. If the transcript is too short (under 30 words) or completely off-topic, give a very low score (0-20 range).
+4. Respond ONLY with valid JSON.
+
+TASK TOPIC: {task_instruction}
+EXPECTED CEFR: {cefr_level}
+RESPONSE DURATION: {duration_sec or 'Unknown'} seconds
+WORD COUNT: {word_count} words
+
+SCORING SCALE (0-100):
+- 0-20: Very poor (too short, irrelevant, incomprehensible)
+- 21-40: Poor (frequent pauses, basic vocabulary, many errors)
+- 41-60: Fair (adequate communication, some errors, limited range)
+- 61-80: Good (clear, good vocabulary, minor errors)
+- 81-100: Excellent (fluent, wide vocabulary, accurate, natural)
+
+You MUST respond with ONLY valid JSON:
+{{
+  "overall_score": <0-100 integer, BE STRICT>,
+  "cefr_estimate": "<A1|A2|B1|B2|C1|C2>",
+  "criteria": [
+    {{
+      "name": "Fluency & Coherence",
+      "score": <0-10>,
+      "max_score": 10,
+      "comment": "<brief comment on flow and linking>"
+    }},
+    {{
+      "name": "Lexical Resource",
+      "score": <0-10>,
+      "max_score": 10,
+      "comment": "<brief comment on vocabulary>"
+    }},
+    {{
+      "name": "Grammatical Range & Accuracy",
+      "score": <0-10>,
+      "max_score": 10,
+      "comment": "<brief comment on grammar>"
+    }},
+    {{
+      "name": "Task Achievement",
+      "score": <0-10>,
+      "max_score": 10,
+      "comment": "<brief comment on relevance to topic>"
+    }}
+  ],
+  "corrections": [
+    {{
+      "original": "<wrong phrase from transcript>",
+      "corrected": "<corrected phrase>",
+      "explanation": "<why>"
+    }}
+  ],
+  "strengths": ["<strength 1>"],
+  "weaknesses": ["<weakness 1>"],
+  "recommendations": ["<tip 1>"]
+}}"""
+
+    user_prompt = f"Student's spoken transcript ({word_count} words):\n\n{transcript_text}"
+
+    last_error = None
+    for model in FALLBACK_MODELS:
+        try:
+            logger.info(f"🎤 Evaluating speaking with model: {model}")
+            result = await _call_openrouter(model, system_prompt, user_prompt)
+
+            if "overall_score" not in result:
+                result["overall_score"] = 0
+            
+            ai_score_100 = result.get("overall_score", 0)
+            normalized_score = (ai_score_100 / 100.0) * max_score
+            
+            result["overall_score_normalized"] = round(normalized_score, 2)
+            result["overall_score_100"] = ai_score_100
+            result["model_used"] = model
+            
+            logger.info(f"✅ Speaking evaluation success: {ai_score_100}/100 → {normalized_score:.2f}/{max_score}")
+            return result
+
+        except Exception as e:
+            last_error = str(e)
+            logger.warning(f"⚠️ Speaking model {model} failed: {e}")
+            continue
+
+    return {
+        "error": f"All models failed. Last: {last_error}",
+        "overall_score": 0,
+        "overall_score_normalized": 0,
+        "criteria": [],
+        "model_used": None,
+    }

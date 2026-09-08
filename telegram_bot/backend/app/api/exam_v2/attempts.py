@@ -1,9 +1,4 @@
-"""
-Maestro Exam — User Attempts endpoints.
 
-GET /api/v2/exam/attempts/{id}                    → attempt holati
-GET /api/v2/exam/attempts/{id}/blocks/{block_id}  → block savollari (javoblarsiz)
-"""
 from __future__ import annotations
 from typing import Optional
 from fastapi import Query
