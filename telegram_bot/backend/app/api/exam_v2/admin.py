@@ -4,10 +4,9 @@ Maestro Exam — Admin API endpoints.
 Bu endpointlar faqat admin huquqiga ega foydalanuvchilar uchun.
 """
 
-from __future__ import annotations
-
+# from __future__ import annota
 from typing import Optional
-
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +24,10 @@ from app.schemas.exam import (
     ExamListItem,
     ExamUpdate,
 )
+
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 
@@ -848,3 +851,123 @@ async def delete_exam(
         )
 
     return None
+
+
+# app/api/exam_v2/admin.py ichiga qo'shing
+
+from fastapi import HTTPException
+from sqlalchemy import select
+@router.post("/bulk-import", summary="JSON orqali ommaviy exam yuklash")
+async def bulk_import_exam(
+    payload: dict,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    try:
+        exam_data = payload.get("exam")
+        if not exam_data:
+            raise HTTPException(status_code=400, detail="'exam' maydoni majburiy")
+        
+        existing_exam = await db.execute(select(Exam).where(Exam.code == exam_data.get("code")))
+        if existing_exam.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail=f"Bu kod allaqachon mavjud: {exam_data.get('code')}")
+        
+        exam = Exam(
+            code=exam_data.get("code"),
+            title=exam_data.get("title"),
+            description=exam_data.get("description"),
+            exam_type=exam_data.get("exam_type"),
+            cefr_level=exam_data.get("cefr_level"),
+            time_limit_sec=exam_data.get("time_limit_sec", 0),
+            is_published=exam_data.get("is_published", False),
+        )
+        db.add(exam)
+        await db.flush()
+        
+        blocks_created = 0
+        items_created = 0
+        options_created = 0
+        
+        for block_data in payload.get("blocks", []):
+            block = ExamBlock(
+                exam_id=exam.id,
+                block_type=block_data.get("block_type"),
+                title=block_data.get("title"),
+                description=block_data.get("description"),
+                instructions=block_data.get("instructions"),
+                passage_text=block_data.get("passage_text"),
+                audio_url=block_data.get("audio_url"),
+                audio_duration_sec=block_data.get("audio_duration_sec"),
+                order=block_data.get("order", 1),
+                time_limit_sec=block_data.get("time_limit_sec", 0),
+                config=block_data.get("config"),
+            )
+            db.add(block)
+            await db.flush()
+            blocks_created += 1
+            
+            for item_data in block_data.get("items", []):
+                options_data = item_data.pop("options", [])
+                
+                item = ExamItem(
+                    block_id=block.id,
+                    item_type=item_data.get("item_type"),
+                    title=item_data.get("title"),
+                    instruction=item_data.get("instruction"),
+                    question_text=item_data.get("question_text"),
+                    passage_text=item_data.get("passage_text"),
+                    audio_url=item_data.get("audio_url"),
+                    audio_duration_sec=item_data.get("audio_duration_sec"),
+                    transcript_text=item_data.get("transcript_text"),
+                    min_words=item_data.get("min_words"),
+                    max_words=item_data.get("max_words"),
+                    preparation_time_sec=item_data.get("preparation_time_sec"),
+                    answer_time_sec=item_data.get("answer_time_sec"),
+                    max_score=item_data.get("max_score", 1.0),
+                    order=item_data.get("order", 1),
+                    config=item_data.get("config"),
+                )
+                db.add(item)
+                await db.flush()  # 1. Item ID olish uchun flush
+                items_created += 1
+                
+                created_options = []
+                for opt_data in options_data:
+                    option = ExamOption(
+                        item_id=item.id,
+                        text=opt_data.get("text"),
+                        is_correct=opt_data.get("is_correct", False),
+                        order=opt_data.get("order", 1),
+                    )
+                    db.add(option)
+                    created_options.append(option)
+                
+                await db.flush()  # 2. Option ID lar olish uchun flush
+                
+                # ✅ YANGI QO'SHILDI: is_correct=True bo'lgan variantlarning ID larini answer_key ga yozish
+                correct_ids = [opt.id for opt in created_options if opt.is_correct]
+                if correct_ids:
+                    item.answer_key = {"correct_option_ids": correct_ids}
+                
+                options_created += len(created_options)
+        
+        await db.commit()
+        
+        return {
+            "status": "success",
+            "message": f"✅ Exam '{exam.title}' muvaffaqiyatli yuklandi!",
+            "exam_id": exam.id,
+            "exam_code": exam.code,
+            "stats": {
+                "blocks_created": blocks_created,
+                "items_created": items_created,
+                "options_created": options_created,
+            }
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"❌ Bulk import xatosi: {e}")
+        raise HTTPException(status_code=400, detail=f"Import xatosi: {str(e)}")

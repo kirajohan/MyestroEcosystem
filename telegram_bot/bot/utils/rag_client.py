@@ -74,8 +74,12 @@ class RAGClient:
             return 0
         
         self.chunks = []
-        md_files = list(self.knowledge_dir.glob("*.md"))
+        # rglob = recursive glob (barcha ichki papkalarni ham qidiradi)
+        md_files = list(self.knowledge_dir.rglob("*.md"))
         
+        # _index.yaml yoki boshqa tizim fayllarini chetlab o'tish uchun (ixtiyoriy, lekin tavsiya etiladi)
+        md_files = [f for f in md_files if not f.name.startswith("_")]
+
         if not md_files:
             logger.warning(f"⚠️ Knowledge papkasida .md fayllar yo'q")
             return 0
@@ -116,13 +120,17 @@ class RAGClient:
             if len(chunk_text.strip()) < 50:  # Juda kichik chunk'larni tashlab yuboramiz
                 continue
             
+            # Faylning knowledge papkasiga nisbatan nisbiy yo'lini olamiz (masalan: "grammar/unit_88")
+            # Bu bir xil nomli fayllar turli papkalarda bo'lsa, ularni chalkashtirib yubormaslik uchun juda muhim
+            relative_file_path = file_path.relative_to(self.knowledge_dir).with_suffix("")
+            
             chunks.append({
-                "id": f"{file_path.stem}_{i}",
-                "file": file_path.stem,
+                "id": f"{relative_file_path}_{i}",
+                "file": str(relative_file_path),  # <-- Endi papka nomi ham qo'shiladi
                 "category": metadata.get("category", "general"),
                 "tags": metadata.get("tags", []),
                 "content": chunk_text.strip(),
-                "embedding": None  # Keyin hisoblanadi
+                "embedding": None
             })
         
         return chunks

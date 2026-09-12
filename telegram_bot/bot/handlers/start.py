@@ -120,3 +120,69 @@ async def start_handler(
             welcome_text,
             reply_markup=keyboard
         )
+
+
+
+# ══════════════════════════════════════════════════════════════
+# HELP COMMAND — Barcha buyruqlar ro'yxati
+# ══════════════════════════════════════════════════════════════
+
+# Buyruqlar bazasi (Yagona manba). 
+# Yangi command qo'shsangiz, shu yerga qo'shasiz va /help avtomatik yangilanadi.
+BOT_COMMANDS = {
+    "uz": [
+        ("/start", "🚀 Botni qayta ishga tushirish"),
+        ("/help", "❓ Yordam va buyruqlar ro'yxati"),
+        ("/about", "ℹ️ Loyiha haqida ma'lumot"),
+        ("/guide", "📖 Botdan foydalanish qo'llanmasi"),
+        ("/admin", "📨 Administratorga xabar yuborish"),
+        ("/settings", "⚙️ Sozlamalar (ro'yxatdan o'tganlar uchun)"),
+        ("/profile", "👤 Shaxsiy profilim"),
+        ("/video", "🎬 Video darsliklar"),
+        ("/file", "📁 Fayl darsliklar"),
+    ],
+    "ru": [
+        ("/start", "🚀 Перезапустить бота"),
+        ("/help", "❓ Список команд и помощь"),
+        ("/about", "ℹ️ Информация о проекте"),
+        ("/guide", "📖 Руководство по использованию"),
+        ("/admin", "📨 Написать администратору"),
+        ("/settings", "⚙️ Настройки (для зарегистрированных)"),
+        ("/profile", "👤 Мой профиль"),
+        ("/video", "🎬 Видеоуроки"),
+        ("/file", "📁 Файлы уроков"),
+    ],
+    "en": [
+        ("/start", "🚀 Restart the bot"),
+        ("/help", "❓ Help and commands list"),
+        ("/about", "ℹ️ About the project"),
+        ("/guide", "📖 User guide"),
+        ("/admin", "📨 Message the administrator"),
+        ("/settings", "⚙️ Settings (for registered users)"),
+        ("/profile", "👤 My profile"),
+        ("/video", "🎬 Video lessons"),
+        ("/file", "📁 File lessons"),
+    ]
+}
+
+@router.message(Command("help"))
+async def cmd_help(message: types.Message, state: FSMContext):
+    """Yordam va barcha mavjud buyruqlar ro'yxatini chiqaradi."""
+    
+    def _get_lang(state_data: dict) -> str:
+        return state_data.get("lang", "uz")
+
+    user_data = await state.get_data()
+    lang = _get_lang(user_data)
+    
+    # Tanlangan til uchun buyruqlarni olish (default: uz)
+    commands_list = BOT_COMMANDS.get(lang, BOT_COMMANDS["uz"])
+    
+    # Chiroyli formatlash
+    help_text = "📌 <b>Mavjud buyruqlar ro'yxati:</b>\n\n"
+    for cmd, description in commands_list:
+        help_text += f"🔹 /<b>{cmd}</b> — {description}\n"
+        
+    help_text += "\n💡 <i>Batafsil ma'lumot uchun /guide buyrug'idan foydalaning.</i>"
+    
+    await message.answer(help_text, parse_mode="HTML")

@@ -34,19 +34,46 @@ export default function QuestionFormModal({
   const isEditing = !!editingQuestion;
 
   // Form'ni editingQuestion bilan to'ldirish
-  useEffect(() => {
-    if (editingQuestion) {
-      setForm({
-        question_text: editingQuestion.question_text,
-        options: [...editingQuestion.options],
-        correct_option_index: editingQuestion.correct_option_index,
-        explanation: editingQuestion.explanation || '',
+// Form'ni editingQuestion bilan to'ldirish
+useEffect(() => {
+  if (editingQuestion) {
+    // ✅ Options formatini tekshirish va string array'ga o'tkazish
+    const optionsStrings = editingQuestion.options.map((opt: any) => {
+      if (typeof opt === 'string') return opt;
+      if (typeof opt === 'object' && opt !== null) {
+        return opt.text || opt.label || '';
+      }
+      return String(opt);
+    });
+
+    // ✅ To'g'ri javob indeksini topish
+    let correctIdx = editingQuestion.correct_option_index ?? 0;
+    
+    if (editingQuestion.correct_answer) {
+      // "A" → 0, "B" → 1
+      correctIdx = editingQuestion.correct_answer.charCodeAt(0) - 'A'.charCodeAt(0);
+    } else if (Array.isArray(editingQuestion.options) && editingQuestion.options.length > 0) {
+      const foundIdx = editingQuestion.options.findIndex((opt: any) => {
+        if (typeof opt === 'object' && opt !== null) {
+          return opt.is_correct === true;
+        }
+        return false;
       });
-    } else {
-      setForm(DEFAULT_QUESTION_FORM);
+      if (foundIdx !== -1) correctIdx = foundIdx;
     }
-    setErrors({});
-  }, [editingQuestion, isOpen]);
+
+    setForm({
+      question_text: editingQuestion.question_text,
+      options: optionsStrings,
+      correct_option_index: correctIdx,
+      explanation: editingQuestion.explanation || '',
+    });
+  } else {
+    setForm(DEFAULT_QUESTION_FORM);
+  }
+  setErrors({});
+}, [editingQuestion, isOpen]);
+
 
   // ─── Option Handlers ─────────────────────────────────────
   const handleOptionChange = (index: number, value: string) => {
@@ -119,46 +146,54 @@ export default function QuestionFormModal({
   };
 
   // ─── Submit ──────────────────────────────────────────────
-  const handleSubmit = async () => {
-    if (!validate()) return;
+const handleSubmit = async () => {
+  if (!validate()) return;
 
-    setSaving(true);
-    try {
-      // Bo'sh variantlarni olib tashlash
-      const cleanOptions = form.options.filter((opt) => opt.trim());
-      const originalCorrectText = form.options[form.correct_option_index]?.trim();
-      const newCorrectIndex = cleanOptions.findIndex(
-        (opt) => opt.trim() === originalCorrectText
-      );
+  setSaving(true);
+  try {
+    // Bo'sh variantlarni olib tashlash
+    const cleanOptions = form.options.filter((opt) => opt.trim());
+    const originalCorrectText = form.options[form.correct_option_index]?.trim();
+    const newCorrectIndex = cleanOptions.findIndex(
+      (opt) => opt.trim() === originalCorrectText
+    );
 
-      if (isEditing && editingQuestion) {
-        const payload: QuestionUpdate = {
-          question_text: form.question_text.trim(),
-          options: cleanOptions,
-          correct_option_index: newCorrectIndex,
-          explanation: form.explanation.trim() || null,
-        };
-        await testsApi.updateQuestion(testId, editingQuestion.id, payload);
-        toast.success('✅ Savol yangilandi!');
-      } else {
-        const payload: QuestionCreate = {
-          question_text: form.question_text.trim(),
-          options: cleanOptions,
-          correct_option_index: newCorrectIndex,
-          explanation: form.explanation.trim() || null,
-          order_index: nextOrderIndex,
-        };
-        await testsApi.addQuestion(testId, payload);
-        toast.success('✅ Savol qo&apos;shildi!');
-      }
-      onSuccess();
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Saqlashda xatolik';
-      toast.error(message);
-    } finally {
-      setSaving(false);
+    // ✅ Backend options formatini moslashtirish
+    // Backend object array kutmoqda: [{text, label, is_correct}]
+    const optionsForBackend = cleanOptions.map((optText, idx) => ({
+      text: optText,
+      label: String.fromCharCode(65 + idx), // A, B, C, D
+      is_correct: idx === newCorrectIndex,
+    }));
+
+    if (isEditing && editingQuestion) {
+      const payload: QuestionUpdate = {
+        question_text: form.question_text.trim(),
+        options: optionsForBackend as any, // ✅ Object array yuboramiz
+        correct_option_index: newCorrectIndex,
+        explanation: form.explanation.trim() || null,
+      };
+      await testsApi.updateQuestion(testId, editingQuestion.id, payload);
+      toast.success('✅ Savol yangilandi!');
+    } else {
+      const payload: QuestionCreate = {
+        question_text: form.question_text.trim(),
+        options: optionsForBackend as any, // ✅ Object array yuboramiz
+        correct_option_index: newCorrectIndex,
+        explanation: form.explanation.trim() || null,
+        order_index: nextOrderIndex,
+      };
+      await testsApi.addQuestion(testId, payload);
+      toast.success('✅ Savol qoshildi!');
     }
-  };
+    onSuccess();
+  } catch (err) {
+    const message = err instanceof ApiError ? err.message : 'Saqlashda xatolik';
+    toast.error(message);
+  } finally {
+    setSaving(false);
+  }
+}
 
   if (!isOpen) return null;
 

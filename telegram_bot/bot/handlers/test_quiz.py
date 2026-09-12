@@ -115,77 +115,116 @@ async def send_next_poll_question(message: types.Message, state: FSMContext, lan
     current_idx = data.get("current_question_index", 0)
     total = data.get("total_questions", len(questions))
     
-    # Agar savollar tugagan bo'lsa — testni yakunlash
     if current_idx >= len(questions):
         await finish_test(message, state, lang)
         return
     
     q = questions[current_idx]
     
-    # Savol raqamini ko'rsatish
     progress_text = f"📝 <b>Savol {current_idx + 1}/{total}</b>"
     await message.answer(progress_text, parse_mode="HTML")
     
-    # Telegram Quiz Poll yuborish
     try:
-        correct_option_id = int(q["correct_answer"])
+        # ✅ Options ni string array'ga o'tkazish
+        options_list = [opt["text"] for opt in q["options"]]
+        
+        # ✅ correct_answer label ("B") ni indeks'ga (1) o'tkazish
+        correct_label = q["correct_answer"]  # "A", "B", "C", "D"
+        correct_option_id = ord(correct_label.upper()) - ord("A")  # 0, 1, 2, 3
         
         await message.answer_poll(
             question=q["question_text"],
-            options=q["options"],
+            options=options_list,  # ✅ string array
             type="quiz",
-            correct_option_id=correct_option_id,
-            explanation=q.get("explanation", ""),
+            correct_option_id=correct_option_id,  # ✅ indeks
+            explanation=q.get("explanation", "") or None,
             is_anonymous=False,
-            open_period=None,
         )
     except Exception as e:
-        logger.error(f"Poll yuborishda xatolik: {e}")
+        logger.error(f"Poll yuborishda xatolik: {e}", exc_info=True)
         await message.answer(
             get_text("test.poll_error", lang),
             parse_mode="HTML"
         )
         await finish_test(message, state, lang)
 
-
 # ══════════════════════════════════════════════════════════════
 # FOYDALANUVCHI JAVOBINI QABUL QILISH (poll_answer)
 # ══════════════════════════════════════════════════════════════
+
+async def send_next_poll_question_for_user(bot: Bot, chat_id: int, state: FSMContext, lang: str):
+    """poll_answer handler ichidan keyingi savolni yuborish uchun maxsus funksiya."""
+    data = await state.get_data()
+    questions = data.get("questions", [])
+    current_idx = data.get("current_question_index", 0)
+    total = data.get("total_questions", len(questions))
+    
+    if current_idx >= len(questions):
+        await finish_test_for_user(bot, chat_id, state, lang)
+        return
+    
+    q = questions[current_idx]
+    
+    progress_text = f"📝 <b>Savol {current_idx + 1}/{total}</b>"
+    await bot.send_message(chat_id=chat_id, text=progress_text, parse_mode="HTML")
+    
+    try:
+        # ✅ Options ni string array'ga o'tkazish
+        options_list = [opt["text"] for opt in q["options"]]
+        
+        # ✅ correct_answer label ni indeks'ga o'tkazish
+        correct_label = q["correct_answer"]
+        correct_option_id = ord(correct_label.upper()) - ord("A")
+        
+        await bot.send_poll(
+            chat_id=chat_id,
+            question=q["question_text"],
+            options=options_list,
+            type="quiz",
+            correct_option_id=correct_option_id,
+            explanation=q.get("explanation", "") or None,
+            is_anonymous=False,
+        )
+    except Exception as e:
+        logger.error(f"Poll yuborishda xatolik (user {chat_id}): {e}", exc_info=True)
+        await bot.send_message(
+            chat_id=chat_id,
+            text=get_text("test.poll_error", lang),
+            parse_mode="HTML"
+        )
+        await finish_test_for_user(bot, chat_id, state, lang)
 
 @router.poll_answer()
 async def handle_poll_answer(poll_answer: types.PollAnswer, state: FSMContext, bot: Bot):
     """Foydalanuvchi Telegram Quiz Poll'da javob berdi."""
     data = await state.get_data()
     
-    # Agar foydalanuvchi test topshirmayotgan bo'lsa — e'tiborsiz qoldirish
     if not data.get("current_test_id"):
         return
     
     questions = data.get("questions", [])
     current_idx = data.get("current_question_index", 0)
     
-    # Xavfsizlik: agar indeks savollar sonidan oshib ketsa
     if current_idx >= len(questions):
         return
     
     current_q = questions[current_idx]
     user_answer = poll_answer.option_ids[0] if poll_answer.option_ids else None
     
-    # Javob to'g'riligini tekshirish
-    correct_answer = int(current_q["correct_answer"])
-    if user_answer == correct_answer:
+    # ✅ correct_answer label ni indeks'ga o'tkazish
+    correct_label = current_q["correct_answer"]
+    correct_option_id = ord(correct_label.upper()) - ord("A")
+    
+    if user_answer == correct_option_id:
         new_score = data.get("score", 0) + 1
         await state.update_data(score=new_score)
     
-    # FSM dagi indeksni 1 ga oshirish
     await state.update_data(current_question_index=current_idx + 1)
     
-    # Foydalanuvchiga xabar yuborish
     user_data = await state.get_data()
     lang = _get_lang(user_data)
     user = poll_answer.user
     
-    # Kichik kechikuv
     import asyncio
     await asyncio.sleep(1)
     
@@ -205,48 +244,6 @@ async def handle_poll_answer(poll_answer: types.PollAnswer, state: FSMContext, b
         
     except Exception as e:
         logger.error(f"Keyingi savolni yuborishda xatolik: {e}")
-
-
-async def send_next_poll_question_for_user(bot: Bot, chat_id: int, state: FSMContext, lang: str):
-    """poll_answer handler ichidan keyingi savolni yuborish uchun maxsus funksiya."""
-    data = await state.get_data()
-    questions = data.get("questions", [])
-    current_idx = data.get("current_question_index", 0)
-    total = data.get("total_questions", len(questions))
-    
-    # Agar savollar tugagan bo'lsa — testni yakunlash
-    if current_idx >= len(questions):
-        await finish_test_for_user(bot, chat_id, state, lang)
-        return
-    
-    q = questions[current_idx]
-    
-    # Savol raqamini ko'rsatish
-    progress_text = f"📝 <b>Savol {current_idx + 1}/{total}</b>"
-    await bot.send_message(chat_id=chat_id, text=progress_text, parse_mode="HTML")
-    
-    # Telegram Quiz Poll yuborish
-    try:
-        correct_option_id = int(q["correct_answer"])
-        
-        await bot.send_poll(
-            chat_id=chat_id,
-            question=q["question_text"],
-            options=q["options"],
-            type="quiz",
-            correct_option_id=correct_option_id,
-            explanation=q.get("explanation", ""),
-            is_anonymous=False,
-        )
-    except Exception as e:
-        logger.error(f"Poll yuborishda xatolik (user {chat_id}): {e}")
-        await bot.send_message(
-            chat_id=chat_id,
-            text=get_text("test.poll_error", lang),
-            parse_mode="HTML"
-        )
-        await finish_test_for_user(bot, chat_id, state, lang)
-
 
 # ══════════════════════════════════════════════════════════════
 # TESTNI YAKUNLASH

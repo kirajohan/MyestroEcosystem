@@ -12,12 +12,12 @@ from pathlib import Path
 from app.database import close_redis
 from app.core.exceptions import AppException
 from app.api import bot_text
-
 # Add telegram_bot root to path so shared module is importable
 _telegram_bot_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 if _telegram_bot_root not in sys.path:
     sys.path.insert(0, _telegram_bot_root)
 
+from app.api import tests_import
 from app.config import settings
 from app.api import (
     auth, users, content, broadcast, inbox, settings as settings_router,
@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from app.api.exam_v2.router import exam_v2_router
+from app.api.exam_v2.admin import router as exam_admin_router
 
 # Bot uchun mini FastAPI app (internal endpoints)
 internal_app = FastAPI()
@@ -117,11 +118,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
         expose_headers=["*"],
     )
-    
-    # Exam v2 router
-    app.include_router(exam_v2_router)
-    
-    # Include routers
+    app.include_router(tests_import.router, prefix="/api")  
     app.include_router(auth.router)
     app.include_router(users.router)
     app.include_router(content.router)
@@ -138,7 +135,8 @@ def create_app() -> FastAPI:
     app.include_router(inbox.router)
     app.include_router(logs.router)
     app.include_router(ws_router)
-    
+    app.include_router(exam_admin_router)
+    app.include_router(exam_v2_router)
     # Exception handlers
     
     @app.exception_handler(AppException)

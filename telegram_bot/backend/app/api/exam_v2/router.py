@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from app.api.exam_v2.admin_import import router as admin_import_router
 
 from app.api.exam_v2 import auth, admin, exams, attempts, answers, media
 
@@ -10,3 +11,4 @@ exam_v2_router.include_router(attempts.router, prefix="/attempts", tags=["Exam A
 exam_v2_router.include_router(answers.router, prefix="/attempts", tags=["Exam Answers"])
 exam_v2_router.include_router(admin.router, prefix="/admin", tags=["Exam Admin"])
 exam_v2_router.include_router(media.router, prefix="/admin/media", tags=["Exam Media"])  # ← YANGI
+exam_v2_router.include_router(admin_import_router)

@@ -3,14 +3,18 @@ export type CefrLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 export const CEFR_LEVELS: CefrLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 // ═══════════════════════════════════════════════════════════
-// TestOption — Javob varianti
+// TestOption — Javob varianti (ikki formatni qo'llab-quvvatlaydi)
 // ═══════════════════════════════════════════════════════════
-export interface TestOption {
+export interface TestOptionObject {
   id?: number;
   text: string;
+  label?: string;
   is_correct: boolean;
   order?: number;
 }
+
+// Eski format (string) va yangi format (object) uchun union type
+export type TestOption = string | TestOptionObject;
 
 export interface AITestGenerateRequest {
   title: string;
@@ -18,6 +22,7 @@ export interface AITestGenerateRequest {
   num_questions: number;
   topic: string;
 }
+
 // ═══════════════════════════════════════════════════════════
 // TestQuestion — Alohida savol (test ichidagi)
 // ═══════════════════════════════════════════════════════════
@@ -25,8 +30,9 @@ export interface TestQuestion {
   id: number;
   test_id: number;
   question_text: string;
-  options: string[];
-  correct_option_index: number;
+  options: TestOption[]; // ✅ Har xil formatni qo'llab-quvvatlaydi
+  correct_option_index?: number; // Eski format uchun (0, 1, 2...)
+  correct_answer?: string; // ✅ YANGI: Import qilingan testlar uchun ("A", "B", "C"...)
   explanation?: string | null;
   order_index?: number;
   created_at?: string;
@@ -71,7 +77,7 @@ export interface TestUpdate {
 
 export interface QuestionCreate {
   question_text: string;
-  options: string[];
+  options: TestOption[]; // ✅ Union type
   correct_option_index: number;
   explanation?: string | null;
   order_index?: number;
@@ -79,7 +85,7 @@ export interface QuestionCreate {
 
 export interface QuestionUpdate {
   question_text: string;
-  options: string[];
+  options: TestOption[]; // ✅ Union type
   correct_option_index: number;
   explanation?: string | null;
 }

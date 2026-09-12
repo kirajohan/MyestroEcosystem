@@ -34,7 +34,7 @@ interface ResultAnswer {
 }
 
 interface ResultItem {
-  id: number; // Backend 'id' qaytaradi, 'item_id' emas
+  id: number;
   item_type: string;
   title: string;
   instruction?: string;
@@ -44,8 +44,8 @@ interface ResultItem {
   min_words?: number;
   max_words?: number;
   correct_option_ids?: number[];
-  options?: { id: number; text: string; order: number }[];
-  answer?: ResultAnswer; // ✅ MUHIM: Barcha javob va AI ma'lumotlari shu ichida
+  options?: { id: number; text: string; order: number; is_correct?: boolean }[];
+  answer?: ResultAnswer;
 }
 
 interface ResultBlock {
@@ -350,7 +350,6 @@ export default function ResultPage() {
 
   if (!result) return null;
 
-  // ✅ Yangilangan hisoblash mantig'i (item.answer orqali)
   const autoGradedItems = result.blocks.flatMap((b) => (isAutoGraded(b.block_type) ? b.items : []));
   const correctAutoItems = autoGradedItems.filter((i) => i.answer?.auto_score === i.max_score).length;
   const totalAutoItems = autoGradedItems.length;
@@ -373,7 +372,7 @@ export default function ResultPage() {
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl flex items-center gap-3">
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full flex-shrink-0" />
             <div>
-              <p className="font-semibold">Natijalar to'liq tayyor emas</p>
+              <p className="font-semibold">Natijalar toliq tayyor emas</p>
               <p className="text-sm text-amber-700">Writing va Speaking qismlari hali AI tomonidan baholanmoqda. Sahifa avtomatik yangilanadi.</p>
             </div>
           </motion.div>
@@ -419,7 +418,7 @@ export default function ResultPage() {
             <div className="flex items-center justify-center gap-6 text-sm bg-slate-50 p-4 rounded-xl inline-flex flex-wrap">
               <span className="text-slate-600">📝 Test savollari: <strong className="text-slate-900">{totalAutoItems}</strong></span>
               <span className="w-px h-4 bg-slate-300 hidden sm:block"></span>
-              <span className="text-emerald-600">✅ To'g'ri: <strong>{correctAutoItems}</strong></span>
+              <span className="text-emerald-600">✅ Togri: <strong>{correctAutoItems}</strong></span>
               <span className="w-px h-4 bg-slate-300 hidden sm:block"></span>
               <span className="text-red-600">❌ Xato: <strong>{totalAutoItems - correctAutoItems}</strong></span>
               {pendingAiBlocks > 0 && (
@@ -453,11 +452,27 @@ export default function ResultPage() {
               <div className="space-y-4">
                 <AnimatePresence>
                   {block.items.map((item, itemIndex) => {
-                    const answer = item.answer; // ✅ Qisqa o'zgaruvchi
+                    const answer = item.answer;
 
                     // 1. AUTO-GRADED (Listening / Reading)
                     if (isAutoGraded(block.block_type)) {
                       const isCorrect = answer?.auto_score === item.max_score;
+                      
+                      // ✅ YANGI: ID o'rniga haqiqiy matnni topish
+                      const selectedTexts = answer?.selected_options && item.options
+                        ? item.options
+                            .filter(opt => answer.selected_options?.includes(opt.id))
+                            .map(opt => opt.text)
+                            .join(", ")
+                        : "Tanlanmagan";
+
+                      const correctTexts = item.correct_option_ids && item.options
+                        ? item.options
+                            .filter(opt => item.correct_option_ids?.includes(opt.id))
+                            .map(opt => opt.text)
+                            .join(", ")
+                        : "Noma'lum";
+
                       return (
                         <motion.div
                           key={item.id}
@@ -472,17 +487,20 @@ export default function ResultPage() {
                             <span className="text-2xl flex-shrink-0 mt-1">{isCorrect ? "✅" : "❌"}</span>
                             <div className="flex-1">
                               <h4 className="font-semibold text-slate-900 mb-2 text-base">{item.order}. {item.question_text || item.title}</h4>
-                              {answer?.selected_options && answer.selected_options.length > 0 && (
-                                <p className="text-sm text-slate-600 mb-1">
-                                  Sizning javobingiz: <span className={isCorrect ? "text-emerald-700 font-bold" : "text-red-700 font-bold"}>Variant {answer.selected_options.join(", ")}</span>
+                              
+                              {/* ✅ Foydalanuvchi javobi (MATN bilan) */}
+                              <p className="text-sm text-slate-600 mb-1">
+                                Sizning javobingiz: <span className={isCorrect ? "text-emerald-700 font-bold" : "text-red-700 font-bold"}>{selectedTexts}</span>
+                              </p>
+                              
+                              {/* ✅ To'g'ri javob (MATN bilan) */}
+                              {!isCorrect && correctTexts !== "Noma'lum" && (
+                                <p className="text-sm text-emerald-700 mt-2 flex items-start gap-2">
+                                  <span className="text-lg flex-shrink-0">💡</span>
+                                  <span>To'g'ri javob: <span className="font-bold">{correctTexts}</span></span>
                                 </p>
                               )}
-                              {!isCorrect && item.correct_option_ids && item.correct_option_ids.length > 0 && (
-                                <p className="text-sm text-emerald-700 mt-2 flex items-center gap-2">
-                                  <span className="text-lg">💡</span>
-                                  <span>To'g'ri javob: <span className="font-bold">Variant {item.correct_option_ids.join(", ")}</span></span>
-                                </p>
-                              )}
+                              
                               <div className="flex items-center gap-3 mt-3">
                                 <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-200 text-slate-700">
                                   Ball: {answer?.final_score || 0} / {item.max_score}
@@ -519,7 +537,6 @@ export default function ResultPage() {
                         transition={{ delay: itemIndex * 0.05 }}
                         className="border border-slate-200 bg-white rounded-xl p-5 shadow-sm"
                       >
-                        {/* User Input Display */}
                         {block.block_type === "writing" && answer?.text_answer && (
                           <div className="mb-4">
                             <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Sizning javobingiz</h5>
@@ -543,7 +560,6 @@ export default function ResultPage() {
                           </div>
                         )}
 
-                        {/* AI Feedback Display */}
                         {answer?.feedback && <AiFeedbackView feedback={answer.feedback} />}
                         
                         <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">

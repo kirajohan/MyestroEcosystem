@@ -1,6 +1,7 @@
 // admin/app/tests/page.tsx
 'use client';
 
+import Link from "next/link";
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Plus, RefreshCw, FileQuestion, AlertCircle } from 'lucide-react';
@@ -11,11 +12,13 @@ import TestFormModal from '@/components/tests/TestFormModal';
 import DeleteConfirmModal from '@/components/tests/DeleteConfirmModal';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { AITestGenerateRequest } from '@/types/test';
+import { useRouter } from "next/navigation";
 
 
 
 
 export default function TestsPage() {
+   const router = useRouter();
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiForm, setAiForm] = useState({
@@ -127,22 +130,21 @@ export default function TestsPage() {
             Telegram Quiz Poll uchun CEFR testlarini boshqarish
           </p>
         </div>
-        <button
-          onClick={() => setIsAiModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all shadow-sm"
-        >
-          <Sparkles size={18} />
-          AI orqali tez yaratish
-        </button>
-        <button
-          onClick={handleOpenCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-        >
-          <Plus size={18} />
-          Yangi test
-        </button>
+        <div className="flex gap-3">
+          <Link
+            href="/tests/import"
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold flex items-center gap-2"
+          >
+            📥 Import (JSON)
+          </Link>
+          <Link
+            href="/tests/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+          >
+            + Yangi test
+          </Link>
+        </div>
       </div>
-
       {/* Filter Bar */}
       <div className="flex items-center gap-3 flex-wrap">
         <label className="text-sm text-gray-600 font-medium">CEFR daraja:</label>

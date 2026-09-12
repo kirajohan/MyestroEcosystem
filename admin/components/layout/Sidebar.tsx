@@ -13,7 +13,8 @@ import {
   Settings,
   Bot,
   FileQuestion,
-  ClipboardCheck, // ← YANGI QO'SHILDI
+  ClipboardCheck,
+  Upload, // ← Bulk Import uchun yangi ikonka
 } from 'lucide-react';
 
 const navItems = [
@@ -21,7 +22,8 @@ const navItems = [
   { label: 'Users', href: '/users', icon: Users },
   { label: 'Content', href: '/content', icon: Video },
   { label: 'Tests', href: '/tests', icon: FileQuestion },
-  { label: 'Exams', href: '/exam', icon: ClipboardCheck }, // ← YANGI QO'SHILDI
+  { label: 'Exams', href: '/exam', icon: ClipboardCheck },
+  { label: 'Bulk Import', href: '/exam/bulk-import', icon: Upload }, // ← YANGI QO'SHILDI
   { label: 'Bot Texts', href: '/bot-texts', icon: FileText, disabled: false },
   { label: 'Broadcast', href: '/broadcast', icon: Send },
   { label: 'Inbox', href: '/inbox', icon: MessageSquare },
@@ -45,6 +47,7 @@ export function Sidebar() {
         <ul className="space-y-2">
           {navItems.map((item) => {
             const Icon = item.icon;
+            // Faol holatni tekshirish (ham asosiy sahifa, ham uning ichki sahifalari uchun)
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
             const isDisabled = item.disabled;
 
