@@ -22,11 +22,15 @@ export interface BroadcastJob {
 }
 
 export interface BroadcastProgress {
+  broadcast_id?: string;
+  title?: string;  // ✅ YANGI: qo'shildi
   status: "pending" | "queued" | "sending" | "completed" | "failed";
   total: number;
   sent: number;
   failed: number;
+  created_at?: string;
 }
+
 
 export interface BroadcastCreatePayload {
   title: string;

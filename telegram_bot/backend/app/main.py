@@ -27,6 +27,8 @@ from app.websocket.admin_ws import router as ws_router
 from app.core.exceptions import AppException
 from app.services.ai_service import shutdown_ai_client
 
+from app.services.admin_ai_service import AIToolsService
+from app.services.ai_agent import AIAgent
 logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, Request

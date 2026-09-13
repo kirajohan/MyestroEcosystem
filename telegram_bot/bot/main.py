@@ -35,6 +35,7 @@ from bot.workers.inbox_delivery import inbox_delivery_worker
 from redis.asyncio import Redis
 from bot.utils.rag_client import rag_client
 
+from bot.handlers import admin_ai, user_ai_query
 from bot.utils.text_cache import init_text_cache
 
 logging.basicConfig(level=settings.LOG_LEVEL)
@@ -104,6 +105,9 @@ async def main():
     # ══════════════════════════════════════════════════════════
     # ROUTERS (tartib muhim!)
     # ══════════════════════════════════════════════════════════
+
+# ... boshqa routerlar ...
+
     dp.include_router(errors.router)
     dp.include_router(start.router)
     dp.include_router(contact.router)
@@ -113,6 +117,8 @@ async def main():
     dp.include_router(test_quiz.router)
     dp.include_router(inbox.router)
     dp.include_router(ai_agent.router)
+    dp.include_router(admin_ai.router)
+    dp.include_router(user_ai_query.router)
     dp.include_router(voice.router)
     dp.include_router(reminders.router)
     dp.include_router(referral.router)

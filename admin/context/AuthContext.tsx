@@ -57,23 +57,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Auto-refresh token before expiry (every 14 minutes for 15min token)
-  useEffect(() => {
-    if (!isLoggedIn || !refreshTokenValue) return;
+  // useEffect(() => {
+  //   if (!isLoggedIn || !refreshTokenValue) return;
 
-    const refreshInterval = setInterval(async () => {
-      try {
-        const newToken = await refreshToken();
-        if (!newToken) {
-          logout();
-        }
-      } catch (err) {
-        console.error('Auto-refresh failed:', err);
-        logout();
-      }
-    }, 14 * 60 * 1000); // 14 minutes
+  //   const refreshInterval = setInterval(async () => {
+  //     try {
+  //       const newToken = await refreshToken();
+  //       if (!newToken) {
+  //         logout();
+  //       }
+  //     } catch (err) {
+  //       console.error('Auto-refresh failed:', err);
+  //       logout();
+  //     }
+  //   }, 14 * 60 * 1000); // 14 minutes
 
-    return () => clearInterval(refreshInterval);
-  }, [isLoggedIn, refreshTokenValue]);
+  //   return () => clearInterval(refreshInterval);
+  // }, [isLoggedIn, refreshTokenValue]);
 
   const login = async (email: string, password: string) => {
     setError(null);

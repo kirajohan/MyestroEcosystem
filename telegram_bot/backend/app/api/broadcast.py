@@ -44,13 +44,25 @@ class BroadcastService:
         self.db = db
     
     def get_filtered_user_ids(self, target_all: bool, target_ids: Optional[List[int]] = None) -> List[int]:
-        if not target_all and target_ids:
+        """
+        Target filter:
+        - target_all=True → barcha faol foydalanuvchilar
+        - target_all=False + target_ids → faqat tanlanganlar
+        - target_all=False + target_ids=None/[] → bo'sh ro'yxat (xato)
+        """
+        if not target_all:
+            # Manual mode — faqat tanlanganlar
+            if not target_ids or len(target_ids) == 0:
+                logger.warning("Manual mode tanlangan, lekin target_user_ids bo'sh")
+                return []  # Bo'sh ro'yxat qaytaramiz
+            
             query = select(User.telegram_id).where(
                 and_(User.telegram_id.isnot(None), User.id.in_(target_ids))
             )
             result = self.db.execute(query)
             return [row[0] for row in result.fetchall()]
         
+        # All mode — barcha faol foydalanuvchilar
         query = select(User.telegram_id).where(
             and_(User.telegram_id.isnot(None), User.deleted_at.is_(None))
         )
