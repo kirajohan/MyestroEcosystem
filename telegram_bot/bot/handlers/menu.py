@@ -1,3 +1,5 @@
+# C:\Projects\MyestroEco\MyestroEco\telegram_bot\bot\handlers\menu.py
+
 from aiogram import Router, types, F
 from aiogram.filters import StateFilter, Command, or_f
 from aiogram.fsm.context import FSMContext

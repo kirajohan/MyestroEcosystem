@@ -56,6 +56,46 @@ DOTS_FRAMES = [".", "..", "..."]
 _recently_handled: Set[int] = set()
 _RECENTLY_HANDLED_MAX = 500
 
+# ═══════════════════════════════════════════════════════════
+# MEMORY — Suhbat tarixini saqlash (Redis)
+# ═══════════════════════════════════════════════════════════
+
+import json
+from redis.asyncio import Redis
+
+MEMORY_KEY_PREFIX = "ai_chat_history:"
+MEMORY_MAX_MESSAGES = 20  # Oxirgi 20 ta xabarni saqlash
+MEMORY_TTL = 3600 * 24    # 24 soat
+
+
+async def _get_chat_history(redis: Redis, user_id: int) -> list[dict]:
+    """Foydalanuvchining suhbat tarixini Redis'dan olish."""
+    try:
+        key = f"{MEMORY_KEY_PREFIX}{user_id}"
+        raw = await redis.get(key)
+        if raw:
+            history = json.loads(raw)
+            return history[-MEMORY_MAX_MESSAGES:]  # Oxirgi N ta xabar
+    except Exception as e:
+        logger.warning(f"[Memory] Tarixni olish xatosi: {e}")
+    return []
+
+
+async def _save_chat_message(redis: Redis, user_id: int, role: str, content: str):
+    """Yangi xabarni suhbat tarixiga qo'shish."""
+    try:
+        key = f"{MEMORY_KEY_PREFIX}{user_id}"
+        raw = await redis.get(key)
+        history = json.loads(raw) if raw else []
+        
+        history.append({"role": role, "content": content})
+        
+        # Faqat oxirgi N ta xabarni saqlash
+        history = history[-MEMORY_MAX_MESSAGES:]
+        
+        await redis.set(key, json.dumps(history, ensure_ascii=False), ex=MEMORY_TTL)
+    except Exception as e:
+        logger.warning(f"[Memory] Xabarni saqlash xatosi: {e}")
 
 def _mark_handled(message_id: int) -> bool:
     if message_id in _recently_handled:
@@ -284,9 +324,10 @@ async def _answer_with_agent(
     lang: str,
     cefr_level: str,
     user_prompt: str,
+    redis: Redis,  # ✅ YANGI: Redis dependency
 ) -> str:
     """
-    Unified AI Agent — Tool Calling + Oddiy suhbat.
+    Unified AI Agent — Tool Calling + Oddiy suhbat + MEMORY.
     Admin va User uchun bitta handler.
     """
     is_admin = (db_user.role == "admin")
@@ -302,24 +343,29 @@ async def _answer_with_agent(
     thinking_task = asyncio.create_task(_thinking_animation_task(sent, stop_thinking, think_text))
 
     try:
-        # 1. Tools service yaratish
+        # ✅ 1. Suhbat tarixini Redis'dan olish
+        history = await _get_chat_history(redis, db_user.telegram_id)
+        logger.debug(f"[Memory] User {db_user.telegram_id}: {len(history)} xabar tarixdan")
+
+        # 2. Tools service yaratish
         tools_service = AIToolsService(
             db=session,
             current_user_id=db_user.id,
             is_admin=is_admin,
         )
 
-        # 2. AI Agent yaratish
+        # 3. AI Agent yaratish
         agent = AIAgent(tools_service, is_admin=is_admin)
 
-        # 3. Qo'shimcha kontekst (RAG + AI Teacher prompt)
+        # 4. Qo'shimcha kontekst (RAG + AI Teacher prompt)
         additional_context_parts = [
             f"Foydalanuvchi tili: {lang}",
             f"Foydalanuvchi CEFR darajasi: {cefr_level}",
             f"Role: {'Admin' if is_admin else 'Oddiy foydalanuvchi'}",
+            f"Foydalanuvchi ismi: {db_user.full_name or db_user.telegram_username or 'Noma\'lum'}",
         ]
 
-        # RAG (faqat user uchun, admin uchun emas)
+        # RAG (faqat user uchun)
         if not is_admin:
             try:
                 rag_context = await rag_client.build_context(user_prompt)
@@ -333,24 +379,29 @@ async def _answer_with_agent(
 
         additional_context = "\n".join(additional_context_parts)
 
-        # 4. AI Agent'dan javob olish
+        # 5. AI Agent'dan javob olish (TARIX BILAN!)
         answer = await agent.chat(
             user_message=user_prompt,
+            history=history,  # ✅ Suhbat tarixi
             additional_context=additional_context,
         )
 
-        # 5. Animatsiyani to'xtatish
+        # 6. Animatsiyani to'xtatish
         stop_thinking.set()
         try:
             await thinking_task
         except asyncio.CancelledError:
             pass
 
-        # 6. Javobni formatlash
+        # ✅ 7. Suhbat tarixini yangilash (user xabari + AI javobi)
+        await _save_chat_message(redis, db_user.telegram_id, "user", user_prompt)
+        await _save_chat_message(redis, db_user.telegram_id, "assistant", answer)
+
+        # 8. Javobni formatlash
         header = "👑 <b>Admin AI</b>\n\n" if is_admin else "🤖 <b>Myestro AI</b>\n\n"
         full_response = header + answer
 
-        # 7. Typewriter bilan yuborish
+        # 9. Typewriter bilan yuborish
         await _typewriter_send(sent, message, full_response, lang)
         return answer
 
@@ -379,11 +430,10 @@ async def _answer_with_agent(
             except asyncio.CancelledError:
                 pass
 
-
 # ═══════════════════════════════════════════════════════════
 # MAIN HANDLER — Unified (AI Agent + Fallback AI Teacher)
 # ═══════════════════════════════════════════════════════════
-
+from bot.states.reminder_states import ReminderFSM
 from bot.middlewares.ai_guard import NAVIGATION_WHITELIST
 
 @router.message(
@@ -416,6 +466,12 @@ from bot.middlewares.ai_guard import NAVIGATION_WHITELIST
         QuizSection.quiz_list,
         QuizSection.quiz_active,
         QuizSection.quiz_results,
+        ReminderFSM.waiting_text,
+        ReminderFSM.waiting_type,
+        ReminderFSM.waiting_time,
+        ReminderFSM.waiting_day,
+        ReminderFSM.waiting_datetime,
+        ReminderFSM.confirm,
     ),
     F.text & ~F.text.startswith("/")
 )
@@ -458,26 +514,39 @@ async def ai_agent_text_handler(
         db_user = result.scalar_one_or_none()
 
         if db_user:
-            # ✅ USER TOPILDI → Unified AI Agent ishlatamiz
-            logger.info(f"[AI_HANDLER] Using Unified AI Agent (role={db_user.role})")
-            await _answer_with_agent(
-                message=message,
-                session=session,
-                db_user=db_user,
-                lang=lang,
-                cefr_level=cefr_level,
-                user_prompt=user_message,
+            # ✅ Redis client yaratish
+            from redis.asyncio import Redis as AsyncRedis
+            from bot.config import settings as bot_settings
+            
+            redis_client = AsyncRedis.from_url(
+                bot_settings.REDIS_URL,
+                decode_responses=True
             )
+            
+            try:
+                logger.info(f"[AI_HANDLER] Unified AI Agent (role={db_user.role})")
+                await _answer_with_agent(
+                    message=message,
+                    session=session,
+                    db_user=db_user,
+                    lang=lang,
+                    cefr_level=cefr_level,
+                    user_prompt=user_message,
+                    redis=redis_client,
+                )
+            finally:
+                await redis_client.close()
+                
         else:
-            # ⚠️ USER DB'DA YO'Q → Fallback AI Teacher (eski rejim)
-            logger.warning(f"[AI_HANDLER] User not in DB, falling back to AI Teacher")
+            # ⚠️ FALLBACK: Eski AI Teacher
+            logger.warning("[AI_HANDLER] User not in DB, fallback to AI Teacher")
             system_prompt = build_system_prompt(lang, cefr_level)
 
             rag_context = await rag_client.build_context(user_message)
             if rag_context:
                 system_prompt += (
                     f"\n\n📚 BILIMLAR BAZASI (RAG):\n{rag_context}\n\n"
-                    f"⚠️ QOIDA: Yuqoridagi BILIMLAR BAZASI ma'lumotlaridan foydalanib javob bering."
+                    f"⚠️ QOIDA: Yuqoridagi ma'lumotlardan foydalanib javob bering."
                 )
 
             await _answer_with_memory(

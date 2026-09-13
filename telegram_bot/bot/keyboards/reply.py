@@ -153,9 +153,21 @@ def registered_menu_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
 def settings_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
     """Settings submenu."""
     texts = {
-        "uz": {"lang": "🌐 Til o'zgartirish", "ai": "🤖 AI ON/OFF" },
-        "ru": {"lang": "🌐 Сменить язык", "ai": "🤖 AI ВКЛ/ВЫКЛ"},
-        "en": {"lang": "🌐 Change Language", "ai": "🤖 AI ON/OFF" },
+        "uz": {
+            "lang": "🌐 Til o'zgartirish", 
+            "ai": "🤖 AI ON/OFF",
+            "reminders": "⏰ Eslatmalar",  # ← YANGI
+        },
+        "ru": {
+            "lang": "🌐 Сменить язык", 
+            "ai": "🤖 AI ВКЛ/ВЫКЛ",
+            "reminders": "⏰ Напоминания",
+        },
+        "en": {
+            "lang": "🌐 Change Language", 
+            "ai": "🤖 AI ON/OFF",
+            "reminders": "⏰ Reminders",
+        },
     }
     t = texts.get(lang, texts["uz"])
 
@@ -165,9 +177,12 @@ def settings_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
         StyledKeyboardButton(text=t["ai"], style="primary"),
     )
     builder.add(
+        StyledKeyboardButton(text=t["reminders"], style="success"),  # ← YANGI
+    )
+    builder.add(
         StyledKeyboardButton(text="⬅️ Orqaga", style="danger"),
     )
-    builder.adjust(2,1)
+    builder.adjust(2, 1, 1)
     return builder.as_markup(resize_keyboard=True)
 
 
@@ -396,3 +411,98 @@ def cefr_level_selection_with_back(lang: str = "uz") -> ReplyKeyboardMarkup:
 # ─── SPECIAL: REMOVE KEYBOARD ──────────────────────────────
 
 remove_keyboard = ReplyKeyboardRemove()
+
+
+# ─── REMINDERS ───────────────────────────────────────────────
+
+def reminders_main_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Eslatmalar asosiy menyusi."""
+    texts = {
+        "uz": {
+            "add": "➕ Yangi eslatma",
+            "list": "📋 Mening eslatmalarim",
+            "delete_all": "🗑️ Barchasini o'chirish",
+            "back": "⬅️ Orqaga",
+        },
+        "ru": {
+            "add": "➕ Новое напоминание",
+            "list": "📋 Мои напоминания",
+            "delete_all": "🗑️ Удалить все",
+            "back": "⬅️ Назад",
+        },
+        "en": {
+            "add": "➕ New reminder",
+            "list": "📋 My reminders",
+            "delete_all": "🗑️ Delete all",
+            "back": "⬅️ Back",
+        },
+    }
+    t = texts.get(lang, texts["uz"])
+
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["add"], style="success"),
+        StyledKeyboardButton(text=t["list"], style="primary"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["delete_all"], style="danger"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["back"], style="danger"),
+    )
+    builder.adjust(2, 1, 1)
+    return builder.as_markup(resize_keyboard=True)
+
+
+def reminder_type_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Eslatma turi tanlash."""
+    texts = {
+        "uz": {
+            "once": "1️⃣ Bir martalik",
+            "daily": "🔁 Har kuni",
+            "weekly": "📅 Har hafta",
+            "back": "⬅️ Orqaga",
+        },
+        "ru": {
+            "once": "1️⃣ Одноразовое",
+            "daily": "🔁 Каждый день",
+            "weekly": "📅 Каждую неделю",
+            "back": "⬅️ Назад",
+        },
+        "en": {
+            "once": "1️⃣ One-time",
+            "daily": "🔁 Daily",
+            "weekly": "📅 Weekly",
+            "back": "⬅️ Back",
+        },
+    }
+    t = texts.get(lang, texts["uz"])
+
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["once"], style="primary"),
+        StyledKeyboardButton(text=t["daily"], style="success"),
+        StyledKeyboardButton(text=t["weekly"], style="success"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["back"], style="danger"),
+    )
+    builder.adjust(1, 2, 1)
+    return builder.as_markup(resize_keyboard=True)
+
+
+def reminder_day_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Hafta kunlari."""
+    texts = {
+        "uz": ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakshanba", "⬅️ Orqaga"],
+        "ru": ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье", "⬅️ Назад"],
+        "en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "⬅️ Back"],
+    }
+    items = texts.get(lang, texts["uz"])
+
+    builder = ReplyKeyboardBuilder()
+    for day in items[:-1]:
+        builder.add(StyledKeyboardButton(text=day, style="primary"))
+    builder.add(StyledKeyboardButton(text=items[-1], style="danger"))
+    builder.adjust(2, 2, 2, 1, 1)
+    return builder.as_markup(resize_keyboard=True)

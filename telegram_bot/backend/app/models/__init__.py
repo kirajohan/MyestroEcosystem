@@ -12,7 +12,7 @@ from .content import ContentItem
 from .bot_text import BotText
 from .admin_message import AdminMessage
 from .broadcast import BroadcastJob, BroadcastHistory
-
+from app.models.reminder import Reminder
 # AI Memory
 try:
     from .ai_memory import AIMemorySession
@@ -43,7 +43,7 @@ except Exception as e:
     ExamAttempt = ExamAttemptBlock = ExamAnswer = ExamAIJob = ExamMedia = None
 
 __all__ = [
-    "Base", "User", "Session", "ConversationThread", "Message",
+    "Base", "User", "Session", "ConversationThread", "Message","Reminder",
     "KnowledgeCategory", "KnowledgeDoc", "ApiLog", "ErrorLog", "AuditLog",
     "SystemSetting", "ContentItem", "BotText", "AdminMessage",
     "BroadcastJob", "BroadcastHistory", "InboxMessage", "InboxMessageHistory",

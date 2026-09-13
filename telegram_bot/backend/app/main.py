@@ -8,7 +8,12 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+# Fayl boshida, boshqa import'lar yonida:
+from app.websocket.admin_ws import router as websocket_router
 
+# ...
+
+# app.include_router(...) qatorlari yonida:
 from app.database import close_redis
 from app.core.exceptions import AppException
 from app.api import bot_text
@@ -123,6 +128,7 @@ def create_app() -> FastAPI:
     app.include_router(tests_import.router, prefix="/api")  
     app.include_router(auth.router)
     app.include_router(users.router)
+    app.include_router(websocket_router)
     app.include_router(content.router)
     app.include_router(stats.router)
     app.include_router(admin.router)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0; // ✅ YANGI: Hech qachon cache qilma
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
@@ -16,15 +17,16 @@ export async function GET(request: NextRequest) {
       url += `&is_read=${is_read}`;
     }
 
-    // Forward the Authorization header from the incoming request
     const authHeader = request.headers.get('authorization');
 
     const backendResp = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate', // ✅ YANGI
         ...(authHeader ? { Authorization: authHeader } : {}),
       },
+      cache: 'no-store', // ✅ YANGI: Next.js fetch cache'ni o'chirish
     });
 
     if (!backendResp.ok) {
@@ -36,7 +38,16 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await backendResp.json();
-    return NextResponse.json(data, { status: 200 });
+    
+    // ✅ YANGI: Response'ga Cache-Control header qo'shish
+    return NextResponse.json(data, { 
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
   } catch (error: any) {
     console.error('Inbox GET error:', error);
     return NextResponse.json(

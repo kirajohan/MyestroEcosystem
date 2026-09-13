@@ -1,3 +1,5 @@
+# C:\Projects\MyestroEco\MyestroEco\telegram_bot\bot\main.py
+
 import asyncio
 import logging
 import sys
@@ -19,7 +21,9 @@ from aiogram import Bot, Dispatcher, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
-
+from bot.workers.reminder_worker import ReminderWorker
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from bot.config import settings as bot_settings
 from bot.config import settings
 from bot.handlers import voice
 from handlers import messages  # ← YANGI IMPORT
@@ -116,12 +120,9 @@ async def main():
     dp.include_router(menu.router)
     dp.include_router(test_quiz.router)
     dp.include_router(inbox.router)
-    dp.include_router(ai_agent.router)
-    # dp.include_router(ai_chat.router)
-    # dp.include_router(admin_ai.router)
-    # dp.include_router(user_ai_query.router)
-    dp.include_router(voice.router)
     dp.include_router(reminders.router)
+    dp.include_router(ai_agent.router)
+    dp.include_router(voice.router)
     dp.include_router(referral.router)
     dp.include_router(academy.router)
     dp.include_router(admin.router)
@@ -168,7 +169,14 @@ async def main():
     # ══════════════════════════════════════════════════════════
     # WORKERS
     # ══════════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════════
+    # WORKERS
+    # ══════════════════════════════════════════════════════════
     redis_client = Redis.from_url(settings.REDIS_URL, decode_responses=False)
+    
+    # SQLAlchemy session factory (reminder worker uchun)
+    engine = create_async_engine(bot_settings.DATABASE_URL, echo=False)
+    async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
     
     # Start BroadcastWorker
     broadcast_worker = BroadcastWorker(bot, redis_client)
@@ -178,17 +186,27 @@ async def main():
     inbox_task = asyncio.create_task(inbox_delivery_worker(bot, redis_client))
     logger.info("🚀 Inbox delivery worker started")
     
+    # ✅ Start ReminderWorker
+    reminder_worker = ReminderWorker(bot, async_session_factory)
+    reminder_task = asyncio.create_task(reminder_worker.start())
+    logger.info("🔔 Reminder worker started")
+    
     # ══════════════════════════════════════════════════════════
     # POLLING
     # ══════════════════════════════════════════════════════════
+
     try:
         await dp.start_polling(bot)
     finally:
         broadcast_worker.stop()
+        reminder_worker.stop()  # ✅ Yangi
         if broadcast_task and not broadcast_task.done():
             broadcast_task.cancel()
         if inbox_task and not inbox_task.done():
             inbox_task.cancel()
+        if reminder_task and not reminder_task.done():  # ✅ Yangi
+            reminder_task.cancel()
+        await engine.dispose()  # ✅ Engine'ni yopish
         logger.info("Bot shut down.")
 
 
