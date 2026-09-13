@@ -76,7 +76,7 @@ class AIToolsService:
             "error_logs": ErrorLog,
             "audit_logs": AuditLog,
             "api_logs": ApiLog,
-            "system_settings": SystemSettings,
+            "system_settings": SystemSetting,
         }
 
         overview = {}
@@ -676,7 +676,7 @@ class AIToolsService:
         if not self.is_admin:
             return {"error": "Ruxsat yo'q"}
 
-        result = await self.db.execute(select(SystemSettings))
+        result = await self.db.execute(select(SystemSetting))
         settings = result.scalars().all()
 
         return {
