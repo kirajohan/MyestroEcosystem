@@ -161,7 +161,7 @@ class AIToolsService:
                     "id": u.id,
                     "telegram_id": u.telegram_id,
                     "full_name": u.full_name,
-                    "username": u.username,
+                    "username": u.telegram_username,                    
                     "phone": u.phone,
                     "role": u.role,
                     "cefr_level": u.cefr_level,
@@ -207,7 +207,7 @@ class AIToolsService:
                 "id": user.id,
                 "telegram_id": user.telegram_id,
                 "full_name": user.full_name,
-                "username": user.username,
+                "username": user.telegram_username,                
                 "phone": user.phone,
                 "role": user.role,
                 "cefr_level": user.cefr_level,
@@ -253,8 +253,7 @@ class AIToolsService:
                 {
                     "id": u.id,
                     "full_name": u.full_name,
-                    "username": u.username,
-                    "phone": u.phone,
+                    "username": u.telegram_username,                    
                     "role": u.role,
                     "cefr_level": u.cefr_level,
                 }
@@ -848,7 +847,7 @@ class AIToolsService:
         return {
             "id": user.id,
             "full_name": user.full_name,
-            "username": user.username,
+            "username": user.telegram_username,            
             "cefr_level": user.cefr_level,
             "ai_enabled": user.ai_enabled,
         }
