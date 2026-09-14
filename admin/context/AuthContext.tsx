@@ -14,6 +14,7 @@ interface AuthContextType {
   isLoggedIn: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithPhone: (phone: string, password: string) => Promise<void>; 
   logout: () => void;
   refreshToken: () => Promise<string | null>;
   error: string | null;
@@ -121,6 +122,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+const loginWithPhone = async (phone: string, password: string) => {
+  setError(null);
+  try {
+    const res = await fetch('/api/auth/phone-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, password }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || 'Telefon yoki parol notogri');
+    }
+
+    const adminToken = data.access_token || data.token;
+    const adminRefreshToken = data.refresh_token;
+
+    if (!adminToken) {
+      throw new Error('Backend token qaytarmadi');
+    }
+
+    const adminUser: AuthUser = {
+      id: data.user?.id ?? 0,
+      email: data.user?.email ?? '',
+      full_name: data.user?.full_name ?? 'Admin',
+      role: data.user?.role ?? 'admin',
+    };
+
+    // Admin role tekshiruvi
+    if (adminUser.role !== 'admin' && adminUser.role !== 'superadmin') {
+      throw new Error('Bu tizimga faqat adminlar kira oladi');
+    }
+
+    localStorage.setItem(TOKEN_KEY, adminToken);
+    if (adminRefreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, adminRefreshToken);
+    }
+    localStorage.setItem(USER_KEY, JSON.stringify(adminUser));
+
+    setToken(adminToken);
+    setRefreshTokenValue(adminRefreshToken);
+    setUser(adminUser);
+    setIsLoggedIn(true);
+    router.push('/dashboard');
+  } catch (err: any) {
+    setError(err.message || 'Telefon orqali kirishda xatolik');
+    throw err;
+  }
+};
+
   const refreshToken = useCallback(async (): Promise<string | null> => {
     try {
       const currentRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
@@ -178,6 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     refreshToken,
+    loginWithPhone,
     error,
     user,
     token,

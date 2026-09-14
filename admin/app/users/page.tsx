@@ -22,6 +22,7 @@ import {
   RefreshCw,
   Plus,
   Download,
+  X,
 } from 'lucide-react';
 
 const PAGE_SIZE = 50;
@@ -61,7 +62,6 @@ export default function UsersPage() {
     if (!data?.data) return [];
     let result = data.data;
 
-    // Filter bo'yicha
     if (activeFilter === 'active') {
       result = result.filter((u) => u.is_active);
     } else if (activeFilter === 'admin') {
@@ -70,7 +70,6 @@ export default function UsersPage() {
       result = result.filter((u) => u.ai_enabled);
     }
 
-    // Search bo'yicha
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(
@@ -84,7 +83,6 @@ export default function UsersPage() {
     return result;
   }, [data?.data, searchTerm, activeFilter]);
 
-  // Stats (client-side)
   const stats = useMemo(() => {
     if (!data?.data) return { total: 0, active: 0, admins: 0, aiEnabled: 0 };
     return {
@@ -134,38 +132,43 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Foydalanuvchilar</h1>
-          <p className="text-slate-600 mt-1">
-            Barcha royxatdan otgan foydalanuvchilarni boshqaring
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+              Foydalanuvchilar
+            </h1>
+            <p className="text-sm md:text-base text-slate-600 mt-1">
+              Barcha royxatdan otgan foydalanuvchilarni boshqaring
+            </p>
+          </div>
           <button
             onClick={() => refetch()}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 transition font-medium text-sm"
+            className="flex md:hidden items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 transition font-medium text-sm shadow-sm"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Desktop Actions */}
+        <div className="hidden md:flex items-center gap-2">
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 transition font-medium text-sm shadow-sm"
           >
             <RefreshCw className="w-4 h-4" />
             Yangilash
           </button>
           <button
-            onClick={() => {
-              // TODO: CSV export
-              toast.info('Tez orada qo\'shiladi');
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 transition font-medium text-sm"
+            onClick={() => toast.info('Tez orada qo\'shiladi')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 transition font-medium text-sm shadow-sm"
           >
             <Download className="w-4 h-4" />
             Export
           </button>
           <button
-            onClick={() => {
-              // TODO: Add new user
-              toast.info('Tez orada qo\'shiladi');
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium text-sm shadow-lg shadow-orange-500/20"
+            onClick={() => toast.info('Tez orada qo\'shiladi')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition font-medium text-sm shadow-lg shadow-orange-500/20"
           >
             <Plus className="w-4 h-4" />
             Yangi user
@@ -174,19 +177,19 @@ export default function UsersPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl border border-slate-200 p-5"
+          className="bg-white rounded-xl md:rounded-2xl border border-slate-200 p-4 md:p-5 shadow-sm"
         >
           <div className="flex items-center justify-between mb-2">
-            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-              <Users className="w-5 h-5 text-slate-600" />
+            <div className="w-9 h-9 md:w-10 md:h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+              <Users className="w-4 h-4 md:w-5 md:h-5 text-slate-600" />
             </div>
-            <span className="text-xs font-semibold text-slate-500 uppercase">Jami</span>
+            <span className="text-xs font-semibold text-slate-500 uppercase hidden sm:block">Jami</span>
           </div>
-          <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+          <p className="text-xl md:text-2xl font-bold text-slate-900">{stats.total}</p>
           <p className="text-xs text-slate-500 mt-1">Foydalanuvchilar</p>
         </motion.div>
 
@@ -194,15 +197,15 @@ export default function UsersPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="bg-white rounded-2xl border border-emerald-100 p-5"
+          className="bg-white rounded-xl md:rounded-2xl border border-emerald-100 p-4 md:p-5 shadow-sm"
         >
           <div className="flex items-center justify-between mb-2">
-            <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center">
-              <UserCheck className="w-5 h-5 text-emerald-600" />
+            <div className="w-9 h-9 md:w-10 md:h-10 bg-emerald-50 rounded-lg flex items-center justify-center">
+              <UserCheck className="w-4 h-4 md:w-5 md:h-5 text-emerald-600" />
             </div>
-            <span className="text-xs font-semibold text-emerald-600 uppercase">Faol</span>
+            <span className="text-xs font-semibold text-emerald-600 uppercase hidden sm:block">Faol</span>
           </div>
-          <p className="text-2xl font-bold text-slate-900">{stats.active}</p>
+          <p className="text-xl md:text-2xl font-bold text-slate-900">{stats.active}</p>
           <p className="text-xs text-slate-500 mt-1">Aktiv userlar</p>
         </motion.div>
 
@@ -210,15 +213,15 @@ export default function UsersPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl border border-orange-100 p-5"
+          className="bg-white rounded-xl md:rounded-2xl border border-orange-100 p-4 md:p-5 shadow-sm"
         >
           <div className="flex items-center justify-between mb-2">
-            <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-orange-600" />
+            <div className="w-9 h-9 md:w-10 md:h-10 bg-orange-50 rounded-lg flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4 md:w-5 md:h-5 text-orange-600" />
             </div>
-            <span className="text-xs font-semibold text-orange-600 uppercase">Admin</span>
+            <span className="text-xs font-semibold text-orange-600 uppercase hidden sm:block">Admin</span>
           </div>
-          <p className="text-2xl font-bold text-slate-900">{stats.admins}</p>
+          <p className="text-xl md:text-2xl font-bold text-slate-900">{stats.admins}</p>
           <p className="text-xs text-slate-500 mt-1">Administratorlar</p>
         </motion.div>
 
@@ -226,35 +229,43 @@ export default function UsersPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="bg-white rounded-2xl border border-blue-100 p-5"
+          className="bg-white rounded-xl md:rounded-2xl border border-blue-100 p-4 md:p-5 shadow-sm"
         >
           <div className="flex items-center justify-between mb-2">
-            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-blue-600" />
+            <div className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+              <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
             </div>
-            <span className="text-xs font-semibold text-blue-600 uppercase">AI</span>
+            <span className="text-xs font-semibold text-blue-600 uppercase hidden sm:block">AI</span>
           </div>
-          <p className="text-2xl font-bold text-slate-900">{stats.aiEnabled}</p>
+          <p className="text-xl md:text-2xl font-bold text-slate-900">{stats.aiEnabled}</p>
           <p className="text-xs text-slate-500 mt-1">AI yoqilgan</p>
         </motion.div>
       </div>
 
       {/* Search + Filters */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4">
-        <div className="flex flex-col md:flex-row gap-3">
+      <div className="bg-white rounded-xl md:rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <div className="flex flex-col gap-3">
           {/* Search Input */}
-          <div className="relative flex-1">
+          <div className="relative">
             <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Ism, email yoki telegram username bo'yicha qidirish..."
+              placeholder="Ism, email yoki username..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
                 setPage(0);
               }}
-              className="w-full pl-11 pr-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+              className="w-full pl-11 pr-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Filter chips */}
@@ -269,20 +280,21 @@ export default function UsersPage() {
                     setActiveFilter(filter.value);
                     setPage(0);
                   }}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-medium transition-all ${
                     isActive
                       ? filter.color === 'orange'
-                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                        ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/20'
                         : filter.color === 'emerald'
-                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20'
                         : filter.color === 'blue'
-                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                        : 'bg-slate-900 text-white'
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20'
+                        : 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  {filter.label}
+                  <Icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  <span className="hidden sm:inline">{filter.label}</span>
+                  <span className="sm:hidden">{filter.label.slice(0, 4)}</span>
                 </button>
               );
             })}
@@ -292,7 +304,7 @@ export default function UsersPage() {
         {/* Active filters summary */}
         {(searchTerm || activeFilter !== 'all') && (
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
-            <p className="text-sm text-slate-600">
+            <p className="text-xs md:text-sm text-slate-600">
               Topildi: <span className="font-semibold text-slate-900">{filteredUsers.length}</span> foydalanuvchi
             </p>
             <button
@@ -300,7 +312,7 @@ export default function UsersPage() {
                 setSearchTerm('');
                 setActiveFilter('all');
               }}
-              className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+              className="text-xs md:text-sm text-orange-600 hover:text-orange-700 font-medium"
             >
               Tozalash
             </button>
@@ -310,9 +322,11 @@ export default function UsersPage() {
 
       {/* Users Table or Loading/Empty */}
       {isLoading ? (
-        <SkeletonTable />
+        <div className="bg-white rounded-xl md:rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <SkeletonTable />
+        </div>
       ) : filteredUsers.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-xl md:rounded-2xl border border-slate-200 p-8 md:p-12 text-center shadow-sm">
           <EmptyState
             icon="users"
             title="Foydalanuvchilar topilmadi"
@@ -325,25 +339,27 @@ export default function UsersPage() {
         </div>
       ) : (
         <>
-          <UserTable
-            users={filteredUsers}
-            isLoading={false}
-            onView={setSelectedUser}
-            onEdit={setEditingUser}
-            onDelete={setDeletingUser}
-          />
+          <div className="bg-white rounded-xl md:rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <UserTable
+              users={filteredUsers}
+              isLoading={false}
+              onView={setSelectedUser}
+              onEdit={setEditingUser}
+              onDelete={setDeletingUser}
+            />
+          </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-sm text-slate-600">
-                Jami: <span className="font-semibold text-slate-900">{data?.total}</span> foydalanuvchi
+            <div className="bg-white rounded-xl md:rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+              <p className="text-xs md:text-sm text-slate-600">
+                Jami <span className="font-semibold text-slate-900">{data?.total}</span> foydalanuvchi
               </p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
-                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700"
+                  className="px-3 md:px-4 py-2 bg-white border border-slate-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors text-xs md:text-sm font-medium text-slate-700"
                 >
                   ← Oldingi
                 </button>
@@ -363,9 +379,9 @@ export default function UsersPage() {
                       <button
                         key={pageNum}
                         onClick={() => setPage(pageNum)}
-                        className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                        className={`w-8 h-8 md:w-9 md:h-9 rounded-lg text-xs md:text-sm font-medium transition-colors ${
                           page === pageNum
-                            ? 'bg-orange-500 text-white shadow-md'
+                            ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md'
                             : 'text-slate-600 hover:bg-slate-100'
                         }`}
                       >
@@ -377,7 +393,7 @@ export default function UsersPage() {
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                   disabled={page >= totalPages - 1}
-                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700"
+                  className="px-3 md:px-4 py-2 bg-white border border-slate-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors text-xs md:text-sm font-medium text-slate-700"
                 >
                   Keyingi →
                 </button>
@@ -404,15 +420,15 @@ export default function UsersPage() {
           <motion.div
             initial={{ scale: 0.95, y: 20 }}
             animate={{ scale: 1, y: 0 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden max-h-[90vh] overflow-y-auto"
           >
-            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white z-10">
               <h2 className="text-xl font-bold text-slate-900">Foydalanuvchini tahrirlash</h2>
               <button
                 onClick={() => setEditingUser(null)}
                 className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-6">

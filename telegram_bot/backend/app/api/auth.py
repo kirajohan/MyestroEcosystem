@@ -80,7 +80,7 @@ def register_init(data: dict, db: DBSession = Depends(get_db)):
     email = data.get("email", "")
     if not email:
         raise UnauthorizedException("Email required")
-    user = auth_service.register_user(db, {
+    user = auth_service.register_user(db, {         
         "email": email,
         "password": data.get("password", ""),
         "full_name": data.get("full_name", ""),
@@ -102,15 +102,59 @@ def check_phone(data: dict, db: DBSession = Depends(get_db)):
 
 @router.post("/phone-login", response_model=AdminLoginResponse)
 def phone_login(data: dict, db: DBSession = Depends(get_db)):
-    phone = data.get("phone", "")
+    phone = data.get("phone", "").strip()
+    password = data.get("password", "")
     telegram_id = data.get("telegram_id")
-    password = data.get("password")
-    if not phone or not telegram_id:
-        raise UnauthorizedException("Phone and telegram_id required")
+    
+    if not phone:
+        raise UnauthorizedException("Telefon raqami majburiy")
+    
+    # Phone formatni normalize qilish
+    clean_phone = phone.replace("+", "").replace(" ", "").replace("-", "")
+    
+    if len(clean_phone) == 9:
+        clean_phone = "998" + clean_phone
+    elif len(clean_phone) == 12 and clean_phone.startswith("998"):
+        pass
+    elif clean_phone.startswith("8") and len(clean_phone) == 10:
+        clean_phone = "998" + clean_phone[1:]
+    
+    # Telefon bo'yicha foydalanuvchini topish
+    user = db.query(User).filter(
+        (User.phone == clean_phone) | 
+        (User.phone == phone) |
+        (User.phone == "+" + clean_phone)
+    ).first()
+    
+    if not user:
+        raise UnauthorizedException("Bu telefon raqami royxatdan otmagan")
+    
+    # Admin panel uchun - parol tekshirish
+    if telegram_id is None and password:
+        if user.role not in ('admin', 'superadmin'):
+            raise UnauthorizedException("Bu tizimga faqat adminlar kira oladi")
+        
+        from app.core.security import verify_password
+        if not user.password_hash or not verify_password(password, user.password_hash):
+            raise UnauthorizedException("Parol notogri")
+        
+        # ✅ auth_service orqali token yaratish
+        result = auth_service.authenticate_admin(db, user.email, password)
+        
+        return AdminLoginResponse(
+            success=True,
+            user=UserResponse.model_validate(user),
+            access_token=result.get("access_token"),
+            refresh_token=result.get("refresh_token"),
+        )
+    
+    # Telegram bot uchun
     user = auth_service.authenticate_by_phone(db, phone, telegram_id, password)
     if not user:
         raise UnauthorizedException("User not found with this phone or wrong password")
     return AdminLoginResponse(success=True, user=UserResponse.model_validate(user))
+
+
 
 
 @router.post("/refresh", response_model=AdminLoginResponse)

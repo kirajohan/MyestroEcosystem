@@ -1,10 +1,26 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useCallback, FormEvent } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useEffect, useState, useCallback, FormEvent } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  Pencil,
+  Clock,
+  CheckCircle2,
+  FileText,
+  X,
+  Headphones,
+  BookOpen,
+  PenTool,
+  Mic,
+  AlertCircle,
+} from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
 interface Exam {
   id: number;
@@ -22,25 +38,15 @@ interface Block {
   block_type: string;
   title: string;
   description?: string;
-  instructions?: string;
   order: number;
   time_limit_sec: number;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  full: "🎯 Full Exam",
-  listening: "🎧 Listening",
-  reading: "📖 Reading",
-  writing: "✍️ Writing",
-  speaking: "🎤 Speaking",
-};
-
-// ✅ Faqat skill turlari (full yo'q!)
 const BLOCK_TYPES = [
-  { value: "listening", label: "🎧 Listening", icon: "🎧" },
-  { value: "reading", label: "📖 Reading", icon: "📖" },
-  { value: "writing", label: "✍️ Writing", icon: "✍️" },
-  { value: "speaking", label: "🎤 Speaking", icon: "🎤" },
+  { value: 'listening', label: 'Listening', icon: Headphones, color: 'blue' },
+  { value: 'reading', label: 'Reading', icon: BookOpen, color: 'emerald' },
+  { value: 'writing', label: 'Writing', icon: PenTool, color: 'purple' },
+  { value: 'speaking', label: 'Speaking', icon: Mic, color: 'rose' },
 ];
 
 export default function ExamDetailPage() {
@@ -54,11 +60,11 @@ export default function ExamDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showAddBlock, setShowAddBlock] = useState(false);
   const [savingBlock, setSavingBlock] = useState(false);
+  const [deleteBlockId, setDeleteBlockId] = useState<number | null>(null);
 
-  // Block yaratish formasi
   const [blockForm, setBlockForm] = useState({
-    title: "",
-    block_type: "listening",
+    title: '',
+    block_type: 'listening',
     order: 1,
     time_limit_sec: 600,
   });
@@ -69,16 +75,14 @@ export default function ExamDetailPage() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const examRes = await fetch(`${API_URL}/api/v2/exam/admin/exams/${examId}`, { headers });
-      if (examRes.ok) {
-        setExam(await examRes.json());
-      }
+      if (examRes.ok) setExam(await examRes.json());
 
-      const blocksRes = await fetch(`${API_URL}/api/v2/exam/admin/exams/${examId}/blocks`, { headers });
-      if (blocksRes.ok) {
-        setBlocks(await blocksRes.json());
-      }
+      const blocksRes = await fetch(`${API_URL}/api/v2/exam/admin/exams/${examId}/blocks`, {
+        headers,
+      });
+      if (blocksRes.ok) setBlocks(await blocksRes.json());
     } catch (err) {
-      console.error("Yuklash xatosi:", err);
+      console.error('Yuklash xatosi:', err);
     } finally {
       setLoading(false);
     }
@@ -88,27 +92,11 @@ export default function ExamDetailPage() {
     if (token) loadData();
   }, [token, loadData]);
 
-  async function handleDeleteBlock(blockId: number) {
-    if (!confirm("Bu block va uning barcha savollarini o'chirishni xohlaysizmi?")) return;
-
-    try {
-      const res = await fetch(`${API_URL}/api/v2/exam/admin/blocks/${blockId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setBlocks(blocks.filter((b) => b.id !== blockId));
-      }
-    } catch (err) {
-      console.error("O'chirish xatosi:", err);
-    }
-  }
-
   function openAddBlockModal() {
     const nextOrder = blocks.length + 1;
     setBlockForm({
-      title: "",
-      block_type: "listening",
+      title: '',
+      block_type: 'listening',
       order: nextOrder,
       time_limit_sec: Math.floor((exam?.time_limit_sec || 600) / (blocks.length + 1 || 4)),
     });
@@ -121,258 +109,421 @@ export default function ExamDetailPage() {
 
     try {
       const res = await fetch(`${API_URL}/api/v2/exam/admin/exams/${examId}/blocks`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           title: blockForm.title || `Block ${blockForm.order}`,
-          block_type: blockForm.block_type, // ✅ Endi faqat skill turi bo'ladi
+          block_type: blockForm.block_type,
           order: blockForm.order,
           time_limit_sec: blockForm.time_limit_sec,
         }),
       });
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => null);
-        throw new Error(errData?.detail || `HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       await loadData();
       setShowAddBlock(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Block qo'shishda xato");
+      console.error('Block qoshishda xato:', err);
     } finally {
       setSavingBlock(false);
     }
   }
 
-  if (loading) return <div className="p-6">Yuklanmoqda...</div>;
-  if (!exam) return <div className="p-6">Exam topilmadi</div>;
+  async function handleDeleteBlock() {
+    if (!deleteBlockId) return;
+    try {
+      const res = await fetch(`${API_URL}/api/v2/exam/admin/blocks/${deleteBlockId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setBlocks((prev) => prev.filter((b) => b.id !== deleteBlockId));
+    } catch (err) {
+      console.error('Ochirish xatosi:', err);
+    } finally {
+      setDeleteBlockId(null);
+    }
+  }
 
-  // Full Exam uchun maxsus ko'rinish
-  const isFullExam = exam.exam_type === "full";
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[50vh]">
+        <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!exam) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[50vh]">
+        <AlertCircle className="w-12 h-12 text-red-400 mb-3" />
+        <p className="text-slate-600">Exam topilmadi</p>
+      </div>
+    );
+  }
+
+  const getBlockTypeInfo = (type: string) =>
+    BLOCK_TYPES.find((b) => b.value === type) || BLOCK_TYPES[0];
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <button onClick={() => router.push("/exam/exams")} className="text-blue-600 mb-4">
-        ← Examlarga qaytish
+    <div className="space-y-6">
+      {/* Back button */}
+      <button
+        onClick={() => router.push('/exam/exams')}
+        className="flex items-center gap-2 text-sm text-slate-600 hover:text-orange-600 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Examlarga qaytish
       </button>
 
-      {/* Exam header */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h1 className="text-2xl font-bold">{exam.title}</h1>
-            <p className="text-gray-500 font-mono text-sm">{exam.code}</p>
-          </div>
-          <span
-            className={`px-3 py-1 rounded-full text-sm ${
-              exam.is_published ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
-            }`}
-          >
-            {exam.is_published ? "Published" : "Draft"}
-          </span>
-        </div>
-            
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <div className="text-gray-500">Turi</div>
-            <div className="font-semibold">{TYPE_LABELS[exam.exam_type] || exam.exam_type}</div>
-          </div>
-          <div>
-            <div className="text-gray-500">Daraja</div>
-            <div className="font-semibold">{exam.cefr_level || "—"}</div>
-          </div>
-          <div>
-            <div className="text-gray-500">Umumiy vaqt</div>
-            <div className="font-semibold">{Math.floor(exam.time_limit_sec / 60)} daq</div>
-          </div>
-          <div>
-            <div className="text-gray-500">Blocklar</div>
-            <div className="font-semibold">{blocks.length} ta</div>
+      {/* Exam Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+      >
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-xl md:text-2xl font-bold text-white">{exam.title}</h1>
+              <p className="text-sm text-white/80 font-mono mt-1">{exam.code}</p>
+            </div>
+            <span
+              className={`flex-shrink-0 inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold ${
+                exam.is_published
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-white/20 text-white backdrop-blur-sm'
+              }`}
+            >
+              {exam.is_published && <CheckCircle2 className="w-3 h-3" />}
+              {exam.is_published ? 'Published' : 'Draft'}
+            </span>
           </div>
         </div>
 
-        {exam.description && <p className="mt-4 text-gray-600">{exam.description}</p>}
-
-        {/* Full Exam uchun eslatma */}
-        {isFullExam && (
-          <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-            <p className="text-sm text-purple-800">
-              💡 <strong>Full Exam:</strong> Har bir skill uchun alohida block yarating 
-              (Listening → Reading → Writing → Speaking).
+        <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="p-3 bg-slate-50 rounded-xl">
+            <p className="text-xs text-slate-500 mb-1">Turi</p>
+            <p className="text-sm font-semibold text-slate-900">{exam.exam_type}</p>
+          </div>
+          <div className="p-3 bg-slate-50 rounded-xl">
+            <p className="text-xs text-slate-500 mb-1">Daraja</p>
+            <p className="text-sm font-semibold text-slate-900">{exam.cefr_level || '—'}</p>
+          </div>
+          <div className="p-3 bg-slate-50 rounded-xl">
+            <p className="text-xs text-slate-500 mb-1">Umumiy vaqt</p>
+            <p className="text-sm font-semibold text-slate-900 flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" />
+              {Math.floor(exam.time_limit_sec / 60)} daq
             </p>
           </div>
-        )}
-      </div>
+          <div className="p-3 bg-slate-50 rounded-xl">
+            <p className="text-xs text-slate-500 mb-1">Blocklar</p>
+            <p className="text-sm font-semibold text-slate-900">{blocks.length} ta</p>
+          </div>
+        </div>
 
-      {/* Blocks */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Blocklar</h2>
+        {exam.description && (
+          <div className="px-5 pb-5">
+            <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl">{exam.description}</p>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Blocks Section */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-orange-500" />
+            Blocklar
+          </h2>
           <button
             onClick={openAddBlockModal}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-medium text-sm hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/20"
           >
-            + Block qoshish
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Block qoshish</span>
+            <span className="sm:hidden">Qoshish</span>
           </button>
         </div>
 
         {blocks.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <div className="text-4xl mb-3">📋</div>
-            <p>Hali block qoshilmagan.</p>
-            <p className="text-sm mt-1">Birinchi blockni qoshing va savollar yarating.</p>
+          <div className="p-12 text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-8 h-8 text-slate-300" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-900 mb-1">Hali block qoshilmagan</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Birinchi blockni qoshing va savollar yarating
+            </p>
+            <button
+              onClick={openAddBlockModal}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-xl font-medium text-sm hover:bg-orange-100 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Block qoshish
+            </button>
           </div>
         ) : (
-          <div className="space-y-3">
-            {blocks.map((block) => (
-              <div key={block.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded">
-                        #{block.order}
-                      </span>
-                      <span className="text-sm font-medium px-2 py-0.5 rounded bg-blue-50 text-blue-700">
-                        {TYPE_LABELS[block.block_type] || block.block_type}
-                      </span>
+          <div className="divide-y divide-slate-100">
+            {blocks.map((block, index) => {
+              const typeInfo = getBlockTypeInfo(block.block_type);
+              const Icon = typeInfo.icon;
+
+              return (
+                <motion.div
+                  key={block.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="p-4 hover:bg-slate-50/50 transition-colors group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-orange-50 rounded-xl flex items-center justify-center flex-shrink-0 border border-orange-100">
+                      <Icon className="w-6 h-6 text-orange-600" />
                     </div>
-                    <h3 className="font-semibold text-lg">{block.title}</h3>
-                    {block.description && (
-                      <p className="text-sm text-gray-600 mt-1">{block.description}</p>
-                    )}
-                    <div className="text-xs text-gray-500 mt-2">
-                      ⏱️ Vaqt: {Math.floor(block.time_limit_sec / 60)} daq
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600">
+                          #{block.order}
+                        </span>
+                        <span className="text-xs font-semibold text-orange-600">
+                          {typeInfo.label}
+                        </span>
+                      </div>
+                      <h3 className="font-semibold text-slate-900 truncate">{block.title}</h3>
+                      {block.description && (
+                        <p className="text-xs text-slate-500 mt-0.5 truncate">
+                          {block.description}
+                        </p>
+                      )}
+                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {Math.floor(block.time_limit_sec / 60)} daqiqa
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => router.push(`/exam/exams/${examId}/blocks/${block.id}`)}
+                        className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                        title="Tahrirlash"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteBlockId(block.id)}
+                        className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Ochirish"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <div className="w-4 h-4 text-slate-400" />
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => router.push(`/exam/exams/${examId}/blocks/${block.id}`)}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium px-3 py-1 rounded border border-blue-200 hover:bg-blue-50"
-                    >
-                      ✏️ Tahrirlash
-                    </button>
-                    <button
-                      onClick={() => handleDeleteBlock(block.id)}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium px-3 py-1 rounded border border-red-200 hover:bg-red-50"
-                    >
-                      🗑️ Ochirish
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* ═══ ADD BLOCK MODAL ═══ */}
-      {showAddBlock && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">📦 Yangi Block qoshish</h3>
-              <button
-                onClick={() => setShowAddBlock(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleAddBlock} className="space-y-4">
-              {/* Block Type Selection */}
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700">
-                  Block turi <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {BLOCK_TYPES.map((type) => (
-                    <button
-                      key={type.value}
-                      type="button"
-                      onClick={() => setBlockForm((prev) => ({ ...prev, block_type: type.value }))}
-                      className={`p-3 rounded-lg border-2 transition-all text-center ${
-                        blockForm.block_type === type.value
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <div className="text-2xl mb-1">{type.icon}</div>
-                      <div className="text-sm font-medium text-gray-700">
-                        {type.label.split(" ")[1]}
-                      </div>
-                    </button>
-                  ))}
+      {/* Add Block Modal */}
+      <AnimatePresence>
+        {showAddBlock && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAddBlock(false)}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed inset-x-4 top-[10%] md:inset-auto md:left-1/2 md:top-[15%] md:-translate-x-1/2 w-full md:max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden max-h-[85vh] flex flex-col"
+            >
+              <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-orange-500 to-orange-600 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <Plus className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-lg font-bold text-white">Yangi Block qoshish</h2>
+                    <p className="text-xs text-white/80">Skill turini tanlang</p>
+                  </div>
+                  <button
+                    onClick={() => setShowAddBlock(false)}
+                    className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5 text-gray-700">
-                  Block nomi
-                </label>
-                <input
-                  type="text"
-                  value={blockForm.title}
-                  onChange={(e) => setBlockForm((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder={`${BLOCK_TYPES.find(t => t.value === blockForm.block_type)?.label} Section`}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              {/* Order & Time */}
-              <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleAddBlock} className="p-5 space-y-5 overflow-y-auto flex-1">
                 <div>
-                  <label className="block text-sm font-medium mb-1.5 text-gray-700">
-                    Tartib raqami
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    Block turi <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {BLOCK_TYPES.map((type) => {
+                      const Icon = type.icon;
+                      const isSelected = blockForm.block_type === type.value;
+                      return (
+                        <button
+                          key={type.value}
+                          type="button"
+                          onClick={() =>
+                            setBlockForm((prev) => ({ ...prev, block_type: type.value }))
+                          }
+                          className={`p-4 rounded-xl border-2 transition-all ${
+                            isSelected
+                              ? 'border-orange-500 bg-orange-50'
+                              : 'border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          <Icon
+                            className={`w-6 h-6 mx-auto mb-2 ${
+                              isSelected ? 'text-orange-600' : 'text-slate-400'
+                            }`}
+                          />
+                          <p
+                            className={`text-sm font-medium ${
+                              isSelected ? 'text-orange-700' : 'text-slate-600'
+                            }`}
+                          >
+                            {type.label}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-1.5">
+                    Block nomi
                   </label>
                   <input
-                    type="number"
-                    value={blockForm.order}
-                    onChange={(e) => setBlockForm((prev) => ({ ...prev, order: Number(e.target.value) }))}
-                    min={1}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    type="text"
+                    value={blockForm.title}
+                    onChange={(e) => setBlockForm((prev) => ({ ...prev, title: e.target.value }))}
+                    placeholder={`${getBlockTypeInfo(blockForm.block_type).label} Section`}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-gray-700">
-                    Vaqt (daqiqada)
-                  </label>
-                  <input
-                    type="number"
-                    value={Math.floor(blockForm.time_limit_sec / 60)}
-                    onChange={(e) => setBlockForm((prev) => ({ ...prev, time_limit_sec: Number(e.target.value) * 60 }))}
-                    min={1}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-1.5">
+                      Tartib
+                    </label>
+                    <input
+                      type="number"
+                      value={blockForm.order}
+                      onChange={(e) =>
+                        setBlockForm((prev) => ({ ...prev, order: Number(e.target.value) }))
+                      }
+                      min={1}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-1.5">
+                      Vaqt (daqiqada)
+                    </label>
+                    <input
+                      type="number"
+                      value={Math.floor(blockForm.time_limit_sec / 60)}
+                      onChange={(e) =>
+                        setBlockForm((prev) => ({
+                          ...prev,
+                          time_limit_sec: Number(e.target.value) * 60,
+                        }))
+                      }
+                      min={1}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-4 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddBlock(false)}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition"
+                  >
+                    Bekor qilish
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingBlock}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 transition-all shadow-lg shadow-orange-500/20"
+                  >
+                    {savingBlock ? 'Saqlanmoqda...' : 'Qoshish'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Block Confirm */}
+      <AnimatePresence>
+        {deleteBlockId !== null && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeleteBlockId(null)}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-x-4 top-[20%] md:inset-auto md:left-1/2 md:top-[25%] md:-translate-x-1/2 w-full md:max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden"
+            >
+              <div className="p-5 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">Blockni ochirish</h3>
                 </div>
               </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <div className="p-5">
+                <p className="text-sm text-slate-600">
+                  Bu block va uning barcha savollarini ochirishni tasdiqlaysizmi? Bu amal qaytarib bolmaydi.
+                </p>
+              </div>
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-2">
                 <button
-                  type="button"
-                  onClick={() => setShowAddBlock(false)}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-gray-700"
+                  onClick={() => setDeleteBlockId(null)}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition"
                 >
                   Bekor qilish
                 </button>
                 <button
-                  type="submit"
-                  disabled={savingBlock}
-                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-semibold"
+                  onClick={handleDeleteBlock}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all"
                 >
-                  {savingBlock ? "Saqlanmoqda..." : "✅ Qo'shish"}
+                  Ochirish
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

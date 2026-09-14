@@ -506,3 +506,76 @@ def reminder_day_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
     builder.add(StyledKeyboardButton(text=items[-1], style="danger"))
     builder.adjust(2, 2, 2, 1, 1)
     return builder.as_markup(resize_keyboard=True)
+
+
+def reminder_date_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """Bir martalik eslatma uchun kun tanlash."""
+    texts = {
+        "uz": {
+            "today": "📅 Bugun",
+            "tomorrow": "📅 Ertaga",
+            "custom": "📝 Boshqa kun",
+            "back": "⬅️ Orqaga",
+        },
+        "ru": {
+            "today": "📅 Сегодня",
+            "tomorrow": "📅 Завтра",
+            "custom": "📝 Другой день",
+            "back": "⬅️ Назад",
+        },
+        "en": {
+            "today": "📅 Today",
+            "tomorrow": "📅 Tomorrow",
+            "custom": "📝 Another day",
+            "back": "⬅️ Back",
+        },
+    }
+    t = texts.get(lang, texts["uz"])
+
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["today"], style="primary"),
+        StyledKeyboardButton(text=t["tomorrow"], style="primary"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["custom"], style="success"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["back"], style="danger"),
+    )
+    builder.adjust(2, 1, 1)
+    return builder.as_markup(resize_keyboard=True)
+
+def reminder_ai_choice_kb(lang: str = "uz") -> ReplyKeyboardMarkup:
+    """AI generatsiya qiladimi yoki statik matnmi?"""
+    texts = {
+        "uz": {
+            "static": "📝 Oddiy matn (har kuni bir xil)",
+            "ai": "🤖 AI har kuni yangi content",
+            "back": "⬅️ Orqaga",
+        },
+        "ru": {
+            "static": "📝 Обычный текст (каждый день одно)",
+            "ai": "🤖 AI каждый день новый контент",
+            "back": "⬅️ Назад",
+        },
+        "en": {
+            "static": "📝 Static text (same every day)",
+            "ai": "🤖 AI generates new content daily",
+            "back": "⬅️ Back",
+        },
+    }
+    t = texts.get(lang, texts["uz"])
+
+    builder = ReplyKeyboardBuilder()
+    builder.add(
+        StyledKeyboardButton(text=t["static"], style="primary"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["ai"], style="success"),
+    )
+    builder.add(
+        StyledKeyboardButton(text=t["back"], style="danger"),
+    )
+    builder.adjust(1, 1, 1)
+    return builder.as_markup(resize_keyboard=True)

@@ -1,4 +1,3 @@
-// app/dashboard/page.tsx
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
@@ -55,7 +54,7 @@ export default function DashboardPage() {
       return response.data;
     },
     staleTime: 30000,
-    refetchInterval: 60000, // Har daqiqada yangilanadi
+    refetchInterval: 60000,
   });
 
   if (error) {
@@ -68,21 +67,21 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-slate-600 mt-1">Tizim statistikasi va oxirgi faolliklar</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-sm md:text-base text-slate-600 mt-1">Tizim statistikasi va oxirgi faolliklar</p>
         </div>
-        <div className="hidden md:flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-xs md:text-sm text-slate-500">
           <Clock className="w-4 h-4" />
           <span>Oxirgi yangilanish: {new Date().toLocaleTimeString('uz-UZ')}</span>
         </div>
       </div>
 
       {/* Stats Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         {isLoading ? (
           <>
             <SkeletonCard />
@@ -127,7 +126,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {isLoading ? (
           <>
             <SkeletonChart />
@@ -142,7 +141,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Recent Attempts */}
         <div className="lg:col-span-2">
           {isLoading ? (

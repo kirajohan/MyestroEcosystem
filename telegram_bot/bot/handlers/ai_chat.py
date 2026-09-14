@@ -174,35 +174,68 @@ async def unified_ai_handler(
         await message.answer(get_text("ai.error", lang))
 
 
+from datetime import datetime, timedelta, timezone
+
+TASHKENT_OFFSET = timedelta(hours=5)
+
+from datetime import datetime, timedelta, timezone
+
+TASHKENT_OFFSET = timedelta(hours=5)
+
 async def _build_additional_context(
     lang: str,
     cefr_level: str,
     user_message: str,
     is_admin: bool,
 ) -> str:
-    """AI agent uchun qo'shimcha kontekst yaratish (RAG + AI Teacher prompt)."""
+    """AI agent uchun qo'shimcha kontekst — HOZIRGI VAQT bilan."""
     
-    context_parts = []
+    # ✅ Hozirgi vaqtni aniq olish
+    now_utc = datetime.now(timezone.utc)
+    now_tashkent = now_utc + TASHKENT_OFFSET
     
-    # 1. Foydalanuvchi haqida
-    context_parts.append(f"Foydalanuvchi tili: {lang}")
-    context_parts.append(f"Foydalanuvchi CEFR darajasi: {cefr_level}")
-    context_parts.append(f"Role: {'Admin' if is_admin else 'Oddiy foydalanuvchi'}")
+    # Hafta kunlari
+    day_names_uz = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakshanba"]
+    day_name = day_names_uz[now_tashkent.weekday()]
     
-    # 2. RAG (faqat oddiy user uchun, admin uchun shart emas)
+    # Ertangi sana
+    tomorrow = now_tashkent + timedelta(days=1)
+    
+    context_parts = [
+        "═" * 40,
+        "🕐 HOZIRGI ANIQ VAQT (Toshkent, UTC+5):",
+        f"   Sana: {now_tashkent.strftime('%Y-%m-%d')} ({day_name})",
+        f"   Vaqt: {now_tashkent.strftime('%H:%M:%S')}",
+        f"   Ertaga: {tomorrow.strftime('%Y-%m-%d')}",
+        "═" * 40,
+        "",
+        "⏰ VAQT HISOBLASH QOIDALARI (JUDA MUHIM):",
+        f"1. 'X minutdan keyin' → Hozirgi vaqt ({now_tashkent.strftime('%H:%M')}) + X minut",
+        f"   Masalan: '2 minutdan keyin' → {now_tashkent.strftime('%H:%M')} + 2 minut = {(now_tashkent + timedelta(minutes=2)).strftime('%H:%M')}",
+        f"2. 'X soatdan keyin' → Hozirgi vaqt + X soat",
+        f"3. 'ertaga' → {tomorrow.strftime('%Y-%m-%d')} sanasi",
+        f"4. 'bugun' → {now_tashkent.strftime('%Y-%m-%d')} sanasi",
+        "",
+        "📌 VAQT FORMATI:",
+        "- date parametri: YYYY-MM-DD formatida (masalan: 2026-09-14)",
+
+        "- DOIM hozirgi vaqtdan hisoblang, UTC dan emas!",
+        "",
+        f"Foydalanuvchi tili: {lang}",
+        f"Foydalanuvchi CEFR darajasi: {cefr_level}",
+        f"Role: {'Admin' if is_admin else 'Oddiy foydalanuvchi'}",
+    ]
+    
+    # RAG (faqat user uchun)
     if not is_admin:
         try:
             rag_context = await rag_client.build_context(user_message)
             if rag_context:
-                context_parts.append(
-                    f"📚 BILIMLAR BAZASI (RAG):\n{rag_context}\n\n"
-                    f"⚠️ Agar savol bu ma'lumotlarga tegishli bo'lsa, ulardan foydalan."
-                )
+                context_parts.append(f"\n📚 BILIMLAR BAZASI (RAG):\n{rag_context}")
         except Exception as e:
             logger.warning(f"RAG xatosi: {e}")
     
     return "\n".join(context_parts)
-
 
 async def _fallback_ai_teacher(
     message: Message,

@@ -7,7 +7,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timedelta, timezone
-
+import pytz
 from sqlalchemy import select, func, desc, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -35,6 +35,77 @@ from app.models.settings import SystemSetting
 
 logger = logging.getLogger(__name__)
 
+
+from app.models.reminder import Reminder 
+
+# ═══════════════════════════════════════════════════════════
+# TIMEZONE + REMINDER HELPERS (mustaqil, bot'dan import qilinmaydi)
+# ═══════════════════════════════════════════════════════════
+from datetime import datetime, timedelta, timezone, date as _date_class
+import re
+
+from app.models.reminder import Reminder
+# from datetime import datetime, timedelta, timezone, date as _date_class
+
+# ═══════════════════════════════════════════════════════════
+# TIMEZONE + REMINDER HELPERS (modul darajasida)
+# ═══════════════════════════════════════════════════════════
+TASHKENT_TZ = pytz.timezone("Asia/Tashkent")
+TASHKENT_OFFSET = timedelta(hours=5)
+
+
+def _to_tashkent(utc_dt: datetime) -> datetime:
+    """UTC datetime'ni Toshkent vaqtiga o'girish."""
+    if utc_dt.tzinfo is None:
+        utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+    return utc_dt.astimezone(timezone.utc) + TASHKENT_OFFSET
+
+
+def _parse_time_reminder(time_str: str):
+    """HH:MM / HH.MM / HH formatini parse qilish."""
+    time_str = (time_str or "").strip()
+    
+    # HH:MM yoki HH.MM yoki HH,MM
+    match = re.match(r"^(\d{1,2})[:.,](\d{2})$", time_str)
+    if match:
+        h, m = int(match.group(1)), int(match.group(2))
+        if 0 <= h <= 23 and 0 <= m <= 59:
+            return h, m
+    
+    # Faqat soat (HH)
+    match = re.match(r"^(\d{1,2})$", time_str)
+    if match:
+        h = int(match.group(1))
+        if 0 <= h <= 23:
+            return h, 0
+    
+    return None
+
+
+def _calculate_next_due_reminder(
+    reminder_type: str,
+    hour: int,
+    minute: int,
+    day_of_week=None,
+) -> datetime:
+    """Keyingi due_at (UTC) ni hisoblaydi — Toshkent vaqti asosida."""
+    now_tashkent = datetime.now(TASHKENT_TZ)
+
+    if reminder_type in ("once", "daily"):
+        target = now_tashkent.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if target <= now_tashkent:
+            target += timedelta(days=1)
+        return target.astimezone(timezone.utc)
+
+    elif reminder_type == "weekly":
+        target = now_tashkent.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        days_ahead = (day_of_week or 0) - now_tashkent.weekday()
+        if days_ahead < 0 or (days_ahead == 0 and target <= now_tashkent):
+            days_ahead += 7
+        target += timedelta(days=days_ahead)
+        return target.astimezone(timezone.utc)
+
+    return datetime.now(timezone.utc)
 
 class AIToolsService:
     """
@@ -539,6 +610,123 @@ class AIToolsService:
         }
 
     # ═══════════════════════════════════════════════════════════
+    # REMINDER TOOLS
+    # ═══════════════════════════════════════════════════════════
+
+    async def create_reminder(
+        self,
+        text: str,
+        reminder_type: str = "once",
+        time: str = "",
+        date: str = "",
+        day_of_week: int | None = None,
+        is_ai_generated: bool = False,
+        ai_prompt: str | None = None,
+    ) -> Dict[str, Any]:
+        """Eslatma yaratish (oddiy yoki AI-generatsiya)."""
+        date_str = date
+
+        parsed_time = _parse_time_reminder(time) if time else None
+        if not parsed_time:
+            return {"error": "Vaqt formati noto'g'ri. HH:MM formatida yozing."}
+
+        hour, minute = parsed_time
+
+        # AI reminder uchun text = ai_prompt
+        if is_ai_generated and ai_prompt:
+            display_text = ai_prompt
+        else:
+            display_text = text
+
+        if reminder_type == "once" and date_str:
+            try:
+                target_date = _date_class.fromisoformat(date_str)
+            except ValueError:
+                return {"error": "Sana formati noto'g'ri. YYYY-MM-DD formatida yozing."}
+            now_tashkent = datetime.now(TASHKENT_TZ)
+            target_tashkent = TASHKENT_TZ.localize(
+                datetime(target_date.year, target_date.month, target_date.day, hour, minute, 0)
+            )
+            if target_tashkent <= now_tashkent:
+                return {"error": "Bu vaqt allaqachon o'tgan."}
+            due_at = target_tashkent.astimezone(timezone.utc)
+        else:
+            due_at = _calculate_next_due_reminder(reminder_type, hour, minute, day_of_week)
+
+        reminder = Reminder(
+            user_id=self.current_user_id,
+            text=display_text,
+            reminder_type=reminder_type,
+            due_at=due_at,
+            scheduled_time=f"{hour:02d}:{minute:02d}",
+            day_of_week=day_of_week,
+            is_active=True,
+            is_ai_generated=is_ai_generated,
+            ai_prompt=ai_prompt,
+        )
+        self.db.add(reminder)
+        await self.db.commit()
+        await self.db.refresh(reminder)
+
+        return {
+            "status": "success",
+            "reminder_id": reminder.id,
+            "text": display_text,
+            "type": reminder_type,
+            "is_ai_generated": is_ai_generated,
+            "due_at_local": _to_tashkent(due_at).strftime("%d.%m.%Y %H:%M"),
+        }
+
+
+    async def list_my_reminders(self) -> Dict[str, Any]:
+        """Foydalanuvchining aktiv eslatmalari."""
+        result = await self.db.execute(
+            select(Reminder)
+            .where(
+                Reminder.user_id == self.current_user_id,
+                Reminder.is_active == True,
+            )
+            .order_by(Reminder.due_at.asc())
+            .limit(10)
+        )
+        reminders = result.scalars().all()
+
+        return {
+            "reminders": [
+                {
+                    "id": r.id,
+                    "text": r.text[:100],
+                    "type": r.reminder_type,
+                    "scheduled_time": r.scheduled_time,
+                    "due_at": _to_tashkent(r.due_at).strftime("%d.%m.%Y %H:%M"),
+                }
+                for r in reminders
+            ],
+            "count": len(reminders),
+        }
+
+    async def delete_reminder(self, reminder_id: int) -> Dict[str, Any]:
+        """Eslatmani o'chirish."""
+        result = await self.db.execute(
+            select(Reminder).where(
+                Reminder.id == reminder_id,
+                Reminder.user_id == self.current_user_id,
+            )
+        )
+        reminder = result.scalar_one_or_none()
+
+        if not reminder:
+            return {"error": "Eslatma topilmadi yoki sizga tegishli emas."}
+
+        reminder.is_active = False
+        await self.db.commit()
+
+        return {
+            "status": "success",
+            "message": f"Eslatma '{reminder.text[:50]}' o'chirildi.",
+        }
+
+    # ═══════════════════════════════════════════════════════════
     # MESSAGES / CONVERSATIONS TOOLS
     # ═══════════════════════════════════════════════════════════
 
@@ -903,6 +1091,7 @@ class AIToolsService:
         }
 
 
+
 # ══════════════════════════════════════════════════════════════
 # TOOL SCHEMAS (OpenAI Function Calling format)
 # ══════════════════════════════════════════════════════════════
@@ -1225,3 +1414,65 @@ USER_TOOLS = [
         },
     },
 ]
+
+# ══════════════════════════════════════════════════════════════
+# REMINDER TOOL SCHEMAS (OpenAI Function Calling format)
+# ══════════════════════════════════════════════════════════════
+
+REMINDER_TOOL_SCHEMAS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "create_reminder",
+            "description": "Eslatma yaratish. Oddiy yoki AI-generatsiya qiladigan.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Eslatma matni (statik bo'lsa)"},
+                    "reminder_type": {
+                        "type": "string",
+                        "enum": ["once", "daily", "weekly"],
+                    },
+                    "time": {"type": "string", "description": "Vaqt HH:MM formatida"},
+                    "date": {"type": "string", "description": "Sana YYYY-MM-DD (faqat once)"},
+                    "day_of_week": {"type": "integer", "description": "0-6 (faqat weekly)"},
+                    "is_ai_generated": {
+                        "type": "boolean",
+                        "description": "Agar TRUE bo'lsa, AI har safar yangi content yaratadi",
+                    },
+                    "ai_prompt": {
+                        "type": "string",
+                        "description": "AI uchun prompt (masalan: 'B1 daraja uchun 10 ta yangi so\\'z')",
+                    },
+                },
+                "required": ["text", "reminder_type", "time"],
+            },
+        },
+    },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_my_reminders",
+                "description": "Foydalanuvchining barcha aktiv eslatmalarini ko'rsatish. 'Eslatmalarim', 'qanday eslatmalar bor' deb so'ralganda ishlatiladi.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "delete_reminder",
+                "description": "Eslatmani o'chirish.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "reminder_id": {"type": "integer", "description": "Eslatma ID raqami"},
+                    },
+                    "required": ["reminder_id"],
+                },
+            },
+        },
+]
+
+# ✅ Ikkala ro'yxatga ham qo'shish (admin va user ikkalasi ham foydalanishi mumkin)
+ADMIN_TOOLS = ADMIN_TOOLS + REMINDER_TOOL_SCHEMAS
+USER_TOOLS = USER_TOOLS + REMINDER_TOOL_SCHEMAS

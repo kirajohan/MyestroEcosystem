@@ -67,6 +67,76 @@ MEMORY_KEY_PREFIX = "ai_chat_history:"
 MEMORY_MAX_MESSAGES = 20  # Oxirgi 20 ta xabarni saqlash
 MEMORY_TTL = 3600 * 24    # 24 soat
 
+import re
+
+def sanitize_to_telegram_html(text: str) -> str:
+    """
+    Markdown belgilarini Telegram HTML ga aylantiradi.
+    AI noto'g'ri format yuborgan taqdirda ham xavfsiz qiladi.
+    """
+    if not text:
+        return text
+    
+    # 1. Kod bloklarni olib tashlash (```...```)
+    text = re.sub(r'```(?:\w+)?\n?', '', text)
+    
+    # 2. ### Sarlavhalar → <b> + ajratuvchi
+    def convert_heading(match):
+        level = len(match.group(1))  # nechta # borligi
+        heading_text = match.group(2).strip()
+        if level == 1:
+            return f"\n\n📌 <b>{heading_text.upper()}</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+        elif level == 2:
+            return f"\n\n🔹 <b>{heading_text}</b>\n"
+        else:
+            return f"\n\n▫️ <b>{heading_text}</b>\n"
+    
+    text = re.sub(r'^(#{1,6})\s+(.+)$', convert_heading, text, flags=re.MULTILINE)
+    
+    # 3. **qalin** → <b>qalin</b>
+    text = re.sub(r'\*\*\*(.+?)\*\*\*', r'<b><i>\1</i></b>', text)
+    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+    text = re.sub(r'__(.+?)__', r'<b>\1</b>', text)
+    
+    # 4. *kursiv* → <i>kursiv</i> (ehtiyot bo'ling: ro'yxat * bilan aralashmasligi uchun)
+    text = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)', r'<i>\1</i>', text)
+    
+    # 5. `kod` → <code>kod</code>
+    text = re.sub(r'`(.+?)`', r'<code>\1</code>', text)
+    
+    # 6. Ro'yxatlar: "- " va "* " → "• "
+    text = re.sub(r'^\s*[-*]\s+', '• ', text, flags=re.MULTILINE)
+    
+    # 7. Raqamli ro'yxatlarni saqlab qolish (1. 2. 3.)
+    # (o'zgartirmaymiz)
+    
+    # 8. Yopilmagan teglarni tekshirish (xavfsizlik)
+    text = _fix_unclosed_tags(text)
+    
+    return text
+
+
+def _fix_unclosed_tags(text: str) -> str:
+    """Yopilmagan HTML teglarni tuzatish."""
+    tags_to_check = ['b', 'i', 'u', 's', 'code', 'blockquote', 'a']
+    
+    for tag in tags_to_check:
+        # Ochilgan teglar soni
+        open_count = len(re.findall(f'<{tag}[^>]*>', text))
+        # Yopilgan teglar soni
+        close_count = len(re.findall(f'</{tag}>', text))
+        
+        # Agar ochilgan ko'p bo'lsa, yopilmaganlarni qo'shish
+        diff = open_count - close_count
+        if diff > 0:
+            text += f'</{tag}>' * diff
+        # Agar yopilgan ko'p bo'lsa, ortiqcha yopilganlarni olib tashlash
+        elif diff < 0:
+            for _ in range(abs(diff)):
+                text = re.sub(f'</{tag}>', '', text, count=1)
+    
+    return text
+
 
 async def _get_chat_history(redis: Redis, user_id: int) -> list[dict]:
     """Foydalanuvchining suhbat tarixini Redis'dan olish."""
@@ -399,8 +469,8 @@ async def _answer_with_agent(
 
         # 8. Javobni formatlash
         header = "👑 <b>Admin AI</b>\n\n" if is_admin else "🤖 <b>Myestro AI</b>\n\n"
+        answer = sanitize_to_telegram_html(answer)
         full_response = header + answer
-
         # 9. Typewriter bilan yuborish
         await _typewriter_send(sent, message, full_response, lang)
         return answer

@@ -4,11 +4,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { UserResponse } from '@/lib/types';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Save, X } from 'lucide-react';
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 
 const editUserSchema = z.object({
   full_name: z.string().min(1, 'Toliq ism majburiy'),
@@ -28,13 +27,14 @@ type EditUserFormData = z.infer<typeof editUserSchema>;
 interface UserEditFormProps {
   user: UserResponse;
   onSave: (data: EditUserFormData) => Promise<void>;
+  onCancel?: () => void;
   isLoading?: boolean;
 }
 
 const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 const ROLES = ['user', 'admin'];
 
-export function UserEditForm({ user, onSave, isLoading }: UserEditFormProps) {
+export function UserEditForm({ user, onSave, onCancel, isLoading }: UserEditFormProps) {
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -60,7 +60,6 @@ export function UserEditForm({ user, onSave, isLoading }: UserEditFormProps) {
 
   const onSubmit = async (data: EditUserFormData) => {
     try {
-      // Bo'sh password yuborilmaydi
       const payload = { ...data };
       if (!payload.password) {
         delete (payload as any).password;
@@ -75,43 +74,61 @@ export function UserEditForm({ user, onSave, isLoading }: UserEditFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-      <Input
-        label="Toliq Ism"
-        {...register('full_name')}
-        error={errors.full_name?.message}
-      />
+      {/* Full Name */}
+      <div>
+        <label className="block text-sm font-semibold text-slate-900 mb-1.5">
+          Toliq Ism <span className="text-red-500">*</span>
+        </label>
+        <input
+          {...register('full_name')}
+          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
+        />
+        {errors.full_name && (
+          <p className="text-xs text-red-600 mt-1">{errors.full_name.message}</p>
+        )}
+      </div>
 
-      <Input
-        label="Email"
-        type="email"
-        {...register('email')}
-        error={errors.email?.message}
-      />
+      {/* Email */}
+      <div>
+        <label className="block text-sm font-semibold text-slate-900 mb-1.5">
+          Email
+        </label>
+        <input
+          type="email"
+          {...register('email')}
+          placeholder="user@example.com"
+          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
+        />
+        {errors.email && (
+          <p className="text-xs text-red-600 mt-1">{errors.email.message}</p>
+        )}
+      </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* Role & CEFR Level */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-slate-900 mb-1.5">
             Rol
           </label>
           <select
             {...register('role')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
           >
             {ROLES.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {r === 'admin' ? 'Admin' : 'User'}
               </option>
             ))}
           </select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-slate-900 mb-1.5">
             CEFR Level
           </label>
           <select
             {...register('cefr_level')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
           >
             {CEFR_LEVELS.map((level) => (
               <option key={level} value={level}>
@@ -122,14 +139,15 @@ export function UserEditForm({ user, onSave, isLoading }: UserEditFormProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* Target Level & Telegram ID */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-slate-900 mb-1.5">
             Target Level
           </label>
           <select
             {...register('target_level')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
           >
             {CEFR_LEVELS.map((level) => (
               <option key={level} value={level}>
@@ -139,59 +157,122 @@ export function UserEditForm({ user, onSave, isLoading }: UserEditFormProps) {
           </select>
         </div>
 
-        <Input
-          label="Telegram ID (ixtiyoriy)"
-          type="number"
-          {...register('telegram_id')}
-          error={errors.telegram_id?.message}
-        />
+        <div>
+          <label className="block text-sm font-semibold text-slate-900 mb-1.5">
+            Telegram ID
+          </label>
+          <input
+            type="number"
+            {...register('telegram_id')}
+            placeholder="123456789"
+            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
+          />
+          {errors.telegram_id && (
+            <p className="text-xs text-red-600 mt-1">{errors.telegram_id.message}</p>
+          )}
+        </div>
       </div>
 
-      {/* Telefon raqam */}
-      <Input
-        label="Telefon raqam (ixtiyoriy)"
-        type="tel"
-        placeholder="+998901234567"
-        {...register('phone')}
-        error={errors.phone?.message}
-      />
-
-      {/* Parol */}
-      <div className="relative">
-        <Input
-          label="Yangi parol (ixtiyoriy)"
-          type={showPassword ? 'text' : 'password'}
-          placeholder="O&apos;zgartirmasangiz bo&apos;sh qoldiring"
-          {...register('password')}
-          error={errors.password?.message}
+      {/* Phone */}
+      <div>
+        <label className="block text-sm font-semibold text-slate-900 mb-1.5">
+          Telefon raqam
+        </label>
+        <input
+          type="tel"
+          {...register('phone')}
+          placeholder="+998901234567"
+          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
         />
-        <button
-          type="button"
-          onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600"
+        {errors.phone && (
+          <p className="text-xs text-red-600 mt-1">{errors.phone.message}</p>
+        )}
+      </div>
+
+      {/* Password with show/hide */}
+      <div>
+        <label className="block text-sm font-semibold text-slate-900 mb-1.5">
+          Yangi parol
+        </label>
+        <div className="relative">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            {...register('password')}
+            placeholder="O'zgartirmasangiz bo'sh qoldiring"
+            className="w-full px-4 py-2.5 pr-11 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+        {errors.password && (
+          <p className="text-xs text-red-600 mt-1">{errors.password.message}</p>
+        )}
+        <p className="text-xs text-slate-500 mt-1">
+          Parolni ozgartirmasangiz bu maydonni bosh qoldiring
+        </p>
+      </div>
+
+      {/* Checkboxes */}
+      <div className="flex items-center gap-6 pt-2">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            {...register('is_active')}
+            className="w-4 h-4 text-orange-600 border-slate-300 rounded focus:ring-orange-500"
+          />
+          <span className="text-sm text-slate-700 font-medium">Active</span>
+        </label>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            {...register('ai_enabled')}
+            className="w-4 h-4 text-orange-600 border-slate-300 rounded focus:ring-orange-500"
+          />
+          <span className="text-sm text-slate-700 font-medium">AI Enabled</span>
+        </label>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-2 pt-4 border-t border-slate-100">
+        {onCancel && (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={onCancel}
+            disabled={isLoading}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-50 disabled:opacity-50 transition-all"
+          >
+            <X className="w-4 h-4" />
+            <span>Bekor qilish</span>
+          </motion.button>
+        )}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          type="submit"
+          disabled={isLoading}
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-medium text-sm hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 transition-all shadow-lg shadow-orange-500/20"
         >
-          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-        </button>
+          {isLoading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Saqlanmoqda...</span>
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              <span>Saqlash</span>
+            </>
+          )}
+        </motion.button>
       </div>
-      <p className="text-xs text-gray-400 -mt-2">
-        Parolni o&apos;zgartirmasangiz bu maydonni bo&apos;sh qoldiring.
-      </p>
-
-      <div className="flex items-center gap-6">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" {...register('is_active')} />
-          <span className="text-sm text-gray-700">Active</span>
-        </label>
-
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" {...register('ai_enabled')} />
-          <span className="text-sm text-gray-700">AI Enabled</span>
-        </label>
-      </div>
-
-      <Button type="submit" isLoading={isLoading}>
-        Saqlash
-      </Button>
     </form>
   );
 }

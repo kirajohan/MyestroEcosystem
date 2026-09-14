@@ -1,10 +1,16 @@
-// admin/components/tests/QuestionFormModal.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { X, Plus, Trash2, CheckCircle2 } from 'lucide-react';
-import { TestQuestion, QuestionCreate, QuestionUpdate, QuestionFormState, DEFAULT_QUESTION_FORM } from '@/types/test';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Plus, Trash2, CheckCircle2, FileQuestion } from 'lucide-react';
+import {
+  TestQuestion,
+  QuestionCreate,
+  QuestionUpdate,
+  QuestionFormState,
+  DEFAULT_QUESTION_FORM,
+} from '@/types/test';
 import { testsApi, ApiError } from '@/lib/api_client';
 
 interface QuestionFormModalProps {
@@ -33,49 +39,42 @@ export default function QuestionFormModal({
 
   const isEditing = !!editingQuestion;
 
-  // Form'ni editingQuestion bilan to'ldirish
-// Form'ni editingQuestion bilan to'ldirish
-useEffect(() => {
-  if (editingQuestion) {
-    // ✅ Options formatini tekshirish va string array'ga o'tkazish
-    const optionsStrings = editingQuestion.options.map((opt: any) => {
-      if (typeof opt === 'string') return opt;
-      if (typeof opt === 'object' && opt !== null) {
-        return opt.text || opt.label || '';
-      }
-      return String(opt);
-    });
-
-    // ✅ To'g'ri javob indeksini topish
-    let correctIdx = editingQuestion.correct_option_index ?? 0;
-    
-    if (editingQuestion.correct_answer) {
-      // "A" → 0, "B" → 1
-      correctIdx = editingQuestion.correct_answer.charCodeAt(0) - 'A'.charCodeAt(0);
-    } else if (Array.isArray(editingQuestion.options) && editingQuestion.options.length > 0) {
-      const foundIdx = editingQuestion.options.findIndex((opt: any) => {
+  useEffect(() => {
+    if (editingQuestion) {
+      const optionsStrings = editingQuestion.options.map((opt: any) => {
+        if (typeof opt === 'string') return opt;
         if (typeof opt === 'object' && opt !== null) {
-          return opt.is_correct === true;
+          return opt.text || opt.label || '';
         }
-        return false;
+        return String(opt);
       });
-      if (foundIdx !== -1) correctIdx = foundIdx;
+
+      let correctIdx = editingQuestion.correct_option_index ?? 0;
+
+      if (editingQuestion.correct_answer) {
+        correctIdx = editingQuestion.correct_answer.charCodeAt(0) - 65;
+      } else if (Array.isArray(editingQuestion.options) && editingQuestion.options.length > 0) {
+        const foundIdx = editingQuestion.options.findIndex((opt: any) => {
+          if (typeof opt === 'object' && opt !== null) {
+            return opt.is_correct === true;
+          }
+          return false;
+        });
+        if (foundIdx !== -1) correctIdx = foundIdx;
+      }
+
+      setForm({
+        question_text: editingQuestion.question_text,
+        options: optionsStrings,
+        correct_option_index: correctIdx,
+        explanation: editingQuestion.explanation || '',
+      });
+    } else {
+      setForm(DEFAULT_QUESTION_FORM);
     }
+    setErrors({});
+  }, [editingQuestion, isOpen]);
 
-    setForm({
-      question_text: editingQuestion.question_text,
-      options: optionsStrings,
-      correct_option_index: correctIdx,
-      explanation: editingQuestion.explanation || '',
-    });
-  } else {
-    setForm(DEFAULT_QUESTION_FORM);
-  }
-  setErrors({});
-}, [editingQuestion, isOpen]);
-
-
-  // ─── Option Handlers ─────────────────────────────────────
   const handleOptionChange = (index: number, value: string) => {
     const newOptions = [...form.options];
     newOptions[index] = value;
@@ -92,14 +91,13 @@ useEffect(() => {
 
   const handleRemoveOption = (index: number) => {
     if (form.options.length <= MIN_OPTIONS) {
-      toast.error(`Kamida ${MIN_OPTIONS} ta variant bo&apos;lishi kerak`);
+      toast.error(`Kamida ${MIN_OPTIONS} ta variant bolishi kerak`);
       return;
     }
 
     const newOptions = form.options.filter((_, i) => i !== index);
     let newCorrectIndex = form.correct_option_index;
 
-    // Agar o'chirilgan variant to'g'ri javob bo'lsa
     if (index === form.correct_option_index) {
       newCorrectIndex = 0;
     } else if (index < form.correct_option_index) {
@@ -117,7 +115,6 @@ useEffect(() => {
     setForm({ ...form, correct_option_index: index });
   };
 
-  // ─── Validation ──────────────────────────────────────────
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -127,15 +124,13 @@ useEffect(() => {
 
     const filledOptions = form.options.filter((opt) => opt.trim());
     if (filledOptions.length < MIN_OPTIONS) {
-      newErrors.options = `Kamida ${MIN_OPTIONS} ta variant to&apos;ldirilishi kerak`;
+      newErrors.options = `Kamida ${MIN_OPTIONS} ta variant toldirilishi kerak`;
     }
 
-    // To'g'ri javob tanlangan variant ichida bo'lishi kerak
     if (!form.options[form.correct_option_index]?.trim()) {
-      newErrors.correct = "To&apos;g&apos;ri javob sifatida to&apos;ldirilgan variantni tanlang";
+      newErrors.correct = 'Togri javob sifatida toldirilgan variantni tanlang';
     }
 
-    // Duplicate variant tekshiruvi
     const uniqueOptions = new Set(filledOptions.map((o) => o.trim().toLowerCase()));
     if (uniqueOptions.size !== filledOptions.length) {
       newErrors.options = 'Variantlar takrorlanmasligi kerak';
@@ -145,202 +140,234 @@ useEffect(() => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // ─── Submit ──────────────────────────────────────────────
-const handleSubmit = async () => {
-  if (!validate()) return;
+  const handleSubmit = async () => {
+    if (!validate()) return;
 
-  setSaving(true);
-  try {
-    // Bo'sh variantlarni olib tashlash
-    const cleanOptions = form.options.filter((opt) => opt.trim());
-    const originalCorrectText = form.options[form.correct_option_index]?.trim();
-    const newCorrectIndex = cleanOptions.findIndex(
-      (opt) => opt.trim() === originalCorrectText
-    );
+    setSaving(true);
+    try {
+      const cleanOptions = form.options.filter((opt) => opt.trim());
+      const originalCorrectText = form.options[form.correct_option_index]?.trim();
+      const newCorrectIndex = cleanOptions.findIndex((opt) => opt.trim() === originalCorrectText);
 
-    // ✅ Backend options formatini moslashtirish
-    // Backend object array kutmoqda: [{text, label, is_correct}]
-    const optionsForBackend = cleanOptions.map((optText, idx) => ({
-      text: optText,
-      label: String.fromCharCode(65 + idx), // A, B, C, D
-      is_correct: idx === newCorrectIndex,
-    }));
+      const optionsForBackend = cleanOptions.map((optText, idx) => ({
+        text: optText,
+        label: String.fromCharCode(65 + idx),
+        is_correct: idx === newCorrectIndex,
+      }));
 
-    if (isEditing && editingQuestion) {
-      const payload: QuestionUpdate = {
-        question_text: form.question_text.trim(),
-        options: optionsForBackend as any, // ✅ Object array yuboramiz
-        correct_option_index: newCorrectIndex,
-        explanation: form.explanation.trim() || null,
-      };
-      await testsApi.updateQuestion(testId, editingQuestion.id, payload);
-      toast.success('✅ Savol yangilandi!');
-    } else {
-      const payload: QuestionCreate = {
-        question_text: form.question_text.trim(),
-        options: optionsForBackend as any, // ✅ Object array yuboramiz
-        correct_option_index: newCorrectIndex,
-        explanation: form.explanation.trim() || null,
-        order_index: nextOrderIndex,
-      };
-      await testsApi.addQuestion(testId, payload);
-      toast.success('✅ Savol qoshildi!');
+      if (isEditing && editingQuestion) {
+        const payload: QuestionUpdate = {
+          question_text: form.question_text.trim(),
+          options: optionsForBackend as any,
+          correct_option_index: newCorrectIndex,
+          explanation: form.explanation.trim() || null,
+        };
+        await testsApi.updateQuestion(testId, editingQuestion.id, payload);
+        toast.success('Savol yangilandi');
+      } else {
+        const payload: QuestionCreate = {
+          question_text: form.question_text.trim(),
+          options: optionsForBackend as any,
+          correct_option_index: newCorrectIndex,
+          explanation: form.explanation.trim() || null,
+          order_index: nextOrderIndex,
+        };
+        await testsApi.addQuestion(testId, payload);
+        toast.success('Savol qoshildi');
+      }
+      onSuccess();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Saqlashda xatolik';
+      toast.error(message);
+    } finally {
+      setSaving(false);
     }
-    onSuccess();
-  } catch (err) {
-    const message = err instanceof ApiError ? err.message : 'Saqlashda xatolik';
-    toast.error(message);
-  } finally {
-    setSaving(false);
-  }
-}
-
-  if (!isOpen) return null;
+  };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {isEditing ? 'Savolni tahrirlash' : 'Yangi savol qo&apos;shish'}
-          </h2>
-          <button
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50"
+          />
+
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-x-4 top-[5%] md:inset-auto md:left-1/2 md:top-[8%] md:-translate-x-1/2 w-full md:max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50 max-h-[90vh] flex flex-col"
           >
-            <X size={20} />
-          </button>
-        </div>
+            {/* Header */}
+            <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-orange-500 to-orange-600 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <FileQuestion className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-bold text-white">
+                    {isEditing ? 'Savolni tahrirlash' : 'Yangi savol qoshish'}
+                  </h2>
+                  <p className="text-xs text-white/80">
+                    {isEditing ? 'Mavjud savolni ozgartiring' : 'Testga yangi savol qoshing'}
+                  </p>
+                </div>
+                <button
+                  onClick={onClose}
+                  disabled={saving}
+                  className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition disabled:opacity-50"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
 
-        {/* Body */}
-        <div className="p-5 space-y-5">
-          {/* Question Text */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Savol matni <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              value={form.question_text}
-              onChange={(e) => setForm({ ...form, question_text: e.target.value })}
-              placeholder="Masalan: Choose the correct verb form..."
-              rows={3}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
-                errors.question_text ? 'border-red-300 bg-red-50' : 'border-gray-300'
-              }`}
-            />
-            {errors.question_text && (
-              <p className="text-xs text-red-500 mt-1">{errors.question_text}</p>
-            )}
-          </div>
+            {/* Body */}
+            <div className="p-5 space-y-5 overflow-y-auto flex-1">
+              {/* Question Text */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-1.5">
+                  Savol matni <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={form.question_text}
+                  onChange={(e) => setForm({ ...form, question_text: e.target.value })}
+                  placeholder="Masalan: Choose the correct verb form..."
+                  rows={3}
+                  className={`w-full px-4 py-2.5 border rounded-xl bg-slate-50 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all resize-none ${
+                    errors.question_text
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
+                      : 'border-slate-200 focus:border-orange-500'
+                  }`}
+                />
+                {errors.question_text && (
+                  <p className="text-xs text-red-600 mt-1">{errors.question_text}</p>
+                )}
+              </div>
 
-          {/* Options */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Variantlar <span className="text-red-500">*</span>
-              </label>
+              {/* Options */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-semibold text-slate-900">
+                    Variantlar <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    onClick={handleAddOption}
+                    disabled={form.options.length >= MAX_OPTIONS}
+                    className="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-medium disabled:opacity-50 transition-colors"
+                  >
+                    <Plus size={12} />
+                    Variant qoshish
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {form.options.map((option, idx) => {
+                    const letter = String.fromCharCode(65 + idx);
+                    const isCorrect = form.correct_option_index === idx;
+
+                    return (
+                      <div key={idx} className="flex items-center gap-2">
+                        {/* Radio for correct answer */}
+                        <button
+                          type="button"
+                          onClick={() => handleCorrectChange(idx)}
+                          className={`flex-shrink-0 w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all text-xs font-bold ${
+                            isCorrect
+                              ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm shadow-emerald-500/20'
+                              : 'border-slate-200 bg-white text-slate-400 hover:border-emerald-400 hover:text-emerald-500'
+                          }`}
+                          title="Togri javob sifatida belgilash"
+                        >
+                          {letter}
+                        </button>
+
+                        {/* Option input */}
+                        <input
+                          type="text"
+                          value={option}
+                          onChange={(e) => handleOptionChange(idx, e.target.value)}
+                          placeholder={`Variant ${idx + 1}`}
+                          className={`flex-1 px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all ${
+                            isCorrect
+                              ? 'border-emerald-300 bg-emerald-50 focus:ring-emerald-500/20'
+                              : 'border-slate-200 bg-slate-50 focus:ring-orange-500/20 focus:border-orange-500'
+                          }`}
+                        />
+
+                        {/* Remove button */}
+                        {form.options.length > MIN_OPTIONS && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOption(idx)}
+                            className="flex-shrink-0 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Variantni ochirish"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {errors.options && <p className="text-xs text-red-600 mt-2">{errors.options}</p>}
+                {errors.correct && <p className="text-xs text-red-600 mt-2">{errors.correct}</p>}
+
+                <div className="flex items-start gap-2 mt-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                  <CheckCircle2 size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-blue-800 leading-relaxed">
+                    Harf ustiga bosib togri javobni belgilang. Telegram Quiz Poll da togri javob yashil rangda korsatiladi.
+                  </p>
+                </div>
+              </div>
+
+              {/* Explanation */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-1.5">
+                  Izoh (ixtiyoriy)
+                </label>
+                <textarea
+                  value={form.explanation}
+                  onChange={(e) => setForm({ ...form, explanation: e.target.value })}
+                  placeholder="Javob haqida qoshimcha izoh... (foydalanuvchi javob bergandan keyin korsatiladi)"
+                  rows={2}
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-2 flex-shrink-0">
               <button
-                onClick={handleAddOption}
-                disabled={form.options.length >= MAX_OPTIONS}
-                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                onClick={onClose}
+                disabled={saving}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition disabled:opacity-50"
               >
-                <Plus size={12} />
-                Variant qo&apos;shish
+                Bekor qilish
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={saving}
+                className="flex-1 px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-orange-500/20"
+              >
+                {saving
+                  ? 'Saqlanmoqda...'
+                  : isEditing
+                  ? 'Yangilash'
+                  : 'Savolni qoshish'}
               </button>
             </div>
-
-            <div className="space-y-2">
-              {form.options.map((option, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  {/* Radio for correct answer */}
-                  <button
-                    type="button"
-                    onClick={() => handleCorrectChange(idx)}
-                    className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                      form.correct_option_index === idx
-                        ? 'border-green-500 bg-green-500'
-                        : 'border-gray-300 hover:border-green-400'
-                    }`}
-                    title="To&apos;g&apos;ri javob sifatida belgilash"
-                  >
-                    {form.correct_option_index === idx && (
-                      <CheckCircle2 size={12} className="text-white" />
-                    )}
-                  </button>
-
-                  {/* Option input */}
-                  <input
-                    type="text"
-                    value={option}
-                    onChange={(e) => handleOptionChange(idx, e.target.value)}
-                    placeholder={`Variant ${idx + 1}`}
-                    className={`flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      form.correct_option_index === idx
-                        ? 'border-green-300 bg-green-50'
-                        : 'border-gray-300'
-                    }`}
-                  />
-
-                  {/* Remove button */}
-                  {form.options.length > MIN_OPTIONS && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveOption(idx)}
-                      className="flex-shrink-0 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                      title="Variantni o&apos;chirish"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {errors.options && (
-              <p className="text-xs text-red-500 mt-1">{errors.options}</p>
-            )}
-            {errors.correct && (
-              <p className="text-xs text-red-500 mt-1">{errors.correct}</p>
-            )}
-
-            <p className="text-xs text-gray-400 mt-2">
-              💡 Yashil doira ustiga bosib to&apos;g&apos;ri javobni belgilang. Telegram Quiz Poll&apos;da to&apos;g&apos;ri javob yashil rangda ko&apos;rsatiladi.
-            </p>
-          </div>
-
-          {/* Explanation */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Izoh (ixtiyoriy)
-            </label>
-            <textarea
-              value={form.explanation}
-              onChange={(e) => setForm({ ...form, explanation: e.target.value })}
-              placeholder="Javob haqida qo'shimcha izoh... (foydalanuvchi javob bergandan keyin ko'rsatiladi)"
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-3 p-5 border-t border-gray-200 bg-gray-50 rounded-b-xl sticky bottom-0">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            Bekor qilish
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={saving}
-            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {saving ? 'Saqlanmoqda...' : isEditing ? 'Yangilash' : "Savolni qo&apos;shish"}
-          </button>
-        </div>
-      </div>
-    </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
