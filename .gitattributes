@@ -1,0 +1,8 @@
+# Shell skriptlar har doim LF bilan
+*.sh text eol=lf
+
+# Python fayllar ham LF
+*.py text eol=lf
+
+# Dockerfile'lar LF
+Dockerfile* text eol=lf
