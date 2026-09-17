@@ -16,8 +16,14 @@ COPY shared/ ./shared/
 COPY backend/app/ ./app/
 COPY backend/scripts/ ./scripts/
 COPY backend/migrations/ ./migrations/
+COPY backend/run_migrations.py ./run_migrations.py
 COPY backend/alembic.ini .
+
+# Copy startup script and make executable
+COPY scripts/start_backend.sh /app/scripts/start_backend.sh
+RUN chmod +x /app/scripts/start_backend.sh
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# ✅ FAQAT BITTA CMD — migration + uvicorn
+CMD ["/app/scripts/start_backend.sh"]

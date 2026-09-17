@@ -423,7 +423,7 @@ async def settings_ai_toggle_reply(message: types.Message, state: FSMContext):
     
     if not db_user_id:
         await message.answer(
-            get_text("error.user_not_found", lang),
+            get_text("This function will be available soon", lang),
             reply_markup=settings_kb(lang),
         )
         return

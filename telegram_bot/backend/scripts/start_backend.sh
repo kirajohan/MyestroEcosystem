@@ -1,27 +1,38 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-echo "=== Myestro Backend Startup ==="
+echo "⏳ Waiting for Railway PostgreSQL..."
+# Railway DB tayyor bo'lguncha kutish (max 60 sek)
+for i in $(seq 1 60); do
+  if python -c "
+import os
+import psycopg2
 
-# Wait for PostgreSQL to be ready
-echo "Waiting for PostgreSQL..."
-for i in $(seq 1 30); do
-    if python -c "import psycopg2; psycopg2.connect('${DATABASE_URL}')" 2>/dev/null; then
-        echo "✓ PostgreSQL is ready!"
-        break
-    fi
-    if [ "$i" -eq 30 ]; then
-        echo "✗ PostgreSQL is not available after 30 attempts. Starting anyway..."
-        break
-    fi
-    echo "  Waiting... ($i/30)"
-    sleep 2
+url = os.environ['DATABASE_URL']
+# Railway public URL bo'lsa SSL qo'shish
+if 'sslmode' not in url and ('rlwy.net' in url or 'railway' in url):
+    sep = '&' if '?' in url else '?'
+    url = f'{url}{sep}sslmode=require'
+
+try:
+    conn = psycopg2.connect(url, connect_timeout=5)
+    conn.close()
+    exit(0)
+except:
+    exit(1)
+" 2>/dev/null; then
+    echo "✅ Railway PostgreSQL ready"
+    break
+  fi
+  echo "   DB not ready yet, retry $i/60..."
+  sleep 1
 done
 
-# Run database migrations
-echo "Running database migrations..."
-python /app/scripts/run_migrations.py
+echo "🔄 Running migrations..."
+python run_migrations.py || {
+  echo "❌ Migrations failed!"
+  exit 1
+}
 
-# Start the backend server
-echo "Starting backend server..."
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+echo "🚀 Starting backend on port ${PORT:-8000}..."
+exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}

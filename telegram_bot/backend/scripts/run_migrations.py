@@ -1,84 +1,140 @@
-#!/usr/bin/env python
-"""Run SQL migrations from the migrations directory.
-
-This script runs all SQL migration files in order against the PostgreSQL
-database specified by DATABASE_URL. All migrations use CREATE TABLE IF NOT
-EXISTS, so they are safe to run repeatedly (idempotent).
 """
+run_migrations.py
 
+Railway PostgreSQL uchun idempotent migration runner.
+Har bir deploy'da avtomatik ishlaydi.
+
+Strategiya:
+1. schema_migrations jadvali yaratiladi
+2. Agar '000_master_init.sql' qo'llanmagan bo'lsa → init.sql bajariladi
+3. Keyin versions/ papkasidagi yangi migrationlar qo'llanadi
+
+Railway uchun SSL avtomatik qo'shiladi (agar public URL bo'lsa).
+"""
 import os
-import sys
+import glob
+import logging
 import psycopg2
-from pathlib import Path
-from urllib.parse import urlparse
 
-# Migration files in dependency order (init.sql MUST be first — creates users table)
-MIGRATION_FILES = [
-    "init.sql",
-    "broadcast_tables.sql",
-    "inbox_tables.sql",
-    "exam_tables.sql",
-    "tests_tables.sql",
-    "global_settings.sql",
-    "logs_table.sql",
-    "admin_messages.sql",
-]
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger(__name__)
+
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL environment variable topilmadi!")
+
+# Railway public URL bo'lsa SSL qo'shish
+if "sslmode" not in DATABASE_URL and ("rlwy.net" in DATABASE_URL or "railway" in DATABASE_URL):
+    sep = "&" if "?" in DATABASE_URL else "?"
+    DATABASE_URL = f"{DATABASE_URL}{sep}sslmode=require"
+    logger.info("🔒 SSL mode enabled (Railway public URL detected)")
+else:
+    logger.info("🔓 SSL mode disabled (private network or local)")
 
 
-def run_migrations():
-    """Run SQL migration files in order."""
-    db_url = os.getenv("DATABASE_URL")
-    if not db_url:
-        print("ERROR: DATABASE_URL not set")
-        return False
-
-    # Migrations directory is at /app/migrations in the container
-    migrations_dir = Path(__file__).parent.parent / "migrations"
-
-    if not migrations_dir.exists():
-        print(f"Migrations directory not found: {migrations_dir}")
-        return False
-
-    # Parse connection string
-    try:
-        parsed = urlparse(db_url)
-        conn = psycopg2.connect(
-            host=parsed.hostname,
-            port=parsed.port or 5432,
-            user=parsed.username,
-            password=parsed.password,
-            dbname=parsed.path.lstrip('/'),
+def ensure_schema_migrations(cur):
+    """schema_migrations tracking jadvalini yaratish."""
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            version TEXT PRIMARY KEY,
+            applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
+    """)
+
+
+def get_applied(cur) -> set:
+    """Allaqachon qo'llangan migration'larni olish."""
+    cur.execute("SELECT version FROM schema_migrations")
+    return {row[0] for row in cur.fetchall()}
+
+
+def run_sql_file(cur, path: str):
+    """SQL faylni o'qib, bajaradi."""
+    with open(path, "r", encoding="utf-8") as f:
+        sql = f.read()
+    if sql.strip():
+        cur.execute(sql)
+
+
+def main():
+    logger.info("🔌 Railway PostgreSQL'ga ulanmoqda...")
+    
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        conn.autocommit = False
+    except Exception as e:
+        logger.error(f"❌ Database connection failed: {e}")
+        raise
+
+    try:
         cur = conn.cursor()
 
-        for migration_file in MIGRATION_FILES:
-            filepath = migrations_dir / migration_file
-            if not filepath.exists():
-                print(f"⊘ Skipping {migration_file} (not found)")
-                continue
+        # 1. schema_migrations tracking
+        logger.info("📋 Checking schema_migrations table...")
+        ensure_schema_migrations(cur)
+        conn.commit()
+        applied = get_applied(cur)
+        logger.info(f"✅ Found {len(applied)} applied migrations")
 
-            print(f"→ Running {migration_file}...", end=" ")
+        # 2. Master init.sql
+        if "000_master_init.sql" not in applied:
+            logger.info("▶️  Applying master init.sql (all tables)...")
             try:
-                with open(filepath, 'r') as f:
-                    sql = f.read()
-                cur.execute(sql)
+                run_sql_file(cur, "migrations/init.sql")
+                cur.execute(
+                    "INSERT INTO schema_migrations (version) VALUES (%s) ON CONFLICT DO NOTHING",
+                    ("000_master_init.sql",),
+                )
                 conn.commit()
-                print("✓")
+                logger.info("✅ Master init completed")
             except Exception as e:
-                print(f"✗ {e}")
                 conn.rollback()
-                return False
+                logger.error(f"❌ init.sql failed: {e}")
+                raise
+        else:
+            logger.info("⏭️  Master init already applied")
 
-        cur.close()
-        conn.close()
-        print("\n✓ All migrations completed successfully")
-        return True
+        # 3. versions/ papkasidan qo'shimcha migrationlar
+        version_files = sorted(glob.glob("migrations/versions/*.sql"))
+        if version_files:
+            logger.info(f"📂 Found {len(version_files)} version files")
+            applied = get_applied(cur)
+            
+            for path in version_files:
+                version = os.path.basename(path)
+                if version in applied:
+                    logger.info(f"⏭️  Skip {version} (already applied)")
+                    continue
+                
+                logger.info(f"▶️  Applying {version}...")
+                try:
+                    run_sql_file(cur, path)
+                    cur.execute(
+                        "INSERT INTO schema_migrations (version) VALUES (%s) ON CONFLICT DO NOTHING",
+                        (version,),
+                    )
+                    conn.commit()
+                    logger.info(f"✅ {version} completed")
+                except Exception as e:
+                    conn.rollback()
+                    logger.error(f"❌ {version} failed: {e}")
+                    raise
+        else:
+            logger.info("📂 No additional version files found")
+
+        logger.info("🎉 All migrations completed successfully!")
 
     except Exception as e:
-        print(f"ERROR: {e}")
-        return False
+        logger.error(f"❌ Migration failed: {e}")
+        raise
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
-    if not run_migrations():
-        sys.exit(1)
+    main()

@@ -23,6 +23,7 @@ import { AIJobsStatus } from '@/components/dashboard/AiJobsStatus';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { SkeletonCard, SkeletonChart } from '@/components/common/Skeleton';
+import { GlobalSwitches } from '@/components/dashboard/GlobalSwitches';
 
 interface DashboardStats {
   total_users: number;
@@ -123,6 +124,50 @@ export default function DashboardPage() {
             />
           </>
         )}
+      </div>
+    {/* 
+    // Stats Cards Grid dan KEYIN, Charts Grid dan OLDIN qo'shish:
+        */}
+      {/* Global Switches - NEW */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="lg:col-span-2">
+          <GlobalSwitches />
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-900 mb-4">Tezkor Harakatlar</h3>
+          <div className="space-y-2">
+            <button
+              onClick={() => window.location.href = '/users'}
+              className="w-full flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors text-left"
+            >
+              <Users className="w-5 h-5 text-slate-600" />
+              <div>
+                <p className="text-sm font-medium text-slate-900">Foydalanuvchilar</p>
+                <p className="text-xs text-slate-500">Boshqarish</p>
+              </div>
+            </button>
+            <button
+              onClick={() => window.location.href = '/content'}
+              className="w-full flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors text-left"
+            >
+              <Video className="w-5 h-5 text-slate-600" />
+              <div>
+                <p className="text-sm font-medium text-slate-900">Kontent</p>
+                <p className="text-xs text-slate-500">Darsliklar</p>
+              </div>
+            </button>
+            <button
+              onClick={() => window.location.href = '/broadcast'}
+              className="w-full flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors text-left"
+            >
+              <Activity className="w-5 h-5 text-slate-600" />
+              <div>
+                <p className="text-sm font-medium text-slate-900">Broadcast</p>
+                <p className="text-xs text-slate-500">Ommaviy xabar</p>
+              </div>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Charts Grid */}
