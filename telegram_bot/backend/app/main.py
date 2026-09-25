@@ -2,14 +2,12 @@ import sys
 import os
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
-from threading import Thread
-import uvicorn
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -44,22 +42,15 @@ logger = logging.getLogger(__name__)
 # Scheduler
 scheduler = AsyncIOScheduler(timezone="UTC")
 
-# Bot uchun mini FastAPI app (internal endpoints)
-internal_app = FastAPI()
+# Internal router (endi asosiy app ichida)
+internal_router = APIRouter(tags=["internal"])
 
-@internal_app.post("/internal/refresh-cache")
+@internal_router.post("/internal/refresh-cache")
 async def refresh_cache_endpoint():
     """Internal endpoint for cache refresh."""
     from bot.utils.text_cache import refresh_cache
     count = await refresh_cache()
     return {"status": "ok", "refreshed": count}
-
-def run_internal_app():
-    uvicorn.run(internal_app, host="0.0.0.0", port=8001, log_level="error")
-
-# Start in background thread
-internal_thread = Thread(target=run_internal_app, daemon=True)
-internal_thread.start()
 
 
 @asynccontextmanager
@@ -121,15 +112,7 @@ def create_app() -> FastAPI:
     # CORS middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3002",
-            "http://localhost:3003",
-            "http://localhost:3001",
-            "http://localhost:8002",
-            "http://127.0.0.1:3002",
-            "http://127.0.0.1:3003",
-            "http://127.0.0.1:3001",
-        ],
+        allow_origins=settings.allowed_origins_list,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -157,6 +140,7 @@ def create_app() -> FastAPI:
     app.include_router(ws_router)
     app.include_router(exam_admin_router)
     app.include_router(exam_v2_router)
+    app.include_router(internal_router)
 
     # Exception handlers
     @app.exception_handler(AppException)

@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
-import { API_URL } from "@/lib/api";
+// import { API_URL } from "@/lib/api";
+import { apiFetch, clearSessionToken } from "@/lib/session";
 
 interface AttemptHistoryItem {
   attempt_id: number;
@@ -158,8 +159,15 @@ export default function ResultsPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API_URL}/api/v2/exam/attempts/me`, { credentials: "include" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await apiFetch("/api/v2/exam/me");
+
+      if (res.status === 401) {
+        // Token haqiqatan yaroqsiz — cookie'ni O'CHIRIB, keyin login'ga
+        clearSessionToken();
+        window.location.href = "/login";
+        return;
+      }     
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setItems(data.items || []);
     } catch (err) {

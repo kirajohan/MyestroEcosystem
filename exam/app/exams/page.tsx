@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import { getSessionToken } from "@/lib/session"; // yoki "@/lib/api"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://myestroeco-backend-production.up.railway.app";
 
 interface Exam {
   id: number;
@@ -82,17 +83,38 @@ function ExamsContent() {
     setLoading(true);
     setError("");
     try {
+      // ✅ 2. Tokenni o'qib olamiz
+      const token = getSessionToken();
+      
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      
+      // ✅ 3. Agar token bo'lsa, Authorization headeriga qo'shamiz
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`${API_URL}/api/v2/exam/exams?type=${type}`, {
-        credentials: "include",
+        method: "GET",
+        headers,
+        // credentials: "include" ni qoldirish mumkin, lekin asosiy yuk Authorization headerida
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.detail || `HTTP ${res.status}`);
+      }
 
       const data = await res.json();
       setExams(data.items || []);
     } catch (err) {
       console.error("Exam'lar yuklanmadi:", err);
-      setError("Exam'lar yuklanmadi. Qayta login qiling.");
+      setError("Exam'lar yuklanmadi. Iltimos, qayta login qiling.");
+      // Agar 401 bo'lsa, avtomatik login sahifasiga yo'naltirish ham yaxshi amaliyot:
+      if (err instanceof Error && err.message.includes("401")) {
+        router.push("/login");
+      }
     } finally {
       setLoading(false);
     }
@@ -103,10 +125,18 @@ function ExamsContent() {
     setError("");
 
     try {
+      // ✅ 4. Bu yerda ham xuddi shunday header qo'shamiz
+      const token = getSessionToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`${API_URL}/api/v2/exam/exams/${examId}/attempts`, {
         method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers,
       });
 
       if (!res.ok) {

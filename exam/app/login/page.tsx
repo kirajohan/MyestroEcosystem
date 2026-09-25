@@ -5,11 +5,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import TelegramLogin, { TelegramAuthData } from "@/components/auth/TelegramLogin";
+import TelegramLogin from "@/components/auth/TelegramLogin";
+import { setSessionToken } from "@/lib/session";
 
 const TELEGRAM_BOT_URL =
   process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/myestro_uz_bot";
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://myestroeco-backend-production.up.railway.app";
 const BOT_USERNAME =
   process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "MyestroEcoBot";
 
@@ -21,65 +22,82 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   // ═══ Telegram Login Widget callback ═══
-  async function handleTelegramAuth(telegramData: TelegramAuthData) {
-    setLoading(true);
-    setError("");
+// app/login/page.tsx ichida
+async function handleTelegramAuth(telegramData: any) {
+  const res = await fetch(`${API_URL}/api/v2/exam/auth/telegram/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(telegramData),
+  });
 
-    try {
-      const res = await fetch(`${API_URL}/api/v2/exam/auth/telegram/login`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(telegramData),
-      });
+  if (!res.ok) throw new Error("Login xatosi");
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || "Telegram login xatosi");
-      }
+  const { access_token} = await res.json();
+  setSessionToken(access_token);
+  // ⚠️ MUHIM: cookie nomini middleware bilan MOS qo'ying!
+  const isSecure = window.location.protocol === "https:";
+  const cookieParts = [
+    `maestro_session=${access_token}`,
+    "path=/",
+    "max-age=604800",  // 7 kun
+    "SameSite=Lax",
+  ];
+  if (isSecure) cookieParts.push("Secure");
 
-      // Session cookie o'rnatildi → cabinet'ga redirect
-      router.push("/cabinet");
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Telegram orqali kirish muvaffaqiyatsiz"
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
+  document.cookie = cookieParts.join("; ");
+
+  // Yönlendirme
+  window.location.href = "/cabinet";
+}
+
 
   // ═══ Bot'ga yo'naltirish (ro'yxatdan o'tish) ═══
   const goToTelegramBot = () => {
     window.location.href = TELEGRAM_BOT_URL;
   };
 
-  // ═══ Phone + Password login ═══
-  async function handlePhoneLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+// ═══ Phone + Password login ═══
+async function handlePhoneLogin(e: React.FormEvent) {
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-    try {
-      const res = await fetch(`${API_URL}/api/v2/exam/auth/login`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, password }),
-      });
+  try {
+    const res = await fetch(`${API_URL}/api/v2/exam/auth/login`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, password }),
+    });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || "Login xatosi");
-      }
-
-      router.push("/cabinet");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login muvaffaqiyatsiz");
-    } finally {
-      setLoading(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || "Login xatosi");
     }
+
+    const { access_token} = await res.json();
+    setSessionToken(access_token);    // ✅ yagona joyda, xavfsiz
+
+    // ✅ MUHIM: Cookie yozish (middleware uchun)
+    const isSecure = window.location.protocol === "https:";
+    const cookieParts = [
+      `maestro_session=${access_token}`,
+      "path=/",
+      "max-age=604800",  // 7 kun
+      "SameSite=Lax",
+    ];
+    if (isSecure) cookieParts.push("Secure");
+    
+    document.cookie = cookieParts.join("; ");
+
+    // Redirect
+    router.push("/cabinet");
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Login muvaffaqiyatsiz");
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <main className="min-h-screen flex bg-gradient-to-br from-orange-50 via-white to-rose-50 relative overflow-hidden">

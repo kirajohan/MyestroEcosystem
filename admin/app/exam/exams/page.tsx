@@ -31,7 +31,7 @@ interface Exam {
   is_published: boolean;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://myestroeco-backend-production.up.railway.app';
 
 const TYPE_ICONS: Record<string, string> = {
   full: '🎯',

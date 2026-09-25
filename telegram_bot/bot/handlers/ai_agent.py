@@ -403,7 +403,7 @@ async def _answer_with_agent(
     is_admin = (db_user.role == "admin")
     
     # Thinking placeholder
-    think_text = "O'ylayapman" if lang == "uz" else "Thinking"
+    think_text = "Thinking" if lang == "uz" else "Thinking"
     sent = await message.answer(f"{THINKING_FRAMES[0]}{think_text}{DOTS_FRAMES[0]}")
 
     stop_typing = asyncio.Event()

@@ -11,7 +11,7 @@ from typing import Optional, List, Dict, Any
 logger = logging.getLogger(__name__)
 
 # Backend API bazaviy URL
-API_BASE_URL = os.getenv("BACKEND_API_URL", "http://localhost:8002")
+API_BASE_URL = os.getenv("BACKEND_API_URL", "https://myestroeco-backend-production.up.railway.app")
 
 
 # ══════════════════════════════════════════════════════════════

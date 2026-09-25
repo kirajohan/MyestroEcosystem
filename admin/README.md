@@ -68,7 +68,7 @@ docker build -t myestro-admin .
 
 ```bash
 docker run -p 3000:3000 \
-  -e NEXT_PUBLIC_API_URL=http://localhost:8002 \
+  -e NEXT_PUBLIC_API_URL=https://myestroeco-backend-production.up.railway.app \
   myestro-admin
 ```
 
@@ -85,7 +85,7 @@ Admin panel will be available at `http://localhost:3002`
 ## API Integration
 
 The admin panel connects to the backend API at:
-- Local: `http://localhost:8002`
+- Local: `https://myestroeco-backend-production.up.railway.app`
 - Docker: `http://backend:8000`
 
 Required endpoints:

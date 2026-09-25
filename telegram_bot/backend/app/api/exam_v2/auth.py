@@ -95,8 +95,8 @@ async def webapp_login(
     response.set_cookie(
         key=SESSION_COOKIE,
         value=token,
-        httponly=True,
-        secure=True,  # HTTPS uchun
+        httponly=False,  # ✅
+        secure=True,     # ✅
         samesite="lax",
         max_age=SESSION_TTL_SECONDS,
         path="/",
@@ -160,8 +160,9 @@ async def login(
     response.set_cookie(
         key=SESSION_COOKIE,
         value=token,
-        httponly=True,
         samesite="lax",
+        httponly=False,  # ✅ Frontend o'qiy olishi uchun False
+        secure=True,     # ✅ Production HTTPS uchun True
         max_age=SESSION_TTL_SECONDS,
         path="/",
     )
@@ -208,11 +209,12 @@ async def telegram_login(
     token = await session_service.create_session(redis, user.id)
 
     # HttpOnly cookie o'rnatamiz
+    # /telegram/login endpoint'da:
     response.set_cookie(
         key=SESSION_COOKIE,
         value=token,
-        httponly=True,
-        secure=False,  # Production: True
+        httponly=False,  # ✅
+        secure=True,     # ✅ (False edi, True qiling)
         samesite="lax",
         max_age=SESSION_TTL_SECONDS,
         path="/",

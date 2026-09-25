@@ -40,8 +40,8 @@ services:
 
   backend:
     build:
-      context: ./telegram_bot 
-      dockerfile: backend/Dockerfile
+      context: .                          # ✅ Root papka (MyestroEco/)
+      dockerfile: telegram_bot/backend/Dockerfile    
     container_name: myestro-backend
     restart: unless-stopped
     ports:
@@ -49,9 +49,9 @@ services:
     env_file:
       - ./.env
     environment:
-      DATABASE_URL: postgresql://myestro:myestro_password@postgres:5432/myestro
-      REDIS_URL: redis://redis:6379/0
-          - MEDIA_DIR=/app/media           # ← QO'SHISH
+        DATABASE_URL: postgresql://myestro:myestro_password@postgres:5432/myestro
+        REDIS_URL: redis://redis:6379/0
+        MEDIA_DIR: /app/media      # ← QO'SHISH
     volumes:
       - exam_media:/app/media          # ← Media uchun volume
     depends_on:
@@ -97,13 +97,13 @@ services:
       context: ./admin
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://backend:8000
+        NEXT_PUBLIC_API_URL: https://myestroeco-backend-production.up.railway.app
     container_name: myestroeco-admin
     restart: unless-stopped
     ports:
       - "3002:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://backend:8000
+      NEXT_PUBLIC_API_URL: https://myestroeco-backend-production.up.railway.app
       BACKEND_INTERNAL_URL: http://backend:8000
     depends_on:
       backend:
@@ -127,7 +127,7 @@ services:
       - "3001:3000"
     environment:
       # Browser tomondan backend'ga murojaat (host port!)
-      - NEXT_PUBLIC_API_URL=http://localhost:8002    # ← 8002 (host port)
+      - NEXT_PUBLIC_API_URL=https://myestroeco-backend-production.up.railway.app
       # Server-side (SSR) backend'ga murojaat (container nomi)
       - BACKEND_INTERNAL_URL=http://backend:8000
       - NODE_ENV=production

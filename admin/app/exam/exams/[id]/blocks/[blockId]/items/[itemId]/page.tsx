@@ -20,7 +20,7 @@ import {
 import AudioUpload from '@/app/exam/components/AudioUpload';
 import { toast } from 'sonner';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://myestroeco-backend-production.up.railway.app';
 
 interface Option {
   id?: number;

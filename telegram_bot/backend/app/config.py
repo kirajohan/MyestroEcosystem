@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     CHANNEL_URL: str = "https://t.me/testmyestro"  # e.g. https://t.me/testmyestro
 
     # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:3001,http://localhost:3002,http://localhost:8002,http://admin:3000,http://exam:3000,http://backend:8000"
+    ALLOWED_ORIGINS: str = "http://localhost:3001,http://localhost:3002,https://myestroeco-backend-production.up.railway.app,http://admin:3000,http://exam:3000,http://backend:8000"
 
     # Logging
     LOG_LEVEL: str = "INFO"

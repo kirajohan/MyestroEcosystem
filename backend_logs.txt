@@ -1,8 +1,0 @@
-/app/app/schemas/conversation.py:1: SyntaxWarning: invalid escape sequence '\P'
-  '''C:\Projects\MyestroEco\MyestroEco\telegram_bot\backend\app\schemas\conversation.py'''
-/app/app/services/ai_service.py:2: SyntaxWarning: invalid escape sequence '\P'
-  '''C:\Projects\MyestroEco\MyestroEco\telegram_bot\backend\app\services\ai_service.py'''
-/usr/local/lib/python3.12/site-packages/pydantic/_internal/_fields.py:132: UserWarning: Field "model_used" in ChatQueryWithMemoryResponse has conflict with protected namespace "model_".
-
-You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
-  warnings.warn(

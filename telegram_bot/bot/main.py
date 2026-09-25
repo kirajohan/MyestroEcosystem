@@ -38,6 +38,7 @@ from bot.utils.ai_memory_client import AIMemoryClient
 from bot.workers.inbox_delivery import inbox_delivery_worker
 from redis.asyncio import Redis
 from bot.utils.rag_client import rag_client
+from bot.database import engine, async_session as async_session_factory
 # from bot.handlers import ai_chat  # ✅ Yangi unified handler
 # from bot.handlers import admin_ai, user_ai_query
 from bot.utils.text_cache import init_text_cache
@@ -50,20 +51,29 @@ async def main():
     """Initialize and start the bot."""
     logger.info("Starting Myestro Bot...")
 
-    try:
-        logger.info("📚 RAG bilimlar bazasini yuklash boshlandi...")
-        chunk_count = rag_client.load_knowledge()
-        
-        if chunk_count > 0:
-            logger.info(f"🔄 {chunk_count} ta chunk uchun embedding hisoblanmoqda...")
-            await rag_client.initialize_embeddings()
-            logger.info(f"✅ RAG muvaffaqiyatli ishga tushdi! Jami: {chunk_count} ta chunk")
-        else:
-            logger.warning("⚠️ RAG: knowledge papkasida .md fayllar topilmadi!")
-            
-    except Exception as e:
-        logger.error(f"❌ RAG ishga tushishda jiddiy xato: {e}", exc_info=True)
+    # ══════════════════════════════════════════════════════════
+    # RAG INITIALIZATION (faqat RAG_ENABLED=true bo'lsa)
+    # ══════════════════════════════════════════════════════════
+    if settings.RAG_ENABLED:
+        try:
+            logger.info("📚 RAG bilimlar bazasini yuklash boshlandi...")
+            chunk_count = rag_client.load_knowledge()
 
+            if chunk_count > 0:
+                logger.info(f"🔄 {chunk_count} ta chunk uchun embedding hisoblanmoqda...")
+                await rag_client.initialize_embeddings()
+                logger.info(f"✅ RAG muvaffaqiyatli ishga tushdi! Jami: {chunk_count} ta chunk")
+            else:
+                logger.warning("⚠️ RAG: knowledge papkasida .md fayllar topilmadi!")
+        except Exception as e:
+            logger.error(f"❌ RAG ishga tushishda jiddiy xato: {e}", exc_info=True)
+    else:
+        logger.info("⏭️  RAG o'chirilgan (RAG_ENABLED=false) — AI faqat umumiy bilim bilan ishlaydi")
+
+    # Debug: Check BOT_TOKEN
+    if not settings.BOT_TOKEN or settings.BOT_TOKEN.strip() == "":
+        logger.error("ERROR: BOT_TOKEN is empty! Set it in Railway environment variables.")
+        raise ValueError("BOT_TOKEN environment variable is required")
 
     # Debug: Check BOT_TOKEN
     if not settings.BOT_TOKEN or settings.BOT_TOKEN.strip() == "":
@@ -175,9 +185,9 @@ async def main():
     redis_client = Redis.from_url(settings.REDIS_URL, decode_responses=False)
     
     # SQLAlchemy session factory (reminder worker uchun)
-    engine = create_async_engine(bot_settings.DATABASE_URL, echo=False)
+    engine = create_async_engine(bot_settings.ASYNC_DATABASE_URL, echo=False)
     async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
-    
+
     # Start BroadcastWorker
     broadcast_worker = BroadcastWorker(bot, redis_client)
     broadcast_task = asyncio.create_task(broadcast_worker.start())
@@ -194,6 +204,15 @@ async def main():
     # ══════════════════════════════════════════════════════════
     # POLLING
     # ══════════════════════════════════════════════════════════
+
+    try:
+        webhook_info = await bot.get_webhook_info()
+        if webhook_info.url:
+            logger.warning(f"⚠️ Webhook faol edi: {webhook_info.url} — o'chirilmoqda...")
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("✅ Webhook tozalandi, polling boshlanmoqda...")
+    except Exception as e:
+        logger.warning(f"Webhook delete xatosi: {e}")
 
     try:
         await dp.start_polling(bot)

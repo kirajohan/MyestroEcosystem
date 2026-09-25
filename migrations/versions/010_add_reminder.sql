@@ -22,6 +22,8 @@ CREATE INDEX IF NOT EXISTS idx_reminders_user
     ON reminders(user_id);
 
 -- updated_at trigger
+DROP TRIGGER IF EXISTS trg_reminders_updated_at ON reminders;
+
 CREATE OR REPLACE FUNCTION update_reminders_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN

@@ -327,7 +327,6 @@ TRANSLATIONS = {
         "register.ask_phone": (
             "📱 <b>Telefon raqamingizni</b> ulashing:\n\n"
             "Quyidagi tugmani bosish orqali raqamingizni avtomatik yuboring "
-            "yoki qo'lda kiriting: <code>+998901234567</code>"
         ),
         "register.invalid_phone": (
             "❌ <b>Noto'g'ri telefon raqami</b>\n\n"
@@ -1064,7 +1063,6 @@ TRANSLATIONS = {
         "register.ask_phone": (
             "📱 <b>Поделитесь номером телефона</b>:\n\n"
             "Нажмите кнопку ниже для автоматической отправки номера "
-            "или введите вручную: <code>+998901234567</code>"
         ),
         "register.invalid_phone": (
             "❌ <b>Неверный номер телефона</b>\n\n"
@@ -1798,7 +1796,6 @@ TRANSLATIONS = {
         "register.ask_phone": (
             "📱 <b>Share your phone number</b>:\n\n"
             "Press the button below to send your number automatically "
-            "or enter it manually: <code>+998901234567</code>"
         ),
         "register.invalid_phone": (
             "❌ <b>Invalid phone number</b>\n\n"

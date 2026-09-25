@@ -1,45 +1,66 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+// ⚠️ Shu nomni login handler'ingiz ishlatayotgan nom bilan moslang!
+// Variantlar: "maestro_session", "exam_token", "access_token"
 const SESSION_COOKIE = "maestro_session";
 
-// Auth talab qilinmaydigan yo'llar (public)
-const PUBLIC_PATHS = [
-  "/",              // Landing page
-  "/login",         // Login sahifasi
-  "/register",      // Ro'yxatdan o'tish (agar bor bo'lsa)
+// Faqat EXACT match — prefix matching emas
+const PUBLIC_PATHS = new Set([
+  "/",
+  "/login",
+  "/register",
+  "/api",              // agar Next.js API routes bo'lsa
+]);
+
+// Public bo'lishi kerak bo'lgan prefix'lar
+const PUBLIC_PREFIXES = [
+  "/_next",
+  "/favicon",
+  "/assets",
+  "/images",
 ];
 
-export function middleware(request: NextRequest) {
-  const session = request.cookies.get(SESSION_COOKIE);
-  const path = request.nextUrl.pathname;
+function isPublicPath(pathname: string): boolean {
+  if (PUBLIC_PATHS.has(pathname)) return true;
+  return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
 
-  // Static fayllar (har doim ruxsat)
-  if (
-    path.startsWith("/_next") ||
-    path.startsWith("/favicon") ||
-    path.includes(".") // .png, .svg, .ico, va hokazo
-  ) {
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // 1. Static fayllarni darhol o'tkazib yuborish
+  if (pathname.includes(".") || pathname.startsWith("/_next")) {
     return NextResponse.next();
   }
 
-  // Public yo'llar
-  const isPublicPath = PUBLIC_PATHS.includes(path);
+  const session = request.cookies.get(SESSION_COOKIE);
+  const publicPath = isPublicPath(pathname);
 
-  // Session bor va public sahifada → cabinet'ga yo'naltirish
-  if (session && isPublicPath) {
+  // 2. Session bor + public sahifada → cabinet'ga
+  if (session?.value && publicPath && pathname !== "/cabinet") {
     return NextResponse.redirect(new URL("/cabinet", request.url));
   }
 
-  // Session yo'q va protected sahifada → login'ga yo'naltirish
-  if (!session && !isPublicPath) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // 3. Session yo'q + protected sahifada → login'ga
+  if (!session?.value && !publicPath) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Qolgan holatlar → davom etish
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: [
+    /*
+     * Match all paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization)
+     * - favicon.ico
+     * - public folder files (.*\..*)
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)",
+  ],
 };
