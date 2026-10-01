@@ -238,60 +238,73 @@ async def list_exam_blocks(
 # ═══════════════════════════════════════════════════════════════
 
 @router.get(
-    "/blocks/{block_id}/items",
-    summary="Block ichidagi barcha savollar",
+    "/blocks/{block_id}",
+    summary="Block tafsilotlari (items bilan)",
 )
-async def list_block_items(
+async def get_block(
     block_id: int,
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_admin_user),
 ):
-    """Block ichidagi barcha item'larni qaytaradi (options bilan)."""
-    from app.models.exam import ExamItem, ExamOption
-    
+    """Block tafsilotlarini qaytaradi (items va options bilan)."""
     stmt = (
-        select(ExamItem)
-        .where(ExamItem.block_id == block_id)
-        .options(selectinload(ExamItem.options))
-        .order_by(ExamItem.order.asc())
+        select(ExamBlock)
+        .where(ExamBlock.id == block_id)
+        .options(selectinload(ExamBlock.items).selectinload(ExamItem.options))
     )
     result = await db.execute(stmt)
-    items = result.scalars().all()
+    block = result.scalar_one_or_none()
     
-    return [
-        {
-            "id": item.id,
-            "block_id": item.block_id,
-            "item_type": item.item_type,
-            "title": item.title,
-            "instruction": item.instruction,
-            "question_text": item.question_text,
-            "passage_text": item.passage_text,
-            "audio_url": item.audio_url,
-            "audio_duration_sec": item.audio_duration_sec,
-            "transcript_text": item.transcript_text,
-            "min_words": item.min_words,
-            "max_words": item.max_words,
-            "preparation_time_sec": item.preparation_time_sec,
-            "answer_time_sec": item.answer_time_sec,
-            "max_score": item.max_score,
-            "order": item.order,
-            "config": item.config,
-            "answer_key": item.answer_key,
-            "rubric_id": item.rubric_id,
-            "created_at": item.created_at.isoformat() if item.created_at else None,
-            "options": [
-                {
-                    "id": opt.id,
-                    "text": opt.text,
-                    "is_correct": opt.is_correct,
-                    "order": opt.order,
-                }
-                for opt in sorted(item.options, key=lambda o: o.order)
-            ],
-        }
-        for item in items
-    ]
+    if not block:
+        raise HTTPException(status_code=404, detail="Block topilmadi")
+    
+    return {
+        "id": block.id,
+        "exam_id": block.exam_id,
+        "block_type": block.block_type,
+        "title": block.title,
+        "description": block.description,
+        "instructions": block.instructions,
+        "passage_text": block.passage_text,
+        "audio_url": block.audio_url,
+        "audio_duration_sec": block.audio_duration_sec,
+        "order": block.order,
+        "time_limit_sec": block.time_limit_sec,
+        "config": block.config,
+        "created_at": block.created_at.isoformat() if block.created_at else None,
+        "items": [
+            {
+                "id": item.id,
+                "item_type": item.item_type,
+                "title": item.title,
+                "instruction": item.instruction,
+                "question_text": item.question_text,
+                "passage_text": item.passage_text,
+                "audio_url": item.audio_url,
+                "audio_duration_sec": item.audio_duration_sec,
+                "transcript_text": item.transcript_text,
+                "min_words": item.min_words,
+                "max_words": item.max_words,
+                "preparation_time_sec": item.preparation_time_sec,
+                "answer_time_sec": item.answer_time_sec,
+                "max_score": item.max_score,
+                "order": item.order,
+                "config": item.config,
+                "answer_key": item.answer_key,
+                "rubric_id": item.rubric_id,
+                "options": [
+                    {
+                        "id": opt.id,
+                        "text": opt.text,
+                        "is_correct": opt.is_correct,
+                        "order": opt.order,
+                    }
+                    for opt in sorted(item.options, key=lambda o: o.order)
+                ] if item.options else [],
+            }
+            for item in sorted(block.items, key=lambda i: i.order)
+        ],
+    }
 
 @router.post(
     "/blocks/{block_id}/items",

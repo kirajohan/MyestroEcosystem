@@ -40,7 +40,7 @@ services:
 
   backend:
     build:
-      context: .                          # ✅ Root papka (MyestroEco/)
+      context: .                         
       dockerfile: telegram_bot/backend/Dockerfile    
     container_name: myestro-backend
     restart: unless-stopped

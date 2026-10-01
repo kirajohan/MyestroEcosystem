@@ -4,8 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
-import { API_URL } from "@/lib/api";
-
+import { apiFetch } from "@/lib/session";  
+// ← O'zgartirildi
 // ─── Interfaces (Backend JSON'iga 100% moslashtirildi) ───────────────────────
 interface AiFeedback {
   overall_score?: number;
@@ -272,7 +272,7 @@ export default function ResultPage() {
     isPollingRef.current = true;
     pollingRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`${API_URL}/api/v2/exam/attempts/${attemptId}/result`, { credentials: "include" });
+      const res = await apiFetch(`/api/v2/exam/attempts/${attemptId}/result`);        
         if (res.ok) {
           const data = await res.json();
           if (data.status !== result?.status || data.total_score !== result?.total_score) {
@@ -311,7 +311,7 @@ export default function ResultPage() {
     if (!isPolling) setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API_URL}/api/v2/exam/attempts/${attemptId}/result`, { credentials: "include" });
+    const res = await apiFetch(`/api/v2/exam/attempts/${attemptId}/result`);      
       if (!res.ok) throw new Error(res.status === 400 ? "Attempt hali yakunlanmagan" : `HTTP ${res.status}`);
       const data = await res.json();
       setResult(data);

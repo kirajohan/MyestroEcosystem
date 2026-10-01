@@ -3,10 +3,12 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { API_URL } from "@/lib/api";
+import { apiFetch } from "@/lib/session";
 import AudioPlayer from "@/components/AudioPlayer";
 import QuestionCard from "@/components/exam/QuestionCard";
 import ReadingPassage from "@/components/exam/reading/ReadingPassage";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://myestroeco-backend-production.up.railway.app";
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -143,9 +145,7 @@ export default function ExamRoomPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API_URL}/api/v2/exam/attempts/${attemptId}`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(`/api/v2/exam/attempts/${attemptId}`);
 
       if (!res.ok) {
         if (res.status === 404) throw new Error("Attempt topilmadi");
@@ -178,10 +178,8 @@ export default function ExamRoomPage() {
     if (blocksData[blockId]?.loaded) return;
 
     try {
-      const res = await fetch(
-        `${API_URL}/api/v2/exam/attempts/${attemptId}/blocks/${blockId}`,
-        { credentials: "include" }
-      );
+      // ✅ TO'G'RI: Student uchun maxsus, xavfsiz endpoint ishlatilmoqda
+      const res = await apiFetch(`/api/v2/exam/attempts/${attemptId}/blocks/${blockId}`);
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -237,34 +235,38 @@ export default function ExamRoomPage() {
   }, [attempt?.deadline]);
 
   // ── 5. Javob tanlash (Reading/Listening) + Autosave ────
-  const handleSelectOption = useCallback(
-    async (itemId: number, optionId: number) => {
-      setAnswers((prev) => {
-        const current = prev[itemId] || { selected_options: [], text_answer: "" };
-        const newSelected = current.selected_options.includes(optionId)
-          ? current.selected_options.filter((id) => id !== optionId)
-          : [...current.selected_options, optionId];
-        return { ...prev, [itemId]: { ...current, selected_options: newSelected } };
-      });
+const handleSelectOption = useCallback(
+  async (itemId: number, optionId: number) => {
+    let finalSelected: number[] = [];
 
-      setSavingItemId(itemId);
-      try {
-        await fetch(`${API_URL}/api/v2/exam/attempts/${attemptId}/answers`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            answers: [{ item_id: itemId, selected_options: [optionId] }],
-          }),
-        });
-      } catch (err) {
-        console.error("Javob saqlanmadi:", err);
-      } finally {
-        setSavingItemId(null);
-      }
-    },
-    [attemptId]
-  );
+    setAnswers((prev) => {
+      const current = prev[itemId] || { selected_options: [], text_answer: "" };
+      // ✅ Faqat BITTA javob tanlash mumkin
+      const newSelected = current.selected_options.includes(optionId)
+        ? []          // Xuddi shu option'ga qayta bosilsa → bekor qilish
+        : [optionId]; // Boshqa option bosilsa → faqat shuni qoldirish
+      finalSelected = newSelected;
+      return { ...prev, [itemId]: { ...current, selected_options: newSelected } };
+    });
+
+    setSavingItemId(itemId);
+    try {
+      // ✅ Serverga ham to'g'ri qiymat yuboriladi (toggle-off'da bo'sh array)
+      await apiFetch(`/api/v2/exam/attempts/${attemptId}/answers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          answers: [{ item_id: itemId, selected_options: finalSelected }],
+        }),
+      });
+    } catch (err) {
+      console.error("Javob saqlanmadi:", err);
+    } finally {
+      setSavingItemId(null);
+    }
+  },
+  [attemptId]
+);  
 
   // ── 6. Writing answer saqlash (autosave) ──────────────
   const handleSaveText = useCallback(
@@ -276,9 +278,8 @@ export default function ExamRoomPage() {
 
       setSavingItemId(itemId);
       try {
-        await fetch(`${API_URL}/api/v2/exam/attempts/${attemptId}/answers`, {
+        await apiFetch(`/api/v2/exam/attempts/${attemptId}/answers`, {
           method: "POST",
-          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             answers: [{ item_id: itemId, text_answer: text }],
@@ -298,10 +299,9 @@ export default function ExamRoomPage() {
     if (!auto && !confirm("Imtihonni yakunlashni xohlaysizmi?")) return;
     setSubmitting(true);
     try {
-      const res = await fetch(
-        `${API_URL}/api/v2/exam/attempts/${attemptId}/submit`,
-        { method: "POST", credentials: "include" }
-      );
+      const res = await apiFetch(`/api/v2/exam/attempts/${attemptId}/submit`, {
+        method: "POST",
+      });
       if (!res.ok) throw new Error("Submit qilinmadi");
       router.push(`/exams/results/${attemptId}`);
     } catch (err) {

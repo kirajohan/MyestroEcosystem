@@ -1,5 +1,5 @@
 export const SESSION_COOKIE = "maestro_session";
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://myestroeco-backend-production.up.railway.app";
 
 export function getSessionToken(): string | null {
   if (typeof document === "undefined") return null;

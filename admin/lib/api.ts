@@ -155,6 +155,7 @@ export async function uploadAudioToTelegram(
   return res.json();
 }
 
+
 // ─────────────────────────────────────────────────────────────
 // AXIOS INSTANCE
 // ─────────────────────────────────────────────────────────────
@@ -162,9 +163,92 @@ export const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
+// ✅ 1. Request interceptor — token'ni avtomatik qo'shish
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('myestro_admin_token');
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
+// ✅ 2. Refresh queue — bir vaqtda ko'p 401 chiqsa, bitta refresh kutib turadi
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (err: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve(token!)));
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const original = error.config;
+
+    // ✅ 3. 401 → refresh qilib, qayta urinish (faqat BIR marta)
+    if (
+      error.response?.status === 401 &&
+      original &&
+      !original._retry &&
+      !original.url?.includes('/auth/')   // refresh/login'ni o'zi loop bo'lmasin
+    ) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve: (token) => {
+              original.headers.Authorization = `Bearer ${token}`;
+              resolve(api(original));
+            },
+            reject,
+          });
+        });
+      }
+
+      original._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshToken =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('myestro_admin_refresh_token')
+            : null;
+
+        if (!refreshToken) throw new Error('Refresh token yo\'q');
+
+        const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
+          refresh_token: refreshToken,
+        });
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('myestro_admin_token', data.access_token);
+          if (data.refresh_token) {
+            localStorage.setItem('myestro_admin_refresh_token', data.refresh_token);
+          }
+        }
+
+        processQueue(null, data.access_token);
+        original.headers.Authorization = `Bearer ${data.access_token}`;
+        return api(original);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('myestro_admin_token');
+          localStorage.removeItem('myestro_admin_refresh_token');
+          window.location.href = '/login';
+        }
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    // Qolgan xatolar — toast (eski logika o'zgarmadi)
     if (!error.response) {
       toast.error('Server bilan aloqa yo‘q');
       return Promise.reject(error);
