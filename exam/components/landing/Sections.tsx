@@ -18,14 +18,38 @@ const ROTATING_WORDS = [
 
 export function KineticHero() {
   const [wordIndex, setWordIndex] = useState(0);
+  const [softBlur, setSoftBlur] = useState(false);
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setWordIndex((i) => (i + 1) % ROTATING_WORDS.length);
-    }, 2500);
-    return () => clearInterval(interval);
+    // Gradient matn (bg-clip-text) + filter: blur() iOS Safari / past qurilmalarda miltillaydi.
+    // Blur effekti faqat sichqonchali (desktop) qurilmalarda qoladi, touch'da y+opacity.
+    if (typeof window.matchMedia === "function") {
+      setSoftBlur(window.matchMedia("(hover: hover) and (pointer: fine)").matches);
+    }
+  }, []);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const start = () => {
+      if (interval) return;
+      interval = setInterval(() => {
+        setWordIndex((i) => (i + 1) % ROTATING_WORDS.length);
+      }, 2500);
+    };
+    const stop = () => {
+      if (interval) clearInterval(interval);
+      interval = undefined;
+    };
+    // Tab yashirin bo'lsa aylanishni to'xtatish (batareya va CPU)
+    const onVisibility = () => (document.hidden ? stop() : start());
+    start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   return (
@@ -40,9 +64,9 @@ export function KineticHero() {
         <AnimatePresence mode="wait">
           <motion.span
             key={wordIndex}
-            initial={{ y: 40, opacity: 0, filter: "blur(10px)" }}
-            animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
-            exit={{ y: -40, opacity: 0, filter: "blur(10px)" }}
+            initial={softBlur ? { y: 40, opacity: 0, filter: "blur(10px)" } : { y: 40, opacity: 0 }}
+            animate={softBlur ? { y: 0, opacity: 1, filter: "blur(0px)" } : { y: 0, opacity: 1 }}
+            exit={softBlur ? { y: -40, opacity: 0, filter: "blur(10px)" } : { y: -40, opacity: 0 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="inline-block bg-gradient-to-r from-orange-600 to-rose-500 bg-clip-text text-transparent"
           >
@@ -127,46 +151,40 @@ export function SpotlightCard({ children, className = "" }: { children: React.Re
 
 export function HorizontalRoulette({ items }: { items: any[] }) {
   const targetRef = useRef<HTMLDivElement>(null);
-  
-  const { scrollYProgress } = useScroll({
-    target: targetRef,
-    offset: ["start end", "end start"],
-  });
 
-  // Scroll tezligi (mobil va desktop uchun bir xil)
-  const scrollX = useTransform(scrollYProgress, [0, 1], ["10%", "-150%"]);
-
+  // Eslatma: avval bu yerda framer `x` (useScroll) ham bor edi, lekin `animate-slow-scroll`
+  // CSS animatsiyasi transform'ni baribir bosib turgani uchun u hech qachon ko'rinmasdi.
+  // Har scroll'da bekorga style yozilmasligi uchun olib tashlandi — ko'rinish o'zgarmaydi.
   return (
     // ✅ MOBIL UCHUN BALANDLIK KICHRAYTIRILDI: h-[400px] -> md:h-[500px]
     <div ref={targetRef} className="relative h-[400px] md:h-[500px] overflow-hidden flex items-center">
       {/* ✅ MOBIL UCHUN ORALIQLAR KICHRAYTIRILDI: gap-4 -> md:gap-8 */}
-      <motion.div
-        style={{ x: scrollX }}
-        className="flex gap-4 md:gap-8 pl-[50vw] absolute left-0 animate-slow-scroll"
-      >
+      <div className="flex gap-4 md:gap-8 pl-[50vw] absolute left-0 animate-slow-scroll">
         {[...Array(3)].flatMap((_, repeatIdx) =>
           items.map((item, idx) => (
             <RouletteCard key={`${repeatIdx}-${idx}`} item={item} />
           ))
         )}
-      </motion.div>
+      </div>
     </div>
   );
 }
 
 function RouletteCard({ item }: { item: any }) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  
+
   const rotateX = useSpring(0, { stiffness: 300, damping: 30 });
   const rotateY = useSpring(0, { stiffness: 300, damping: 30 });
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
+  const handleMouseMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Touch'dagi emulyatsiya qilingan hodisalar tilt/spotlight'ni "yopishtirib" qo'yadi
+    if (e.pointerType !== "mouse" || !cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    setMousePosition({ x, y });
+    // React state o'rniga CSS variable: har pixel uchun qayta render yo'q
+    cardRef.current.style.setProperty("--mx", `${x}px`);
+    cardRef.current.style.setProperty("--my", `${y}px`);
 
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
@@ -182,8 +200,8 @@ function RouletteCard({ item }: { item: any }) {
   return (
     <motion.div
       ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onPointerMove={handleMouseMove}
+      onPointerLeave={handleMouseLeave}
       style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
       // ✅ MOBIL UCHUN O'LCHAMLAR IXCHAMLASHTIRILDI:
       // Kenglik: w-[280px] -> md:w-[320px]
@@ -198,7 +216,7 @@ function RouletteCard({ item }: { item: any }) {
       <div
         className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl md:rounded-3xl z-0"
         style={{
-          background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.15), transparent 40%)`,
+          background: `radial-gradient(600px circle at var(--mx, 0px) var(--my, 0px), rgba(255,255,255,0.15), transparent 40%)`,
         }}
       />
 
@@ -206,15 +224,14 @@ function RouletteCard({ item }: { item: any }) {
       <div className="relative z-10 h-full flex flex-col justify-between" style={{ transform: "translateZ(20px)" }}>
         
         {/* Harakatlanuvchi Ikonka */}
-        <motion.div 
-          animate={{ y: [-5, 5, -5] }}
-          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+        {/* CSS animatsiya (compositor): 21 ta JS animatsiya o'rniga */}
+        <div
           // ✅ IKONKA O'LCHAMI: w-12 h-12 -> md:w-16 md:h-16
-          className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center text-2xl md:text-3xl shadow-lg mb-4 md:mb-6 relative`}
+          className={`animate-icon-float w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center text-2xl md:text-3xl shadow-lg mb-4 md:mb-6 relative`}
         >
           {item.icon}
           <div className={`absolute inset-0 rounded-xl md:rounded-2xl bg-gradient-to-br ${item.color} blur-xl opacity-40 animate-slow-gradient`} />
-        </motion.div>
+        </div>
 
         <div>
           {/* ✅ SARLAVHA VA MATN O'LCHAMI KICHRAYTIRILDI */}
@@ -267,8 +284,11 @@ export function GlowButton({
             width: "40%",
             height: "100%",
             top: 0,
+            left: 0,
           }}
-          animate={{ left: ["-40%", "140%"] }}
+          // left -40%..140% (konteyner) == x -100%..350% (o'z kengligi): layout emas, transform
+          initial={{ x: "-100%" }}
+          animate={{ x: ["-100%", "350%"] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
         />
         <span className="relative z-10">{children}</span>
@@ -360,29 +380,20 @@ export function FloatingWords() {
       aria-hidden="true"
     >
       {FLOATING_WORDS.map((word, i) => (
-        <motion.div
+        <div
           key={word}
-          className={`absolute text-sm md:text-base font-medium ${
+          className={`animate-float-word absolute text-sm md:text-base font-medium ${
             isDark ? "text-orange-500/20" : "text-orange-200/30"
           }`}
           style={{
             left: `${(i * 13) % 90}%`,
             top: `${(i * 17) % 85}%`,
-          }}
-          animate={{
-            y: [0, -20, 0],
-            x: [0, 10, 0],
-            rotate: [0, 5, 0],
-          }}
-          transition={{
-            duration: 4 + i * 0.5,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: i * 0.3,
+            animationDuration: `${4 + i * 0.5}s`,
+            animationDelay: `${i * 0.3}s`,
           }}
         >
           {word}
-        </motion.div>
+        </div>
       ))}
     </div>
   );
@@ -424,10 +435,9 @@ export function InfiniteMarquee({ items, speed = 30 }: InfiniteMarqueeProps) {
             : "bg-gradient-to-l from-white to-transparent"
         }`}
       />
-      <motion.div
-        className="flex gap-8 whitespace-nowrap"
-        animate={{ x: ["0%", "-50%"] }}
-        transition={{ duration: speed, repeat: Infinity, ease: "linear" }}
+      <div
+        className="animate-marquee flex gap-8 whitespace-nowrap"
+        style={{ animationDuration: `${speed}s` }}
       >
         {duplicatedItems.map((item, i) => (
           <div
@@ -440,13 +450,13 @@ export function InfiniteMarquee({ items, speed = 30 }: InfiniteMarqueeProps) {
             {item}
           </div>
         ))}
-      </motion.div>
+      </div>
     </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════
-// CARD STACK — Interactive swipe demo
+// CARD STACK— Interactive swipe demo
 // ═══════════════════════════════════════════════════════════
 
 const FLASHCARDS = [

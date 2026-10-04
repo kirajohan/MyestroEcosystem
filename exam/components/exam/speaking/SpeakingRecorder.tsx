@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion  } from "framer-motion";
+import { getSessionToken } from "@/lib/session";
 
 interface SpeakingRecorderProps {
   itemId: number;
@@ -198,7 +199,9 @@ export default function SpeakingRecorder({
         "POST",
         `${apiUrl}/api/v2/exam/attempts/${attemptId}/answers/${itemId}/audio`
       );
-      xhr.withCredentials = true;
+      // Backend sessiyani cookie emas, Bearer token orqali tekshiradi (apiFetch kabi)
+      const token = getSessionToken();
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {

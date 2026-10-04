@@ -3,6 +3,7 @@ AI Evaluation Service for Writing & Speaking.
 OpenRouter API orqali ishlaydi — Fallback tizimi bilan.
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -20,10 +21,15 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
 # ═══════════════════════════════════════════════════════════
 FALLBACK_MODELS: List[str] = [
     "openai/gpt-4o-mini",                         # ✅ Asosiy — tez, arzon
-    "anthropic/claude-3.5-sonnet",                # ✅ Zaxira 1
-    "meta-llama/llama-3.1-70b-instruct",          # ✅ Zaxira 2
-    "google/gemini-pro-1.5",                      # ✅ Zaxira 3
+    "google/gemini-2.0-flash-001",                # ✅ Zaxira 1
+    "anthropic/claude-3.5-sonnet",                # ✅ Zaxira 2
+    "meta-llama/llama-3.3-70b-instruct",          # ✅ Zaxira 3
 ]
+
+
+def _model_attempts() -> List[str]:
+    """Vaqtinchalik xatolar (429/timeout) uchun ro'yxatni 2 marta aylanadi."""
+    return FALLBACK_MODELS + FALLBACK_MODELS
 
 
 async def _call_openrouter(
@@ -62,7 +68,12 @@ async def _call_openrouter(
         content = data["choices"][0]["message"]["content"]
 
         try:
-            result = json.loads(content)
+            text = (content or "").strip()
+            if text.startswith("```"):
+                text = text.strip("`")
+                if text.lower().startswith("json"):
+                    text = text[4:]
+            result = json.loads(text.strip())
         except json.JSONDecodeError as e:
             logger.warning(f"⚠️ Model {model} returned invalid JSON: {e}")
             raise ValueError(f"Invalid JSON from {model}")
@@ -223,7 +234,7 @@ You MUST respond with ONLY valid JSON (no markdown, no explanation):
     # ═══════════════════════════════════════════════════════
     last_error = None
 
-    for model in FALLBACK_MODELS:
+    for model in _model_attempts():
         try:
             logger.info(f"🤖 Trying model: {model}")
             result = await _call_openrouter(model, system_prompt, user_prompt)
@@ -253,6 +264,7 @@ You MUST respond with ONLY valid JSON (no markdown, no explanation):
         except Exception as e:
             last_error = str(e)
             logger.warning(f"⚠️ Model {model} failed: {e}")
+            await asyncio.sleep(1.5)
             continue
 
     # Barcha modellar muvaffaqiyatsiz
@@ -362,7 +374,7 @@ You MUST respond with ONLY valid JSON:
     user_prompt = f"Student's spoken transcript ({word_count} words):\n\n{transcript_text}"
 
     last_error = None
-    for model in FALLBACK_MODELS:
+    for model in _model_attempts():
         try:
             logger.info(f"🎤 Evaluating speaking with model: {model}")
             result = await _call_openrouter(model, system_prompt, user_prompt)
@@ -383,6 +395,7 @@ You MUST respond with ONLY valid JSON:
         except Exception as e:
             last_error = str(e)
             logger.warning(f"⚠️ Speaking model {model} failed: {e}")
+            await asyncio.sleep(1.5)
             continue
 
     return {

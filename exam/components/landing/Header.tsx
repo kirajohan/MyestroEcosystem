@@ -1,24 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTheme, useLanguage, Lang } from "@/app/providers";
-
-const LANGS: { code: Lang; label: string; flag: string }[] = [
-  { code: "uz", label: "O'zbek", flag: "🇺🇿" },
-  { code: "ru", label: "Русский", flag: "🇷🇺" },
-  { code: "en", label: "English", flag: "🇬🇧" },
-];
+import { useTheme, useLanguage } from "@/app/providers";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Header() {
   const { theme, toggleTheme } = useTheme();
-  const { lang, setLang, t } = useLanguage();
-  const [langOpen, setLangOpen] = useState(false);
+  const { t } = useLanguage();
   const isDark = theme === "dark";
-
-  const currentLang = LANGS.find((l) => l.code === lang)!;
 
   const navLinks = [
     { href: "#features", label: t("nav_features") },
@@ -64,58 +55,7 @@ export default function Header() {
 
         {/* Right: Lang + Theme + Login */}
         <div className="flex items-center gap-2">
-          {/* Language */}
-          <div className="relative">
-            <button
-              onClick={() => setLangOpen(!langOpen)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isDark
-                  ? "text-slate-300 hover:bg-slate-800"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              <span>{currentLang.flag}</span>
-              <span className="hidden sm:inline">{currentLang.label}</span>
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            <AnimatePresence>
-              {langOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className={`absolute right-0 mt-2 w-40 rounded-xl shadow-xl border overflow-hidden ${
-                    isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
-                  }`}
-                >
-                  {LANGS.map((l) => (
-                    <button
-                      key={l.code}
-                      onClick={() => {
-                        setLang(l.code);
-                        setLangOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                        l.code === lang
-                          ? isDark
-                            ? "bg-orange-500/20 text-orange-400"
-                            : "bg-orange-50 text-orange-600"
-                          : isDark
-                          ? "text-slate-300 hover:bg-slate-800"
-                          : "text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      <span>{l.flag}</span>
-                      <span>{l.label}</span>
-                      {l.code === lang && <span className="ml-auto">✓</span>}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          <LanguageSwitcher />
 
           {/* Theme toggle */}
           <button
@@ -123,7 +63,7 @@ export default function Header() {
             className={`p-2 rounded-lg transition-colors ${
               isDark ? "text-slate-300 hover:bg-slate-800" : "text-slate-600 hover:bg-slate-100"
             }`}
-            aria-label="Toggle theme"
+            aria-label={t("common.theme_toggle")}
           >
             <AnimatePresence mode="wait">
               {isDark ? (

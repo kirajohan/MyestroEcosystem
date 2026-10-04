@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 
 const KEYWORDS = [
@@ -52,6 +52,7 @@ export function MethodSection() {
   // Kartalar 25-40% da chiqadi
   const cardsOpacity = useTransform(scrollYProgress, [0.25, 0.4], [0, 1]);
   const cardsY = useTransform(scrollYProgress, [0.25, 0.4], [50, 0]);
+  const glassOpacity = useTransform(scrollYProgress, [0, 0.15], [0.3, 1]);
 
   const fullText =
     "Biz isbotlangan til o'rganish metodlarini zamonaviy AI texnologiyalari bilan birlashtirib, shaxsiylashtirilgan feedback, real vaqtda tuzatish va tez o'sishni ta'minlaymiz.";
@@ -62,10 +63,16 @@ export function MethodSection() {
     <section
       ref={containerRef}
       className="relative h-[100vh]" // ✨ 100vh -> 130vh (ko'proq scroll joyi)
+      // iOS/Android'da 100vh brauzer paneli bilan birga hisoblanadi (kontent kesiladi) —
+      // dvh qo'llab-quvvatlanmasa inline qiymat e'tiborsiz qoladi va yuqoridagi 100vh ishlaydi
+      style={{ height: "100dvh" }}
       id="method"
     >
       {/* Sticky Container */}
-      <div className="sticky top-0 h-screen flex items-center justify-center px-4 md:px-6">
+      <div
+        className="sticky top-0 h-screen flex items-center justify-center px-4 md:px-6"
+        style={{ height: "100dvh" }}
+      >
         
         {/* Laptop Glass Container */}
         <div className="relative w-full max-w-5xl">
@@ -79,9 +86,7 @@ export function MethodSection() {
 
           {/* Glass Container - Mobile uchun yengilroq */}
           <motion.div
-            style={{
-              opacity: useTransform(scrollYProgress, [0, 0.15], [0.3, 1]),
-            }}
+            style={{ opacity: glassOpacity }}
             className="relative rounded-2xl md:rounded-[2.5rem] bg-slate-900/60 backdrop-blur-md border border-slate-700/50 p-6 md:p-12 lg:p-16 shadow-2xl overflow-hidden"
           >
             {/* Background Glow */}
@@ -141,7 +146,7 @@ export function MethodSection() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: idx * 0.1 }}
-                  className="group relative bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl md:rounded-2xl p-4 md:p-5 hover:border-cyan-500/50 transition-all duration-300"
+                  className="group relative bg-slate-800/50 border border-slate-700/50 rounded-xl md:rounded-2xl p-4 md:p-5 hover:border-cyan-500/50 transition-all duration-300"
                 >
                   {/* Gradient Glow on Hover */}
                   <div
@@ -170,7 +175,7 @@ export function MethodSection() {
 }
 
 // ✨ YANGI: Mobile uchun soddaroq Word Reveal (blur yo'q)
-function WordReveal({
+const WordReveal = memo(function WordReveal({
   word,
   range,
   progress,
@@ -196,4 +201,4 @@ function WordReveal({
       {word}
     </motion.span>
   );
-}
+});

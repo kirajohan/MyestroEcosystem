@@ -22,6 +22,9 @@ Base.metadata.create_all = lambda *args, **kwargs: None  # Prevent errors on re-
 # URL ni asyncpg uchun to'g'ri formatga o'tkazamiz
 ASYNC_DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
 
+
+
+
 async_engine = create_async_engine(
     ASYNC_DATABASE_URL,
     pool_size=10,
@@ -38,6 +41,13 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,  # MUHIM: Async da commit dan keyin xatolik bo'lmasligi uchun
 )
 
+async_session_maker = async_sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
+)
 
 async def get_async_db() -> AsyncSession:
     """

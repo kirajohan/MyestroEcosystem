@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from "@/lib/api";
+import { useLanguage } from "@/app/providers";
 
 interface AudioPlayerProps {
   audioUrl: string;
@@ -13,8 +14,9 @@ interface AudioPlayerProps {
 export default function AudioPlayer({
   audioUrl,
   maxListens = 3,
-  title = "Listening Track",
+  title,
 }: AudioPlayerProps) {
+  const { t } = useLanguage();
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -65,7 +67,7 @@ export default function AudioPlayer({
     if (!audio) return;
 
     if (listenCount >= maxListens) {
-      alert(`Siz maksimal ${maxListens} marta tingladingiz`);
+      alert(t("audio.limit_alert", { n: maxListens }));
       return;
     }
 
@@ -116,12 +118,12 @@ export default function AudioPlayer({
         <div className="flex items-start justify-between mb-6">
           <div>
             <div className="text-xs uppercase tracking-widest text-orange-400 font-semibold mb-1">
-              🎧 Listening Task
+              {t("audio.task")}
             </div>
-            <h3 className="text-xl font-bold text-white">{title}</h3>
+            <h3 className="text-xl font-bold text-white">{title || t("audio.default_title")}</h3>
           </div>
           <div className="text-right">
-            <div className="text-xs text-slate-400">Tinglash</div>
+            <div className="text-xs text-slate-400">{t("audio.listens")}</div>
             <div className={`text-sm font-bold ${canListen ? "text-white" : "text-red-400"}`}>
               {listenCount} / {maxListens}
             </div>
@@ -291,7 +293,7 @@ export default function AudioPlayer({
               animate={{ opacity: 1, x: 0 }}
               className="text-xs text-red-400 font-semibold"
             >
-              ⚠️ Limit
+              {t("audio.limit")}
             </motion.div>
           )}
         </div>

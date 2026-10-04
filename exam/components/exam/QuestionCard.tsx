@@ -5,6 +5,7 @@ import { useState } from "react";
 import OptionButton from "./OptionButton";
 import WritingEditor from "./writing/WritingEditor";
 import SpeakingRecorder from "./speaking/SpeakingRecorder";
+import { useLanguage } from "@/app/providers";
 
 interface Option {
   id: number;
@@ -52,6 +53,7 @@ export default function QuestionCard({
   textAnswer = "",
   isSaving,
 }: QuestionCardProps) {
+  const { t } = useLanguage();
   const [justAnswered, setJustAnswered] = useState<number | null>(null);
   const isWriting = item.item_type === "writing_task";
   const isSpeaking = item.item_type === "speaking_task";
@@ -100,7 +102,7 @@ export default function QuestionCard({
           />
         ) : (
           /* ═══ READING / LISTENING ═══ */
-          <div className="relative overflow-hidden rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200 shadow-xl p-6 md:p-8">
+          <div className="relative overflow-hidden rounded-2xl bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 shadow-xl p-6 md:p-8">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/10 to-rose-500/10 rounded-full blur-2xl pointer-events-none" />
 
             <div className="relative">
@@ -116,10 +118,10 @@ export default function QuestionCard({
                   </motion.div>
                   <div>
                     <div className="text-xs uppercase tracking-widest text-slate-400 font-semibold">
-                      Question {itemIndex + 1} of {totalItems}
+                      {t("q.question_of", { a: itemIndex + 1, b: totalItems })}
                     </div>
-                    <div className="text-xs text-slate-500">
-                      Max score: {item.max_score}
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      {t("q.max_score", { n: item.max_score })}
                     </div>
                   </div>
                 </div>
@@ -131,7 +133,7 @@ export default function QuestionCard({
                     className="flex items-center gap-2 text-xs text-slate-400"
                   >
                     <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                    Saving...
+                    {t("q.saving")}
                   </motion.div>
                 )}
               </div>
@@ -140,7 +142,7 @@ export default function QuestionCard({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="text-xl md:text-2xl font-bold text-slate-900 mb-6 leading-snug"
+                className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-6 leading-snug"
               >
                 {item.question_text || item.title}
               </motion.h3>
@@ -168,7 +170,7 @@ export default function QuestionCard({
                 </motion.div>
               ) : (
                 <div className="text-center py-8 text-slate-400">
-                  No options available for this question
+                  {t("q.no_options")}
                 </div>
               )}
             </div>

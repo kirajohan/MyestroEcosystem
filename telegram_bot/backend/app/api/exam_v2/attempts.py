@@ -4,9 +4,8 @@ from typing import Optional
 from fastapi import Query
 from sqlalchemy import func
 from app.models.exam import Exam
-from app.services.exam_scoring_service import submit_and_score_attempt
+# from app.services.exam_scoring_service import submit_and_score_attempt
 from datetime import datetime, timezone
-from app.services.exam_ai_service import evaluate_writing
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -350,25 +349,27 @@ async def save_answers(
     return {"saved": saved_count, "status": "ok"}
 
 
+from fastapi import BackgroundTasks  
+from app.services.exam_scoring_service import (
+    auto_score_attempt,
+    process_ai_evaluation_background
+)
+
 @router.post("/{attempt_id}/submit", summary="Imtihonni yakunlash")
 async def submit_attempt(
     attempt_id: int,
+    background_tasks: BackgroundTasks,  # ← YANGI parametr
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user_from_session),
 ):
     """
-    Imtihonni yakunlaydi va scoring'ni ishga tushiradi.
+    Imtihonni yakunlaydi va AI evaluation'ni BACKGROUND'da ishga tushiradi.
     
     Jarayon:
     1. Attempt status'ni "submitted" qilish
-    2. Listening/Reading auto-scoring
-    3. Writing/Speaking AI evaluation trigger
-    4. Yakuniy ballarni hisoblash
-    
-    Return:
-    - status: "completed" yoki "scoring"
-    - total_score
-    - pending_ai: AI hali tugatmagan javoblar soni
+    2. Auto-scoring (Listening/Reading) — TEZ
+    3. AI evaluation'ni background task sifatida ishga tushirish
+    4. Darhol "scoring" status'ni qaytarish
     """
     attempt = await get_user_attempt(attempt_id, current_user.id, db)
     check_deadline(attempt)
@@ -386,33 +387,64 @@ async def submit_attempt(
 
     logger.info(f"📝 Attempt {attempt_id} submitted by user {current_user.id}")
 
-    # 2. Scoring service'ni chaqirish
+    # 2. Auto-scoring (tez — faqat Reading/Listening)
     try:
-        result = await submit_and_score_attempt(attempt_id, db)
+        auto_result = await auto_score_attempt(attempt_id, db)
         
-        return {
-            "attempt_id": attempt_id,
-            "status": result["final"]["status"],
-            "total_score": result["final"]["total_score"],
-            "max_possible": result["final"]["max_possible"],
-            "percentage": result["final"]["percentage"],
-            "scored_items": result["auto_scoring"]["scored"],
-            "pending_ai": result["final"]["pending_ai"],
-            "submitted_at": attempt.submitted_at.isoformat() if attempt.submitted_at else None
-        }
+        has_ai_tasks = auto_result.get("pending_ai", 0) > 0
+        
+        if has_ai_tasks:
+            # 3. AI evaluation'ni BACKGROUND task sifatida ishga tushirish
+            attempt.status = "scoring"
+            await db.commit()
+            
+            background_tasks.add_task(
+                process_ai_evaluation_background,
+                attempt_id
+            )
+            
+            return {
+                "attempt_id": attempt_id,
+                "status": "scoring",
+                "message": "Imtihon topshirildi. Writing/Speaking qismlari AI tomonidan baholanmoqda...",
+                "auto_scored": auto_result.get("scored", 0),
+                "pending_ai": auto_result.get("pending_ai", 0),
+                "submitted_at": attempt.submitted_at.isoformat() if attempt.submitted_at else None
+            }
+        else:
+            # Faqat Reading/Listening — darhol "completed"
+            attempt.status = "completed"
+            attempt.completed_at = func.now()
+            attempt.total_score = auto_result.get("total_score", 0)
+            await db.commit()
+            
+            return {
+                "attempt_id": attempt_id,
+                "status": "completed",
+                "message": "Imtihon yakunlandi!",
+                "total_score": auto_result.get("total_score", 0),
+                "max_possible": auto_result.get("max_possible", 0),
+                "percentage": auto_result.get("percentage", 0),
+                "submitted_at": attempt.submitted_at.isoformat() if attempt.submitted_at else None
+            }
     
     except Exception as e:
-        logger.error(f"❌ Scoring failed for attempt {attempt_id}: {e}")
+        logger.error(f"❌ Auto-scoring failed for attempt {attempt_id}: {e}")
         
-        # Xato bo'lsa ham, attempt'ni "scoring" holatida qoldirish
+        # Xato bo'lsa ham, background task'ni ishga tushirish
         attempt.status = "scoring"
         await db.commit()
+        
+        background_tasks.add_task(
+            process_ai_evaluation_background,
+            attempt_id
+        )
         
         return {
             "attempt_id": attempt_id,
             "status": "scoring",
             "error": str(e),
-            "message": "Scoring jarayoni davom etmoqda"
+            "message": "Imtihon topshirildi. Baholash davom etmoqda..."
         }
 
 
@@ -430,7 +462,7 @@ async def get_attempt_result(
     attempt = await get_user_attempt(attempt_id, current_user.id, db)
     check_deadline(attempt)
 
-    if attempt.status not in ["submitted", "scoring", "completed"]:
+    if attempt.status not in ["submitted", "scoring", "completed", "failed"]:
         raise HTTPException(status_code=400, detail="Attempt hali yakunlanmagan")
 
     # Exam ma'lumotlarini olish

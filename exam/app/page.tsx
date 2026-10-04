@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "./providers";
 import CurtainEffect from "@/components/landing/CurtaineEffect";
 import Header from "@/components/landing/Header";
-import Footer from "@/components/landing/Footer";
-import FAQ from "@/components/landing/FAQ";
 import {
   HorizontalRoulette,
   KineticHero,
@@ -19,10 +18,19 @@ import {
   // TextReveal,
   // AudioWaveform,~
 } from "@/components/landing/Sections";
-// Import qismiga qo'shing:
-import { InteractiveDemoSection } from "@/components/landing/interactiveDemo";
-import { MethodSection } from "@/components/landing/MethodSection";
-import { LearningJourney } from "@/components/landing/LearningJourney";
+
+// Hero'dan pastdagi bo'limlar alohida chunk'larda yuklanadi (SSR saqlanadi, birinchi JS yengillashadi)
+const Footer = dynamic(() => import("@/components/landing/Footer"));
+const FAQ = dynamic(() => import("@/components/landing/FAQ"));
+const InteractiveDemoSection = dynamic(() =>
+  import("@/components/landing/interactiveDemo").then((m) => m.InteractiveDemoSection)
+);
+const MethodSection = dynamic(() =>
+  import("@/components/landing/MethodSection").then((m) => m.MethodSection)
+);
+const LearningJourney = dynamic(() =>
+  import("@/components/landing/LearningJourney").then((m) => m.LearningJourney)
+);
 
 const FEATURES = [
   // Asosiy Ko'nikmalar
@@ -142,7 +150,7 @@ export default function LandingPage() {
   const { t } = useLanguage();
 
   return (
-    <main className="min-h-screen overflow-x-hidden relative">
+    <main className="min-h-screen min-h-[100dvh] overflow-x-hidden supports-[overflow:clip]:overflow-x-clip relative">
       <CurtainEffect />
       <Header />
 
@@ -273,7 +281,6 @@ export default function LandingPage() {
             {TESTIMONIALS.map((t, i) => (
               <motion.div
                 key={t.name}
-                layout
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}

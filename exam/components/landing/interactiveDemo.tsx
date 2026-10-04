@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const DEMO_TABS = [
@@ -20,7 +20,7 @@ export function InteractiveDemoSection() {
 
   // Yozib olish taymeri
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (isRecording) {
       interval = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
@@ -28,16 +28,37 @@ export function InteractiveDemoSection() {
     } else {
       setRecordingTime(0);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isRecording]);
+
+  // Soundwave balandliklari: har render'da emas, faqat yozuv boshlanganda bir marta tasodifiy
+  // (aks holda har soniyadagi taymer tick'i animatsiyani qayta boshlab yuborardi)
+  const wavePeaks = useMemo(
+    () =>
+      isRecording
+        ? Array.from({ length: 24 }, () => 40 + Math.random() * 24)
+        : [],
+    [isRecording]
+  );
+
+  const analyzeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (analyzeTimer.current) clearTimeout(analyzeTimer.current);
+    },
+    []
+  );
 
   const handleAnalyze = () => {
     if (!writingText.trim()) return;
     setIsAnalyzing(true);
     setShowWritingResult(false);
-    
+
     // AI tahlilini simulyatsiya qilish (2.5 soniya)
-    setTimeout(() => {
+    if (analyzeTimer.current) clearTimeout(analyzeTimer.current);
+    analyzeTimer.current = setTimeout(() => {
       setIsAnalyzing(false);
       setShowWritingResult(true);
     }, 2500);
@@ -50,11 +71,18 @@ export function InteractiveDemoSection() {
   return (
 <section className="relative py-24 overflow-hidden">
   {/* Gradient fon - boshqa bo'limlar bilan silliq o'tish */}
-    <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-950/80 to-slate-900 backdrop-blur-xl" />
-    
-    {/* Neon glow effektlari */}
-    <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
-    <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
+    {/* (butun bo'lim bo'ylab backdrop-blur-xl olib tashlandi: ostidagi Aurora allaqachon yumshoq, farq sezilmaydi, lekin GPU yuki katta) */}
+    <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-950/80 to-slate-900" />
+
+    {/* Neon glow effektlari — blur-3xl filter o'rniga radial-gradient (ko'rinish bir xil, arzon) */}
+    <div
+      className="absolute top-0 left-1/4 w-96 h-96 rounded-full pointer-events-none"
+      style={{ background: "radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 70%)" }}
+    />
+    <div
+      className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full pointer-events-none"
+      style={{ background: "radial-gradient(circle, rgba(168,85,247,0.12) 0%, transparent 70%)" }}
+    />
     
     {/* Kontent */}
     <div className="relative max-w-6xl mx-auto px-6">
@@ -117,7 +145,7 @@ export function InteractiveDemoSection() {
           >
             {/* Glassmorphism & Dark Glow Border */}
             <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-3xl blur opacity-20 group-hover:opacity-50 transition duration-500" />
-            <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 h-full flex flex-col">
+            <div className="relative bg-slate-900/80 border border-slate-800 rounded-3xl p-6 h-full flex flex-col">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-xl shadow-lg">
                   ✍️
@@ -212,7 +240,7 @@ export function InteractiveDemoSection() {
             className="relative group"
           >
             <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-3xl blur opacity-20 group-hover:opacity-50 transition duration-500" />
-            <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 h-full flex flex-col">
+            <div className="relative bg-slate-900/80 border border-slate-800 rounded-3xl p-6 h-full flex flex-col">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-xl shadow-lg">
                   🎤
@@ -237,7 +265,7 @@ export function InteractiveDemoSection() {
                       key={i}
                       animate={
                         isRecording
-                          ? { height: [8, 40 + Math.random() * 24, 8] }
+                          ? { height: [8, wavePeaks[i] ?? 52, 8] }
                           : { height: 4 }
                       }
                       transition={

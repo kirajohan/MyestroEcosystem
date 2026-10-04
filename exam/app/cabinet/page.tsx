@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { getMe, logout } from "@/lib/api";
+import { useLanguage } from "@/app/providers";
+import AppTopBar from "@/components/AppTopBar";
 
 interface UserInfo {
   id: number;
@@ -17,40 +19,30 @@ interface UserInfo {
 const SECTIONS = [
   {
     key: "full",
-    title: "Full Exam",
-    desc: "To'liq imtihon sikli — barcha 4 ko'nikma",
     icon: "🎯",
     gradient: "from-indigo-500 to-purple-600",
     span: "md:col-span-2",
   },
   {
     key: "listening",
-    title: "Listening",
-    desc: "Tinglab tushunish mashqlari",
     icon: "🎧",
     gradient: "from-blue-500 to-cyan-500",
     span: "",
   },
   {
     key: "reading",
-    title: "Reading",
-    desc: "O'qib tushunish mashqlari",
     icon: "📖",
     gradient: "from-emerald-500 to-teal-500",
     span: "",
   },
   {
     key: "writing",
-    title: "Writing",
-    desc: "Yozma ish — AI baholash bilan",
     icon: "✍️",
     gradient: "from-amber-500 to-orange-500",
     span: "",
   },
   {
     key: "speaking",
-    title: "Speaking",
-    desc: "Og'zaki nutq — AI baholash bilan",
     icon: "🎤",
     gradient: "from-rose-500 to-pink-500",
     span: "",
@@ -71,6 +63,7 @@ const item = {
 };
 
 export default function CabinetPage() {
+  const { t } = useLanguage();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -95,7 +88,7 @@ export default function CabinetPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-rose-50">
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-rose-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -105,19 +98,19 @@ export default function CabinetPage() {
             <div className="absolute inset-0 rounded-full border-4 border-orange-200"></div>
             <div className="absolute inset-0 rounded-full border-4 border-orange-600 border-t-transparent animate-spin"></div>
           </div>
-          <p className="text-slate-600 font-medium">Yuklanmoqda...</p>
+          <p className="text-slate-600 dark:text-slate-300 font-medium">{t("common.loading")}</p>
         </motion.div>
       </main>
     );
   }
 
-  const displayName = user?.full_name || "Foydalanuvchi";
-  const greeting = getGreeting();
+  const displayName = user?.full_name || t("cabinet.user_default");
+  const greeting = t(getGreetingKey());
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-rose-50">
+    <main className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-rose-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* ═══ HEADER ═══ */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100">
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <Image
@@ -134,16 +127,17 @@ export default function CabinetPage() {
 
           <div className="flex items-center gap-4">
             <div className="hidden md:flex flex-col items-end">
-              <p className="font-semibold text-slate-900">{displayName}</p>
-              <p className="text-xs text-slate-500">
-                Daraja: {user?.cefr_level || "—"}
+              <p className="font-semibold text-slate-900 dark:text-white">{displayName}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {t("cabinet.level")}: {user?.cefr_level || "—"}
               </p>
             </div>
+            <AppTopBar />
             <button
               onClick={handleLogout}
-              className="text-sm font-medium text-slate-600 hover:text-orange-600 px-3 py-2 rounded-lg hover:bg-orange-50 transition-colors"
+              className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-orange-600 px-3 py-2 rounded-lg hover:bg-orange-50 dark:hover:bg-slate-800 transition-colors"
             >
-              Chiqish
+              {t("common.logout")}
             </button>
           </div>
         </div>
@@ -169,17 +163,16 @@ export default function CabinetPage() {
                 {displayName} 👋
               </h1>
               <p className="text-orange-100 text-base md:text-lg max-w-2xl">
-                Ingliz tilingizni yanada mukammallashtiring. Bugun qaysi ko'nikmani
-                mashq qilasiz?
+                {t("cabinet.hero_text")}
               </p>
 
               <div className="flex flex-wrap gap-3 mt-6">
                 <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/30">
-                  <div className="text-xs text-orange-100">Daraja</div>
+                  <div className="text-xs text-orange-100">{t("cabinet.level")}</div>
                   <div className="font-bold">{user?.cefr_level || "—"}</div>
                 </div>
                 <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/30">
-                  <div className="text-xs text-orange-100">Rol</div>
+                  <div className="text-xs text-orange-100">{t("cabinet.role")}</div>
                   <div className="font-bold capitalize">{user?.role || "user"}</div>
                 </div>
               </div>
@@ -190,11 +183,11 @@ export default function CabinetPage() {
         {/* ═══ SECTIONS TITLE ═══ */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-slate-900">
-              Imtihon bo'limlari
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+              {t("cabinet.sections_title")}
             </h2>
-            <p className="text-slate-500 text-sm mt-1">
-              O'zingizga kerakli yo'nalishni tanlang
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+              {t("cabinet.sections_sub")}
             </p>
           </div>
         </div>
@@ -210,7 +203,7 @@ export default function CabinetPage() {
             <motion.div key={section.key} variants={item} className={section.span}>
               <Link
                 href={`/exams?type=${section.key}`}
-                className="group relative block h-full bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+                className="group relative block h-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
               >
                 {/* Hover gradient background */}
                 <div
@@ -223,13 +216,13 @@ export default function CabinetPage() {
                   >
                     {section.icon}
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-orange-600 transition-colors">
-                    {section.title}
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 group-hover:text-orange-600 transition-colors">
+                    {t(`section.${section.key}`)}
                   </h3>
-                  <p className="text-sm text-slate-500">{section.desc}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t(`section.${section.key}.desc`)}</p>
 
                   <div className="mt-4 flex items-center text-sm font-semibold text-orange-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                    Boshlash
+                    {t("cabinet.start")}
                     <svg
                       className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform"
                       fill="none"
@@ -262,14 +255,14 @@ export default function CabinetPage() {
                 📊
               </div>
               <div>
-                <h3 className="text-lg font-bold">Mening natijalarim</h3>
+                <h3 className="text-lg font-bold">{t("cabinet.my_results")}</h3>
                 <p className="text-sm text-slate-400">
-                  Tarix va davom etayotgan imtihonlar
+                  {t("cabinet.my_results_sub")}
                 </p>
               </div>
             </div>
             <div className="flex items-center text-sm font-semibold text-orange-400 group-hover:translate-x-1 transition-transform">
-              Ko'rish
+              {t("cabinet.view")}
               <svg
                 className="w-4 h-4 ml-1"
                 fill="none"
@@ -291,10 +284,10 @@ export default function CabinetPage() {
   );
 }
 
-function getGreeting(): string {
+function getGreetingKey(): string {
   const hour = new Date().getHours();
-  if (hour < 6) return "Xayrli tun";
-  if (hour < 12) return "Xayrli tong";
-  if (hour < 18) return "Xayrli kun";
-  return "Xayrli kech";
+  if (hour < 6) return "cabinet.greet_night";
+  if (hour < 12) return "cabinet.greet_morning";
+  if (hour < 18) return "cabinet.greet_day";
+  return "cabinet.greet_evening";
 }

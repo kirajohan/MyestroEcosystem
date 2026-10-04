@@ -1,10 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useTheme } from "@/app/providers";
 
 export default function Aurora() {
   const { theme } = useTheme();
+  const reduceMotion = useReducedMotion();
   const isDark = theme === "dark";
 
   // Light mode: och orange → to'q qizil (juda yorqin)
@@ -37,23 +38,32 @@ export default function Aurora() {
       />
 
       {/* Animated aurora blobs — kattaroq, tezroq, yorqinroq */}
+      {/*
+        Blob'lar: radial-gradient o'zi yumshoq (70% da to'liq shaffof), shuning uchun
+        katta `blur-3xl` filter kerak emas — GPU yukini keskin kamaytiradi, ko'rinish bir xil.
+        Mobilda o'lcham ekran kengligiga moslanadi (min(size, 120vw)).
+      */}
       {blobs.map((blob, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full blur-3xl will-change-transform"
+          className="absolute rounded-full pointer-events-none"
           style={{
             background: `radial-gradient(circle, ${blob.color} 0%, transparent 70%)`,
-            width: blob.size,
-            height: blob.size,
+            width: `min(${blob.size}px, 120vw)`,
+            height: `min(${blob.size}px, 120vw)`,
             left: `${blob.x}%`,
             top: `${blob.y}%`,
             transform: "translate(-50%, -50%)",
           }}
-          animate={{
-            x: [0, 150, -100, 80, 0],
-            y: [0, -120, 100, -60, 0],
-            scale: [1, 1.4, 0.8, 1.2, 1],
-          }}
+          animate={
+            reduceMotion
+              ? undefined
+              : {
+                  x: [0, 150, -100, 80, 0],
+                  y: [0, -120, 100, -60, 0],
+                  scale: [1, 1.4, 0.8, 1.2, 1],
+                }
+          }
           transition={{
             duration: blob.dur,
             repeat: Infinity,
@@ -63,9 +73,9 @@ export default function Aurora() {
         />
       ))}
 
-      {/* Noise overlay */}
+      {/* Noise overlay (blend rejimi faqat katta ekranlarda — mobilda har kadr qayta kompozitsiya qilmaslik uchun) */}
       <div
-        className={`absolute inset-0 mix-blend-overlay transition-opacity duration-700 ${
+        className={`absolute inset-0 pointer-events-none md:mix-blend-overlay transition-opacity duration-700 ${
           isDark ? "opacity-[0.04]" : "opacity-[0.02]"
         }`}
         style={{

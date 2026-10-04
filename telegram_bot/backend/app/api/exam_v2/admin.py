@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.security import get_current_admin_user
-from app.database import get_async_db
+from app.database import get_async_db, get_db
 from app.models.exam import Exam, ExamBlock, ExamItem, ExamOption
 from app.models.exam_enums import CEFRLevel, ExamType
 from app.models.user import User
@@ -25,6 +25,10 @@ from app.schemas.exam import (
     ExamUpdate,
 )
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -984,3 +988,48 @@ async def bulk_import_exam(
         await db.rollback()
         logger.error(f"❌ Bulk import xatosi: {e}")
         raise HTTPException(status_code=400, detail=f"Import xatosi: {str(e)}")
+
+
+# telegram_bot/backend/app/api/exam_v2/admin.py
+
+
+# [BE-01.3] DTO: Faqat kerakli maydonni qabul qilish
+class ExamPublishUpdate(BaseModel):
+    is_published: bool
+
+router = APIRouter(prefix="/admin", tags=["exam-admin"])
+
+# ... boshqa endpointlar ...
+
+@router.patch("/exams/{exam_id}/publish")
+async def update_exam_publish_status(
+    exam_id: int,
+    payload: ExamPublishUpdate,
+    db: AsyncSession = Depends(get_db), # get_db dependency sizda qanday nomlangan bo'lsa
+    current_user: User = Depends(get_current_admin_user) # Admin auth dependency
+):
+    """Examning is_published holatini o'zgartirish"""
+    # 1. Examni topish
+    result = await db.execute(select(Exam).where(Exam.id == exam_id))
+    exam = result.scalar_one_or_none()
+    
+    if not exam:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Exam topilmadi"
+        )
+
+    # 2. Holatni yangilash
+    exam.is_published = payload.is_published
+    
+    # 3. Saqlash ([BE-02.1] Transaction chegarasi)
+    await db.commit()
+    await db.refresh(exam)
+
+    # 4. Qaytarish
+    return {
+        "id": exam.id,
+        "code": exam.code,
+        "is_published": exam.is_published,
+        "message": "Exam holati muvaffaqiyatli yangilandi"
+    }

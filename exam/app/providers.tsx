@@ -1,6 +1,32 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  ReactNode,
+} from "react";
+import { translate, LOCALES, type Lang } from "@/lib/i18n";
+
+// localStorage Safari private mode va in-app brauzerlarda xato tashlashi mumkin
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 // THEME CONTEXT
@@ -15,16 +41,22 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+const noop = () => {};
+const SSR_THEME: ThemeContextType = { theme: "light", toggleTheme: noop };
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
   // Client-side: theme ni localStorage dan o'qish
   useEffect(() => {
-    const saved = localStorage.getItem("theme") as Theme | null;
+    const saved = readStorage("theme") as Theme | null;
     if (saved === "dark" || saved === "light") {
       setTheme(saved);
-    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+    } else if (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    ) {
       setTheme("dark");
     }
     setMounted(true);
@@ -39,25 +71,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       root.classList.remove("dark");
     }
-    localStorage.setItem("theme", theme);
+    writeStorage("theme", theme);
   }, [theme, mounted]);
 
-  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+  const toggleTheme = useCallback(
+    () => setTheme((t) => (t === "light" ? "dark" : "light")),
+    []
+  );
+
+  const value = useMemo<ThemeContextType>(
+    () => (mounted ? { theme, toggleTheme } : SSR_THEME),
+    [mounted, theme, toggleTheme]
+  );
 
   // SSR da har doim "light" qaytarish (hydration mismatch bo'lmaydi)
-  if (!mounted) {
-    return (
-      <ThemeContext.Provider value={{ theme: "light", toggleTheme: () => {} }}>
-        {children}
-      </ThemeContext.Provider>
-    );
-  }
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {
@@ -70,94 +98,58 @@ export function useTheme() {
 // LANGUAGE CONTEXT
 // ═══════════════════════════════════════════════════════════
 
-export type Lang = "uz" | "ru" | "en";
+export type { Lang };
 
 interface LanguageContextType {
   lang: Lang;
   setLang: (l: Lang) => void;
-  t: (key: string) => string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  locale: string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-const translations: Record<Lang, Record<string, string>> = {
-  uz: {
-    hero_badge: "Ingliz tili darajangizni aniqlang",
-    hero_title_1: "Ingliz tilini",
-    hero_title_2: "mukammal o'rganing",
-    hero_subtitle: "Listening, Reading, Writing va Speaking bo'yicha real imtihonlar. AI baholash bilan natijangizni darhol oling.",
-    cta_start: "Bepul boshlash",
-    cta_learn: "Batafsil ma'lumot",
-    nav_features: "Imkoniyatlar",
-    nav_method: "Metodika",
-    nav_results: "Natijalar",
-    nav_faq: "FAQ",
-    nav_login: "Kirish",
-  },
-  ru: {
-    hero_badge: "Определите свой уровень английского",
-    hero_title_1: "Изучайте английский",
-    hero_title_2: "совершенно",
-    hero_subtitle: "Реальные экзамены по Listening, Reading, Writing и Speaking. Получите результат мгновенно с AI-оценкой.",
-    cta_start: "Начать бесплатно",
-    cta_learn: "Подробнее",
-    nav_features: "Возможности",
-    nav_method: "Методика",
-    nav_results: "Результаты",
-    nav_faq: "FAQ",
-    nav_login: "Войти",
-  },
-  en: {
-    hero_badge: "Check your English level",
-    hero_title_1: "Master English",
-    hero_title_2: "perfectly",
-    hero_subtitle: "Real exams in Listening, Reading, Writing and Speaking. Get your result instantly with AI evaluation.",
-    cta_start: "Start Free",
-    cta_learn: "Learn more",
-    nav_features: "Features",
-    nav_method: "Method",
-    nav_results: "Results",
-    nav_faq: "FAQ",
-    nav_login: "Login",
-  },
-};
-
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("uz");
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("lang") as Lang | null;
+    const saved = readStorage("lang") as Lang | null;
     if (saved === "uz" || saved === "ru" || saved === "en") {
       setLangState(saved);
     }
-    setMounted(true);
   }, []);
 
-  const setLang = (l: Lang) => {
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  const setLang = useCallback((l: Lang) => {
     setLangState(l);
-    localStorage.setItem("lang", l);
-  };
+    writeStorage("lang", l);
+  }, []);
 
-  const t = (key: string) => translations[lang][key] || key;
-
-  if (!mounted) {
-    return (
-      <LanguageContext.Provider value={{ lang: "uz", setLang: () => {}, t: (k) => k }}>
-        {children}
-      </LanguageContext.Provider>
-    );
-  }
-
-  return (
-    <LanguageContext.Provider value={{ lang, setLang, t }}>
-      {children}
-    </LanguageContext.Provider>
+  const value = useMemo<LanguageContextType>(
+    () => ({
+      lang,
+      setLang,
+      locale: LOCALES[lang],
+      t: (key, vars) => translate(lang, key, vars),
+    }),
+    [lang, setLang]
   );
+
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
-export function useLanguage() {
+export function useLanguage(): LanguageContextType {
   const ctx = useContext(LanguageContext);
-  if (!ctx) return { lang: "uz" as Lang, setLang: () => {}, t: (key: string) => key };
+  if (!ctx) {
+    return {
+      lang: "uz",
+      setLang: () => {},
+      locale: LOCALES.uz,
+      t: (key, vars) => translate("uz", key, vars),
+    };
+  }
   return ctx;
 }

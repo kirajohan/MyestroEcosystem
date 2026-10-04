@@ -7,6 +7,8 @@ import { apiFetch } from "@/lib/session";
 import AudioPlayer from "@/components/AudioPlayer";
 import QuestionCard from "@/components/exam/QuestionCard";
 import ReadingPassage from "@/components/exam/reading/ReadingPassage";
+import { useLanguage } from "@/app/providers";
+import AppTopBar from "@/components/AppTopBar";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://myestroeco-backend-production.up.railway.app";
 
@@ -75,6 +77,7 @@ interface AnswerData {
 
 export default function ExamRoomPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const params = useParams();
   const attemptId = Number(params.attemptId);
 
@@ -92,6 +95,7 @@ export default function ExamRoomPage() {
   const [answers, setAnswers] = useState<Record<number, AnswerData>>({});
   const [savingItemId, setSavingItemId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const pendingSavesRef = useRef<Set<Promise<Response>>>(new Set());
 
   // Timer
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -148,7 +152,7 @@ export default function ExamRoomPage() {
       const res = await apiFetch(`/api/v2/exam/attempts/${attemptId}`);
 
       if (!res.ok) {
-        if (res.status === 404) throw new Error("Attempt topilmadi");
+        if (res.status === 404) throw new Error(t("attempt.not_found"));
         throw new Error(`HTTP ${res.status}`);
       }
 
@@ -163,11 +167,11 @@ export default function ExamRoomPage() {
       if (data.blocks && data.blocks.length > 0) {
         await loadBlock(data.blocks[0].block_id);
       } else {
-        setError("Bu imtihonda block'lar yo'q");
+        setError(t("attempt.no_blocks"));
       }
     } catch (err) {
       console.error("Attempt yuklanmadi:", err);
-      setError(err instanceof Error ? err.message : "Attempt yuklanmadi");
+      setError(err instanceof Error ? err.message : t("attempt.load_failed"));
     } finally {
       setLoading(false);
     }
@@ -278,13 +282,19 @@ const handleSelectOption = useCallback(
 
       setSavingItemId(itemId);
       try {
-        await apiFetch(`/api/v2/exam/attempts/${attemptId}/answers`, {
+        const req = apiFetch(`/api/v2/exam/attempts/${attemptId}/answers`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             answers: [{ item_id: itemId, text_answer: text }],
           }),
         });
+        pendingSavesRef.current.add(req);
+        try {
+          await req;
+        } finally {
+          pendingSavesRef.current.delete(req);
+        }
       } catch (err) {
         console.error("Writing answer saqlanmadi:", err);
       } finally {
@@ -296,9 +306,11 @@ const handleSelectOption = useCallback(
 
   // ── 7. Submit ──────────────────────────────────────────
   async function handleSubmit(auto = false) {
-    if (!auto && !confirm("Imtihonni yakunlashni xohlaysizmi?")) return;
+    if (!auto && !confirm(t("attempt.confirm_finish"))) return;
     setSubmitting(true);
     try {
+      // Yakunlashdan oldin tugallanmagan autosave'larni kutish
+      await Promise.allSettled(Array.from(pendingSavesRef.current));
       const res = await apiFetch(`/api/v2/exam/attempts/${attemptId}/submit`, {
         method: "POST",
       });
@@ -306,7 +318,7 @@ const handleSelectOption = useCallback(
       router.push(`/exams/results/${attemptId}`);
     } catch (err) {
       console.error("Submit xatosi:", err);
-      alert("Imtihon yakunlanmadi. Qayta urinib ko'ring.");
+      alert(t("attempt.finish_failed"));
       setSubmitting(false);
     }
   }
@@ -369,7 +381,7 @@ const handleSelectOption = useCallback(
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 via-orange-50 to-rose-50">
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 via-orange-50 to-rose-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -380,7 +392,7 @@ const handleSelectOption = useCallback(
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-orange-200 border-t-orange-600"
           />
-          <p className="text-slate-600 font-medium">Imtihon yuklanmoqda...</p>
+          <p className="text-slate-600 dark:text-slate-300 font-medium">{t("attempt.loading")}</p>
         </motion.div>
       </main>
     );
@@ -392,20 +404,20 @@ const handleSelectOption = useCallback(
 
   if (error || !attempt) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 via-orange-50 to-rose-50 p-4">
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 via-orange-50 to-rose-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl p-8 text-center max-w-md border border-white/50"
+          className="bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl rounded-2xl shadow-2xl p-8 text-center max-w-md border border-white/50"
         >
           <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Xatolik</h2>
-          <p className="text-slate-600 mb-6">{error || "Attempt topilmadi"}</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{t("common.error")}</h2>
+          <p className="text-slate-600 dark:text-slate-300 mb-6">{error || t("attempt.not_found")}</p>
           <button
             onClick={() => router.push("/cabinet")}
             className="bg-gradient-to-r from-orange-600 to-rose-500 text-white px-6 py-2.5 rounded-lg font-semibold"
           >
-            Kabinetga qaytish
+            {t("attempt.back_cabinet")}
           </button>
         </motion.div>
       </main>
@@ -429,7 +441,7 @@ const handleSelectOption = useCallback(
   const showNavigator = currentItems.length > 1; // ✅ Writing'da 1 ta item bo'lsa navigator yashiriladi
 
   return (
-    <main className="min-h-screen flex flex-col bg-gradient-to-br from-slate-100 via-orange-50 to-rose-50 relative overflow-hidden">
+    <main className="min-h-screen flex flex-col bg-gradient-to-br from-slate-100 via-orange-50 to-rose-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 relative overflow-hidden">
       {/* Background decorative blobs */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-0 w-96 h-96 bg-orange-200/30 rounded-full blur-3xl" />
@@ -437,7 +449,7 @@ const handleSelectOption = useCallback(
       </div>
 
       {/* ═══ HEADER ═══ */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
+      <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <motion.div
@@ -448,11 +460,11 @@ const handleSelectOption = useCallback(
               {isListening ? "🎧" : isReading ? "📖" : isWriting ? "✍️" : "📝"}
             </motion.div>
             <div>
-              <h1 className="font-bold text-slate-900 text-sm md:text-base">
-                {currentBlockData?.title || "Imtihon"}
+              <h1 className="font-bold text-slate-900 dark:text-white text-sm md:text-base">
+                {currentBlockData?.title || t("attempt.title_default")}
               </h1>
-              <p className="text-xs text-slate-500">
-                Javob berildi:{" "}
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {t("attempt.answered")}{" "}
                 <span className="font-semibold text-emerald-600">{answeredCount}</span> /{" "}
                 {totalItems || "..."}
               </p>
@@ -460,13 +472,14 @@ const handleSelectOption = useCallback(
           </div>
 
           <div className="flex items-center gap-3">
+            <AppTopBar />
             {timeLeft !== null && (
               <motion.div
                 animate={timeLeft < 60 ? { scale: [1, 1.05, 1] } : {}}
                 transition={{ duration: 1, repeat: timeLeft < 60 ? Infinity : 0 }}
                 className={`px-4 py-2 rounded-xl font-mono text-sm md:text-lg font-bold backdrop-blur-sm border ${
                   timeLeft < 60
-                    ? "bg-red-100/80 text-red-700 border-red-200"
+                    ? "bg-red-100/80 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900"
                     : timeLeft < 300
                     ? "bg-amber-100/80 text-amber-700 border-amber-200"
                     : "bg-emerald-100/80 text-emerald-700 border-emerald-200"
@@ -483,11 +496,11 @@ const handleSelectOption = useCallback(
               whileTap={{ scale: submitting ? 1 : 0.95 }}
               className={`px-4 md:px-5 py-2 rounded-xl text-sm font-semibold transition-colors ${
                 submitting
-                  ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                  ? "bg-slate-300 text-slate-500 dark:text-slate-400 cursor-not-allowed"
                   : "bg-gradient-to-r from-orange-600 to-rose-500 hover:shadow-lg text-white"
               }`}
             >
-              {submitting ? "..." : "🏁 Yakunlash"}
+              {submitting ? "..." : t("attempt.finish")}
             </motion.button>
           </div>
         </div>
@@ -512,7 +525,7 @@ const handleSelectOption = useCallback(
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-sm p-3"
+              className="bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-sm p-3"
             >
               <div className="flex flex-wrap gap-2">
                 {attempt.blocks.map((block, idx) => (
@@ -524,7 +537,7 @@ const handleSelectOption = useCallback(
                     className={`relative px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
                       idx === currentBlockIndex
                         ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white shadow-md"
-                        : "bg-white/50 text-slate-600 hover:bg-white"
+                        : "bg-white/50 text-slate-600 dark:text-slate-300 hover:bg-white"
                     }`}
                   >
                     {idx === currentBlockIndex ? "● " : "○ "}
@@ -565,7 +578,7 @@ const handleSelectOption = useCallback(
               <div className={`text-xs font-bold uppercase tracking-widest mb-3 ${
                 isWriting ? "text-purple-700" : "text-blue-700"
               }`}>
-                {isWriting ? "✍️ Writing Task" : "📋 Instructions"}
+                {isWriting ? t("attempt.writing_task") : t("attempt.instructions")}
               </div>
               <p className={`leading-relaxed ${
                 isWriting ? "text-purple-900 text-base" : "text-blue-900 text-sm"
@@ -581,7 +594,7 @@ const handleSelectOption = useCallback(
           <div
             onMouseDown={startDrag}
             className="hidden lg:flex items-center justify-center cursor-col-resize group select-none"
-            title="Ustunlar kengligini sozlash"
+            title={t("attempt.resize")}
           >
             <div className="w-1.5 h-28 rounded-full bg-slate-300 group-hover:bg-orange-500 group-active:bg-orange-600 transition-colors" />
           </div>
@@ -594,10 +607,10 @@ const handleSelectOption = useCallback(
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-xl p-4"
+              className="bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-xl p-4"
             >
-              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
-                Question Navigator
+              <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">
+                {t("attempt.navigator")}
               </h4>
               <div className="flex flex-wrap gap-1.5">
                 {currentItems.map((item, idx) => {
@@ -619,7 +632,7 @@ const handleSelectOption = useCallback(
                           ? "bg-gradient-to-br from-orange-500 to-rose-500 text-white ring-4 ring-orange-200 scale-110"
                           : isAnswered
                           ? "bg-gradient-to-br from-emerald-500 to-teal-500 text-white"
-                          : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+                          : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 border border-slate-200 dark:border-slate-800"
                       }`}
                     >
                       {idx + 1}
@@ -636,7 +649,7 @@ const handleSelectOption = useCallback(
               </div>
 
               {/* Progress bar */}
-              <div className="mt-4 h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div className="mt-4 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                 <motion.div
                   className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
                   animate={{
@@ -666,11 +679,11 @@ const handleSelectOption = useCallback(
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-xl p-12 text-center"
+              className="bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-xl p-12 text-center"
             >
               <div className="text-5xl mb-3">📝</div>
-              <p className="text-slate-500">
-                {currentBlockData?.loaded ? "Savollar yo'q" : "Yuklanmoqda..."}
+              <p className="text-slate-500 dark:text-slate-400">
+                {currentBlockData?.loaded ? t("attempt.no_questions") : t("common.loading")}
               </p>
             </motion.div>
           )}
@@ -688,11 +701,11 @@ const handleSelectOption = useCallback(
               whileTap={{ scale: 0.95 }}
               className={`flex-1 px-5 py-3 rounded-xl font-semibold text-sm transition-all ${
                 currentBlockIndex === 0 && currentItemIndex === 0
-                  ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                  : "bg-white text-slate-800 hover:bg-slate-50 shadow-md border border-slate-200"
+                  ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+                  : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:bg-slate-50 shadow-md border border-slate-200 dark:border-slate-800"
               }`}
             >
-              ◀ Oldingi
+              {t("attempt.prev")}
             </motion.button>
 
             {isLastItem ? (
@@ -703,11 +716,11 @@ const handleSelectOption = useCallback(
                 whileTap={{ scale: 0.95 }}
                 className={`flex-1 px-5 py-3 rounded-xl font-semibold text-sm transition-all ${
                   submitting
-                    ? "bg-slate-300 text-slate-500"
+                    ? "bg-slate-300 text-slate-500 dark:text-slate-400"
                     : "bg-gradient-to-r from-orange-600 to-rose-500 text-white shadow-lg hover:shadow-xl"
                 }`}
               >
-                {submitting ? "Yakunlanmoqda..." : "🏁 Yakunlash"}
+                {submitting ? t("attempt.finishing") : t("attempt.finish")}
               </motion.button>
             ) : (
               <motion.button
@@ -716,7 +729,7 @@ const handleSelectOption = useCallback(
                 whileTap={{ scale: 0.95 }}
                 className="flex-1 px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:shadow-lg text-white rounded-xl font-semibold text-sm shadow-md transition-all"
               >
-                Keyingi ▶
+                {t("attempt.next")}
               </motion.button>
             )}
           </motion.div>

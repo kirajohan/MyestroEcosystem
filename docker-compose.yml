@@ -49,11 +49,11 @@ services:
     env_file:
       - ./.env
     environment:
-        DATABASE_URL: postgresql://myestro:myestro_password@postgres:5432/myestro
-        REDIS_URL: redis://redis:6379/0
-        MEDIA_DIR: /app/media      # ← QO'SHISH
+      DATABASE_URL: postgresql://myestro:myestro_password@postgres:5432/myestro
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_DIR: /app/media
     volumes:
-      - exam_media:/app/media          # ← Media uchun volume
+      - exam_media:/app/media
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,6 +67,21 @@ services:
       start_period: 40s
     networks:
       - myestro-net
+    # ⭐ WATCH QO'SHILDI
+    develop:
+      watch:
+        - action: sync
+          path: ./telegram_bot/backend
+          target: /app
+          ignore:
+            - __pycache__
+            - "*.pyc"
+            - .pytest_cache
+            - .git
+        - action: rebuild
+          path: ./telegram_bot/backend/requirements.txt
+        - action: rebuild
+          path: ./telegram_bot/backend/Dockerfile
 
   bot:
     build:
@@ -91,6 +106,20 @@ services:
         condition: service_healthy
     networks:
       - myestro-net
+    # ⭐ WATCH QO'SHILDI
+    develop:
+      watch:
+        - action: sync
+          path: ./telegram_bot/bot
+          target: /app/bot
+          ignore:
+            - __pycache__
+            - "*.pyc"
+            - .git
+        - action: rebuild
+          path: ./telegram_bot/bot/requirements.txt
+        - action: rebuild
+          path: ./telegram_bot/bot/Dockerfile
 
   admin:
     build:
@@ -116,25 +145,37 @@ services:
       start_period: 40s
     networks:
       - myestro-net
+    # ⭐ WATCH QO'SHILDI
+    develop:
+      watch:
+        - action: sync
+          path: ./admin
+          target: /app
+          ignore:
+            - node_modules
+            - .next
+            - .git
+        - action: rebuild
+          path: ./admin/package.json
+        - action: rebuild
+          path: ./admin/Dockerfile
 
   exam:
     build:
       context: ./exam
-      dockerfile: Dockerfile              # ← Dockerfile qo'shildi
+      dockerfile: Dockerfile
     container_name: maestro-exam
     restart: unless-stopped
     ports:
       - "3001:3000"
     environment:
-      # Browser tomondan backend'ga murojaat (host port!)
-      - NEXT_PUBLIC_API_URL=https://myestroeco-backend-production.up.railway.app
-      # Server-side (SSR) backend'ga murojaat (container nomi)
-      - BACKEND_INTERNAL_URL=http://backend:8000
-      - NODE_ENV=production
+      NEXT_PUBLIC_API_URL: https://myestroeco-backend-production.up.railway.app
+      BACKEND_INTERNAL_URL: http://backend:8000
+      NODE_ENV: production
     depends_on:
       backend:
-        condition: service_healthy        # ← Condition qo'shildi
-    healthcheck:                          # ← Healthcheck qo'shildi
+        condition: service_healthy
+    healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
@@ -142,11 +183,25 @@ services:
       start_period: 40s
     networks:
       - myestro-net
+    # ⭐ WATCH QO'SHILDI
+    develop:
+      watch:
+        - action: sync
+          path: ./exam
+          target: /app
+          ignore:
+            - node_modules
+            - .next
+            - .git
+        - action: rebuild
+          path: ./exam/package.json
+        - action: rebuild
+          path: ./exam/Dockerfile
 
 volumes:
   postgres_data:
   redis_data:
-  exam_media:                             # Media fayllar uchun
+  exam_media:
 
 networks:
   myestro-net:

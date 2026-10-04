@@ -4,8 +4,10 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
-import { apiFetch } from "@/lib/session";  
-// ← O'zgartirildi
+import { apiFetch } from "@/lib/session";
+import { useLanguage } from "@/app/providers";
+import AppTopBar from "@/components/AppTopBar";
+
 // ─── Interfaces (Backend JSON'iga 100% moslashtirildi) ───────────────────────
 interface AiFeedback {
   overall_score?: number;
@@ -18,6 +20,9 @@ interface AiFeedback {
   weaknesses?: string[];
   recommendations?: string[];
   model_used?: string;
+  skipped?: boolean;
+  reason?: string;
+  error?: string;
 }
 
 interface ResultAnswer {
@@ -78,6 +83,7 @@ const isAiGraded = (type: string) => type === "writing" || type === "speaking";
 // ─── Components ──────────────────────────────────────────────────────────────
 
 function ProgressRing({ percentage, size = 120, stroke = 8 }: { percentage: number; size?: number; stroke?: number }) {
+  const { t } = useLanguage();
   const [count, setCount] = useState(0);
   const radius = (size - stroke) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -117,8 +123,8 @@ function ProgressRing({ percentage, size = 120, stroke = 8 }: { percentage: numb
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-3xl font-bold text-slate-800">{count}%</span>
-        <span className="text-xs text-slate-500 font-medium">Natija</span>
+        <span className="text-3xl font-bold text-slate-800 dark:text-slate-100">{count}%</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t("rd.result")}</span>
       </div>
     </div>
   );
@@ -148,7 +154,7 @@ function TiltCard({ children, delay = 0 }: { children: React.ReactNode; delay?: 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
-      className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-xl transition-all duration-300 cursor-default group relative overflow-hidden"
+      className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 hover:shadow-xl transition-all duration-300 cursor-default group relative overflow-hidden"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-rose-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
       {children}
@@ -157,19 +163,20 @@ function TiltCard({ children, delay = 0 }: { children: React.ReactNode; delay?: 
 }
 
 function AiFeedbackView({ feedback }: { feedback: AiFeedback }) {
+  const { t } = useLanguage();
   return (
     <div className="mt-4 space-y-4">
       {feedback.criteria && (
-        <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-          <h5 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">📊 Baholash mezonlari</h5>
+        <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+          <h5 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">{t("rd.criteria")}</h5>
           <div className="space-y-3">
             {feedback.criteria.map((c, idx) => (
               <div key={idx}>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="font-medium text-slate-700">{c.name}</span>
-                  <span className="text-slate-500">{c.score}/{c.max_score}</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-200">{c.name}</span>
+                  <span className="text-slate-500 dark:text-slate-400">{c.score}/{c.max_score}</span>
                 </div>
-                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${(c.score / c.max_score) * 100}%` }}
@@ -177,7 +184,7 @@ function AiFeedbackView({ feedback }: { feedback: AiFeedback }) {
                     className="h-full bg-gradient-to-r from-orange-500 to-rose-500 rounded-full"
                   />
                 </div>
-                {c.comment && <p className="text-xs text-slate-500 mt-1 italic">"{c.comment}"</p>}
+                {c.comment && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 italic">"{c.comment}"</p>}
               </div>
             ))}
           </div>
@@ -185,14 +192,14 @@ function AiFeedbackView({ feedback }: { feedback: AiFeedback }) {
       )}
 
       {feedback.corrections && feedback.corrections.length > 0 && (
-        <div className="bg-red-50 rounded-xl p-4 border border-red-100">
-          <h5 className="text-sm font-bold text-red-800 mb-3 flex items-center gap-2">✏️ Xatolar va tuzatishlar</h5>
+        <div className="bg-red-50 dark:bg-red-950/50 rounded-xl p-4 border border-red-100">
+          <h5 className="text-sm font-bold text-red-800 mb-3 flex items-center gap-2">{t("rd.corrections")}</h5>
           <div className="space-y-3">
             {feedback.corrections.map((corr, idx) => (
               <div key={idx} className="text-sm">
                 <p className="text-red-600 line-through mb-1">{corr.original}</p>
                 <p className="text-emerald-600 font-semibold mb-1">➔ {corr.corrected}</p>
-                <p className="text-slate-600 text-xs bg-white p-2 rounded border border-red-100">💡 {corr.explanation}</p>
+                <p className="text-slate-600 dark:text-slate-300 text-xs bg-white dark:bg-slate-900 p-2 rounded border border-red-100">💡 {corr.explanation}</p>
               </div>
             ))}
           </div>
@@ -202,7 +209,7 @@ function AiFeedbackView({ feedback }: { feedback: AiFeedback }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {feedback.strengths && feedback.strengths.length > 0 && (
           <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
-            <h5 className="text-sm font-bold text-emerald-800 mb-2">✅ Kuchli tomonlari</h5>
+            <h5 className="text-sm font-bold text-emerald-800 mb-2">{t("rd.strengths")}</h5>
             <ul className="space-y-1">
               {feedback.strengths.map((s, idx) => (
                 <li key={idx} className="text-xs text-emerald-700 flex items-start gap-2"><span className="mt-1">•</span> {s}</li>
@@ -212,7 +219,7 @@ function AiFeedbackView({ feedback }: { feedback: AiFeedback }) {
         )}
         {feedback.weaknesses && feedback.weaknesses.length > 0 && (
           <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
-            <h5 className="text-sm font-bold text-amber-800 mb-2">⚠️ Rivojlantirish kerak</h5>
+            <h5 className="text-sm font-bold text-amber-800 mb-2">{t("rd.weaknesses")}</h5>
             <ul className="space-y-1">
               {feedback.weaknesses.map((w, idx) => (
                 <li key={idx} className="text-xs text-amber-700 flex items-start gap-2"><span className="mt-1">•</span> {w}</li>
@@ -224,7 +231,7 @@ function AiFeedbackView({ feedback }: { feedback: AiFeedback }) {
 
       {feedback.recommendations && feedback.recommendations.length > 0 && (
         <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-          <h5 className="text-sm font-bold text-blue-800 mb-2">🚀 Tavsiyalar</h5>
+          <h5 className="text-sm font-bold text-blue-800 mb-2">{t("rd.recommendations")}</h5>
           <ul className="space-y-1">
             {feedback.recommendations.map((r, idx) => (
               <li key={idx} className="text-xs text-blue-700 flex items-start gap-2"><span className="mt-1">💡</span> {r}</li>
@@ -239,6 +246,7 @@ function AiFeedbackView({ feedback }: { feedback: AiFeedback }) {
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function ResultPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const params = useParams();
   const attemptId = Number(params.attemptId);
   const hasCelebrated = useRef(false);
@@ -248,7 +256,6 @@ export default function ResultPage() {
   const [error, setError] = useState("");
   
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
-  const isPollingRef = useRef(false);
 
   useEffect(() => {
     loadResult();
@@ -257,48 +264,40 @@ export default function ResultPage() {
     };
   }, [attemptId]);
 
+  // AI baholash tugamagan javob bormi? (attempt.status'ga emas, haqiqiy answer holatiga qaraymiz)
+  const hasPendingAi =
+    !!result &&
+    (result.status === "scoring" ||
+      result.blocks.some(
+        (b) =>
+          isAiGraded(b.block_type) &&
+          b.items.some((i) => i.answer && ["pending", "processing"].includes(i.answer.ai_status))
+      ));
+
   useEffect(() => {
-    if (!result || result.status !== "scoring") {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-        isPollingRef.current = false;
+    if (!hasPendingAi) return;
+
+    let stopped = false;
+    let tries = 0;
+    const interval = setInterval(async () => {
+      if (stopped) return;
+      if (++tries > 200) {
+        clearInterval(interval);
+        return;
       }
-      return;
-    }
-
-    if (isPollingRef.current) return;
-
-    isPollingRef.current = true;
-    pollingRef.current = setInterval(async () => {
       try {
-      const res = await apiFetch(`/api/v2/exam/attempts/${attemptId}/result`);        
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status !== result?.status || data.total_score !== result?.total_score) {
-            setResult(data);
-          }
-          if (data.status === "completed") {
-            if (pollingRef.current) {
-              clearInterval(pollingRef.current);
-              pollingRef.current = null;
-              isPollingRef.current = false;
-            }
-          }
-        }
+        const res = await apiFetch(`/api/v2/exam/attempts/${attemptId}/result`);
+        if (res.ok && !stopped) setResult(await res.json());
       } catch (err) {
         console.error("Polling xatosi:", err);
       }
     }, 3000);
 
     return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-        isPollingRef.current = false;
-      }
+      stopped = true;
+      clearInterval(interval);
     };
-  }, [result?.status, attemptId]);
+  }, [hasPendingAi, attemptId]);
 
   useEffect(() => {
     if (result && result.status === "completed" && result.percentage >= 70 && !hasCelebrated.current) {
@@ -312,11 +311,11 @@ export default function ResultPage() {
     setError("");
     try {
     const res = await apiFetch(`/api/v2/exam/attempts/${attemptId}/result`);      
-      if (!res.ok) throw new Error(res.status === 400 ? "Attempt hali yakunlanmagan" : `HTTP ${res.status}`);
+      if (!res.ok) throw new Error(res.status === 400 ? t("rd.err_not_finished") : `HTTP ${res.status}`);
       const data = await res.json();
       setResult(data);
     } catch (err) {
-      if (!isPolling) setError(err instanceof Error ? err.message : "Natija yuklanmadi");
+      if (!isPolling) setError(err instanceof Error ? err.message : t("rd.err_load"));
     } finally {
       if (!isPolling) setLoading(false);
     }
@@ -324,10 +323,10 @@ export default function ResultPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-50">
+      <main className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4" />
-          <p className="text-slate-500">Natija yuklanmoqda...</p>
+          <p className="text-slate-500 dark:text-slate-400">{t("rd.loading")}</p>
         </div>
       </main>
     );
@@ -335,13 +334,13 @@ export default function ResultPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-xl shadow p-8 text-center max-w-md">
+      <main className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-slate-900 rounded-xl shadow p-8 text-center max-w-md">
           <div className="text-5xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Xatolik</h2>
-          <p className="text-slate-600 mb-6">{error}</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t("common.error")}</h2>
+          <p className="text-slate-600 dark:text-slate-300 mb-6">{error}</p>
           <button onClick={() => router.push("/cabinet")} className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-all hover:scale-105 active:scale-95">
-            Kabinetga qaytish
+            {t("rd.back_plain")}
           </button>
         </motion.div>
       </main>
@@ -356,13 +355,16 @@ export default function ResultPage() {
   const pendingAiBlocks = result.blocks.filter((b) => isAiGraded(b.block_type) && b.items.some((i) => i.answer?.ai_status !== "completed")).length;
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 backdrop-blur-md bg-white/80">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 sticky top-0 z-10 backdrop-blur-md bg-white/80 dark:bg-slate-950/80">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <button onClick={() => router.push("/cabinet")} className="text-slate-600 hover:text-slate-900 font-medium flex items-center gap-2 transition-colors">
-            ← Kabinetga qaytish
+          <button onClick={() => router.push("/cabinet")} className="text-slate-600 dark:text-slate-300 hover:text-slate-900 font-medium flex items-center gap-2 transition-colors">
+            {t("rd.back")}
           </button>
-          <h1 className="text-xl font-bold text-slate-900">Imtihon Natijasi</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t("rd.title")}</h1>
+            <AppTopBar />
+          </div>
         </div>
       </header>
 
@@ -372,21 +374,21 @@ export default function ResultPage() {
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl flex items-center gap-3">
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full flex-shrink-0" />
             <div>
-              <p className="font-semibold">Natijalar toliq tayyor emas</p>
-              <p className="text-sm text-amber-700">Writing va Speaking qismlari hali AI tomonidan baholanmoqda. Sahifa avtomatik yangilanadi.</p>
+              <p className="font-semibold">{t("rd.partial_title")}</p>
+              <p className="text-sm text-amber-700">{t("rd.partial_text")}</p>
             </div>
           </motion.div>
         )}
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 text-center relative overflow-hidden">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-8 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-400 via-rose-500 to-purple-500" />
           
           <div className="text-6xl mb-4 animate-bounce">
             {result.percentage >= 80 ? "🏆" : result.percentage >= 50 ? "👍" : "💪"}
           </div>
           
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">{result.exam_title}</h2>
-          <p className="text-slate-500 mb-8 capitalize text-lg">{result.exam_type} imtihoni</p>
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{result.exam_title}</h2>
+          <p className="text-slate-500 dark:text-slate-400 mb-8 capitalize text-lg">{t("rd.exam_of", { type: result.exam_type })}</p>
 
           <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12 mb-8">
             <ProgressRing percentage={result.percentage} size={140} stroke={10} />
@@ -397,8 +399,8 @@ export default function ResultPage() {
                   {result.total_score}
                 </div>
                 <div>
-                  <div className="text-sm text-slate-500">Jami ball</div>
-                  <div className="font-semibold text-slate-900">Maksimal: {result.blocks.reduce((sum, b) => sum + b.items.reduce((isum, i) => isum + i.max_score, 0), 0)}</div>
+                  <div className="text-sm text-slate-500 dark:text-slate-400">{t("rd.total")}</div>
+                  <div className="font-semibold text-slate-900 dark:text-white">{t("rd.max", { n: result.blocks.reduce((sum, b) => sum + b.items.reduce((isum, i) => isum + i.max_score, 0), 0) })}</div>
                 </div>
               </div>
               
@@ -407,24 +409,24 @@ export default function ResultPage() {
                   {result.cefr_estimate}
                 </div>
                 <div>
-                  <div className="text-sm text-slate-500">Taxminiy daraja</div>
-                  <div className="font-semibold text-slate-900">CEFR Level</div>
+                  <div className="text-sm text-slate-500 dark:text-slate-400">{t("rd.est_level")}</div>
+                  <div className="font-semibold text-slate-900 dark:text-white">{t("rd.cefr_level")}</div>
                 </div>
               </div>
             </div>
           </div>
 
           {totalAutoItems > 0 && (
-            <div className="flex items-center justify-center gap-6 text-sm bg-slate-50 p-4 rounded-xl inline-flex flex-wrap">
-              <span className="text-slate-600">📝 Test savollari: <strong className="text-slate-900">{totalAutoItems}</strong></span>
+            <div className="flex items-center justify-center gap-6 text-sm bg-slate-50 dark:bg-slate-800 p-4 rounded-xl inline-flex flex-wrap">
+              <span className="text-slate-600 dark:text-slate-300">{t("rd.test_questions")} <strong className="text-slate-900 dark:text-white">{totalAutoItems}</strong></span>
               <span className="w-px h-4 bg-slate-300 hidden sm:block"></span>
-              <span className="text-emerald-600">✅ Togri: <strong>{correctAutoItems}</strong></span>
+              <span className="text-emerald-600">{t("rd.correct")} <strong>{correctAutoItems}</strong></span>
               <span className="w-px h-4 bg-slate-300 hidden sm:block"></span>
-              <span className="text-red-600">❌ Xato: <strong>{totalAutoItems - correctAutoItems}</strong></span>
+              <span className="text-red-600">{t("rd.wrong")} <strong>{totalAutoItems - correctAutoItems}</strong></span>
               {pendingAiBlocks > 0 && (
                 <>
                   <span className="w-px h-4 bg-slate-300 hidden sm:block"></span>
-                  <span className="text-amber-600">⏳ AI baholamoqda: <strong>{pendingAiBlocks} bo'lim</strong></span>
+                  <span className="text-amber-600">{t("rd.ai_pending_blocks")} <strong>{t("rd.sections_n", { n: pendingAiBlocks })}</strong></span>
                 </>
               )}
             </div>
@@ -434,8 +436,8 @@ export default function ResultPage() {
         <div className="space-y-6">
           {result.blocks.map((block, index) => (
             <TiltCard key={block.block_id} delay={index * 0.1}>
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   {block.block_type === "listening" && "🎧"}
                   {block.block_type === "reading" && "📖"}
                   {block.block_type === "writing" && "✍️"}
@@ -445,7 +447,7 @@ export default function ResultPage() {
                 <span className={`px-4 py-1.5 rounded-full text-sm font-bold border ${
                   block.status === "completed" ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-amber-100 text-amber-800 border-amber-200"
                 }`}>
-                  Ball: {block.score}
+                  {t("rd.score", { n: block.score })}
                 </span>
               </div>
 
@@ -464,14 +466,14 @@ export default function ResultPage() {
                             .filter(opt => answer.selected_options?.includes(opt.id))
                             .map(opt => opt.text)
                             .join(", ")
-                        : "Tanlanmagan";
+                        : t("rd.not_selected");
 
                       const correctTexts = item.correct_option_ids && item.options
                         ? item.options
                             .filter(opt => item.correct_option_ids?.includes(opt.id))
                             .map(opt => opt.text)
                             .join(", ")
-                        : "Noma'lum";
+                        : null;
 
                       return (
                         <motion.div
@@ -480,30 +482,30 @@ export default function ResultPage() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: itemIndex * 0.05 }}
                           className={`border rounded-xl p-4 transition-all duration-300 ${
-                            isCorrect ? "border-emerald-200 bg-emerald-50/50" : "border-red-200 bg-red-50/50"
+                            isCorrect ? "border-emerald-200 bg-emerald-50/50" : "border-red-200 dark:border-red-900 bg-red-50/50"
                           }`}
                         >
                           <div className="flex items-start gap-4">
                             <span className="text-2xl flex-shrink-0 mt-1">{isCorrect ? "✅" : "❌"}</span>
                             <div className="flex-1">
-                              <h4 className="font-semibold text-slate-900 mb-2 text-base">{item.order}. {item.question_text || item.title}</h4>
+                              <h4 className="font-semibold text-slate-900 dark:text-white mb-2 text-base">{item.order}. {item.question_text || item.title}</h4>
                               
                               {/* ✅ Foydalanuvchi javobi (MATN bilan) */}
-                              <p className="text-sm text-slate-600 mb-1">
-                                Sizning javobingiz: <span className={isCorrect ? "text-emerald-700 font-bold" : "text-red-700 font-bold"}>{selectedTexts}</span>
+                              <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">
+                                {t("rd.your_answer_colon")} <span className={isCorrect ? "text-emerald-700 font-bold" : "text-red-700 dark:text-red-300 font-bold"}>{selectedTexts}</span>
                               </p>
                               
                               {/* ✅ To'g'ri javob (MATN bilan) */}
-                              {!isCorrect && correctTexts !== "Noma'lum" && (
+                              {!isCorrect && correctTexts && (
                                 <p className="text-sm text-emerald-700 mt-2 flex items-start gap-2">
                                   <span className="text-lg flex-shrink-0">💡</span>
-                                  <span>To'g'ri javob: <span className="font-bold">{correctTexts}</span></span>
+                                  <span>{t("rd.correct_answer")} <span className="font-bold">{correctTexts}</span></span>
                                 </p>
                               )}
                               
                               <div className="flex items-center gap-3 mt-3">
-                                <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-200 text-slate-700">
-                                  Ball: {answer?.final_score || 0} / {item.max_score}
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                                  {t("rd.score_of", { a: answer?.final_score || 0, b: item.max_score })}
                                 </span>
                               </div>
                             </div>
@@ -513,6 +515,27 @@ export default function ResultPage() {
                     }
 
                     // 2. AI-GRADED (Writing / Speaking) - Pending State
+                    if (
+                      isAiGraded(block.block_type) &&
+                      result.status !== "scoring" &&
+                      (!answer || !["pending", "processing", "completed"].includes(answer.ai_status))
+                    ) {
+                      return (
+                        <div key={item.id} className="border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 rounded-xl p-6 text-center">
+                          <p className="text-slate-700 dark:text-slate-200 font-semibold">
+                            {answer?.text_answer?.trim() || answer?.transcript_text?.trim() || answer?.audio_url
+                              ? t("rd.ai_error")
+                              : t("rd.no_answer")}
+                          </p>
+                          <p className="text-slate-400 text-xs mt-1">ai_status: {answer?.ai_status ?? "—"}</p>
+                          {answer?.feedback?.error && (
+                            <p className="text-red-500 text-xs mt-2 break-words">{String(answer.feedback.error)}</p>
+                          )}
+                          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t("rd.score_of", { a: 0, b: item.max_score })}</p>
+                        </div>
+                      );
+                    }
+
                     if (isAiGraded(block.block_type) && (!answer || answer.ai_status !== "completed")) {
                       return (
                         <motion.div
@@ -522,8 +545,8 @@ export default function ResultPage() {
                           className="border border-amber-200 bg-amber-50/50 rounded-xl p-6 text-center"
                         >
                           <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full mx-auto mb-3" />
-                          <p className="text-amber-800 font-semibold">AI tomonidan baholanmoqda...</p>
-                          <p className="text-amber-600 text-sm mt-1">Bu qismning natijasi birozdan keyin chiqadi.</p>
+                          <p className="text-amber-800 font-semibold">{t("rd.ai_scoring")}</p>
+                          <p className="text-amber-600 text-sm mt-1">{t("rd.ai_scoring_sub")}</p>
                         </motion.div>
                       );
                     }
@@ -535,12 +558,12 @@ export default function ResultPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: itemIndex * 0.05 }}
-                        className="border border-slate-200 bg-white rounded-xl p-5 shadow-sm"
+                        className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm"
                       >
                         {block.block_type === "writing" && answer?.text_answer && (
                           <div className="mb-4">
-                            <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Sizning javobingiz</h5>
-                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-slate-800 text-sm leading-relaxed whitespace-pre-wrap">
+                            <h5 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">{t("rd.your_answer")}</h5>
+                            <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 text-sm leading-relaxed whitespace-pre-wrap">
                               {answer.text_answer}
                             </div>
                           </div>
@@ -548,23 +571,28 @@ export default function ResultPage() {
                         
                         {block.block_type === "speaking" && (
                           <div className="mb-4">
-                            <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Sizning javobingiz</h5>
+                            <h5 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">{t("rd.your_answer")}</h5>
                             {answer?.audio_url && <audio controls src={answer.audio_url} className="w-full mb-3 h-10" />}
                             {answer?.transcript_text ? (
-                              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-slate-800 text-sm leading-relaxed italic">
+                              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 text-sm leading-relaxed italic">
                                 "{answer.transcript_text}"
                               </div>
                             ) : (
-                              <p className="text-sm text-slate-500 italic">Transkript mavjud emas</p>
+                              <p className="text-sm text-slate-500 dark:text-slate-400 italic">{t("rd.no_transcript")}</p>
                             )}
                           </div>
                         )}
 
+                        {answer?.feedback?.skipped && (
+                          <p className="mb-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            {String(answer.feedback.reason || t("rd.ai_skipped"))}
+                          </p>
+                        )}
                         {answer?.feedback && <AiFeedbackView feedback={answer.feedback} />}
                         
-                        <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-                          <span className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                            🤖 AI Yakuniy ball
+                        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            {t("rd.ai_final")}
                           </span>
                           <span className="text-lg font-bold text-orange-600">{answer?.final_score || 0} / {item.max_score}</span>
                         </div>
@@ -578,11 +606,11 @@ export default function ResultPage() {
         </div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="flex flex-col sm:flex-row gap-4 pb-12">
-          <button onClick={() => router.push("/cabinet")} className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 py-3.5 rounded-xl font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]">
-            🏠 Kabinetga qaytish
+          <button onClick={() => router.push("/cabinet")} className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 hover:bg-slate-50 text-slate-800 dark:text-slate-100 py-3.5 rounded-xl font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]">
+            {t("rd.back_home_btn")}
           </button>
           <button onClick={() => router.push(`/exams?type=${result.exam_type}`)} className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-orange-200 transition-all hover:scale-[1.02] active:scale-[0.98]">
-            🔄 Yana imtihon topshirish
+            {t("rd.retake")}
           </button>
         </motion.div>
       </div>

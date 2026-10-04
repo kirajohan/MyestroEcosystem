@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const JOURNEY_STEPS = [
@@ -56,6 +56,13 @@ const JOURNEY_STEPS = [
 
 export function LearningJourney() {
   const [selectedStep, setSelectedStep] = useState<number | null>(null);
+
+  // Modal ochiqligida orqa sahifa scroll bo'lmasin (iOS/Android)
+  useEffect(() => {
+    if (selectedStep === null) return;
+    document.body.classList.add("no-scroll");
+    return () => document.body.classList.remove("no-scroll");
+  }, [selectedStep]);
 
   return (
     // ✅ 1. Orqa fon rangi olib tashlandi (transparent)
@@ -119,7 +126,7 @@ export function LearningJourney() {
                     <motion.div
                       whileHover={{ scale: 1.02, y: -5 }}
                       onClick={() => setSelectedStep(idx)}
-                      className="cursor-pointer group bg-slate-900/40 backdrop-blur-sm border border-slate-800 rounded-2xl p-5 md:p-6 hover:border-orange-500/50 transition-all duration-300 shadow-lg"
+                      className="cursor-pointer group bg-slate-900/40 border border-slate-800 rounded-2xl p-5 md:p-6 hover:border-orange-500/50 transition-all duration-300 shadow-lg"
                     >
                       <div className="flex items-center gap-4 mb-3">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-2xl shadow-lg shadow-orange-500/20">
@@ -135,12 +142,7 @@ export function LearningJourney() {
                       <p className="text-sm text-slate-300 mb-3">{step.description}</p>
                       <div className="text-xs text-orange-400 font-semibold flex items-center gap-1">
                         Batafsil ko'rish
-                        <motion.span
-                          animate={{ x: [0, 4, 0] }}
-                          transition={{ repeat: Infinity, duration: 1.5 }}
-                        >
-                          →
-                        </motion.span>
+                        <span className="animate-nudge-x inline-block">→</span>
                       </div>
                     </motion.div>
                   </div>

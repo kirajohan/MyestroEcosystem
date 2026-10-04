@@ -6,24 +6,6 @@
    GLOBAL DARK MODE STYLES
    Barcha matn va fon uchun default dark mode
    ═══════════════════════════════════════════════════════════ */
-/* Sekin avtomatik scroll (faqat scroll bo'lmaganda ishlaydi) */
-@keyframes slow-scroll {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-33.33%); /* 3 marta takrorlangani uchun 1/3 */
-  }
-}
-
-.animate-slow-scroll {
-  animation: slow-scroll 60s linear infinite;
-}
-
-/* Hover qilganda to'xtatish */
-.animate-slow-scroll:hover {
-  animation-play-state: paused;
-}
 @layer base {
   /* Light mode (default) */
   html {
@@ -206,12 +188,30 @@ a,
 input,
 textarea,
 select {
-  transition: all 0.15s ease;
+  /* transform kiritilmagan: framer-motion uni o'zi boshqaradi (CSS transition lag beradi) */
+  transition-property: color, background-color, border-color, box-shadow, opacity,
+    text-decoration-color, fill, stroke;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
 }
 
 /* Prevent layout shift from scrollbar */
 html {
-  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 300ms tap kechikishi va double-tap zoom'ni olib tashlash */
+button,
+a,
+input,
+select,
+textarea,
+summary,
+[role="button"] {
+  touch-action: manipulation;
 }
 
 /* Smooth scroll */
@@ -270,4 +270,47 @@ body.no-scroll {
 /* Hover qilganda to'xtatish */
 .animate-slow-scroll:hover {
   animation-play-state: paused;
+}
+
+/* ═══ Landing: JS o'rniga CSS (compositor) animatsiyalar — ko'rinish avvalgi framer animatsiyalar bilan bir xil ═══ */
+@keyframes icon-float {
+  0%, 100% { transform: translateY(-5px); }
+  50% { transform: translateY(5px); }
+}
+.animate-icon-float {
+  animation: icon-float 4s ease-in-out infinite;
+}
+
+@keyframes float-word {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(10px, -20px) rotate(5deg); }
+}
+.animate-float-word {
+  animation: float-word 4s ease-in-out infinite;
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-nudge-x,
+  .animate-icon-float,
+  .animate-float-word,
+  .animate-marquee,
+  .animate-slow-gradient {
+    animation: none;
+  }
+}
+
+@keyframes nudge-x {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(4px); }
+}
+.animate-nudge-x {
+  animation: nudge-x 1.5s ease-in-out infinite;
 }

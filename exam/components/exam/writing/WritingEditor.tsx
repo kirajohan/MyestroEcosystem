@@ -34,9 +34,11 @@ export default function WritingEditor({
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync initialValue when item changes
+  // (faqat item almashganda — aks holda saqlash tugagach yangi yozilgan matn eskisiga qaytib ketadi)
   useEffect(() => {
     setText(initialValue);
-  }, [itemId, initialValue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemId]);
 
   // ── Word count ──────────────────────────────────────
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
@@ -75,8 +77,24 @@ export default function WritingEditor({
     };
   }, [text, itemId, onSave, initialValue]);
 
+  // ── Flush: kutilayotgan matnni darhol saqlash (blur / unmount) ──
+  const latestRef = useRef({ text, initialValue, itemId, onSave });
+  latestRef.current = { text, initialValue, itemId, onSave };
+
+  const flushSave = useCallback(() => {
+    const { text: t, initialValue: iv, itemId: id, onSave: save } = latestRef.current;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    if (t !== iv) save(id, t);
+  }, []);
+
+  // Block/item almashganda yoki sahifadan chiqilganda yo'qolmasligi uchun
+  useEffect(() => () => flushSave(), [itemId, flushSave]);
+
   // ── Paste blocker ───────────────────────────────────
+  // TEST: paste ruxsat etilgan. Qayta bloklash uchun true qiling.
+  const BLOCK_PASTE = false;
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    if (!BLOCK_PASTE) return;
     e.preventDefault();
     setPasteWarning(true);
     setTimeout(() => setPasteWarning(false), 2500);
@@ -229,7 +247,10 @@ export default function WritingEditor({
                 onChange={handleChange}
                 onPaste={handlePaste}
                 onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
+                onBlur={() => {
+                  setIsFocused(false);
+                  flushSave();
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder="Start writing your answer here..."
                 className={`w-full resize-none outline-none transition-colors ${
