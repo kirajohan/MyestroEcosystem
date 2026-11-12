@@ -18,6 +18,7 @@ from bot.keyboards.reply import (
 from bot.utils.i18n import get_text
 from bot.config import settings
 import httpx
+from bot.utils.backend_http import BackendClient
 
 router = Router()
 
@@ -29,7 +30,7 @@ async def _check_phone(phone: str) -> tuple[bool, dict]:
     """Check if phone exists in DB."""
     
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with BackendClient(timeout=5.0) as client:
             response = await client.post(
                 CHECK_PHONE_URL,
                 json={"phone": phone},
@@ -45,7 +46,7 @@ async def _check_phone(phone: str) -> tuple[bool, dict]:
 async def _login_by_phone(telegram_id: int, phone: str) -> tuple[bool, dict, Optional[dict]]:
     """Login by phone (auto-login via contact share)."""
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with BackendClient(timeout=10.0) as client:
             response = await client.post(
                 PHONE_LOGIN_URL,
                 json={"telegram_id": telegram_id, "phone": phone},
@@ -111,7 +112,7 @@ async def handle_contact(message: types.Message, state: FSMContext):
 async def _check_phone(phone: str) -> tuple[bool, dict]:
     """Check if phone exists in DB."""
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with BackendClient(timeout=5.0) as client:
             response = await client.post(
                 CHECK_PHONE_URL,
                 json={"phone": phone},
@@ -129,7 +130,7 @@ async def _check_phone(phone: str) -> tuple[bool, dict]:
 async def _login_by_phone(telegram_id: int, phone: str, password: str = None) -> tuple[bool, dict, Optional[dict]]:
     """Login by phone. If password provided, verify it too."""
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with BackendClient(timeout=10.0) as client:
             payload = {"telegram_id": telegram_id, "phone": phone}
             if password:
                 payload["password"] = password

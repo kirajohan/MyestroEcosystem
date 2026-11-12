@@ -133,7 +133,7 @@
     if (loading) {
       return (
         <div className="space-y-6 animate-pulse">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 min-w-0">
             <div className="w-9 h-9 bg-gray-200 rounded-lg" />
             <div className="flex-1">
               <div className="h-5 bg-gray-200 rounded w-1/3" />
@@ -175,8 +175,8 @@
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
             <Link
               href="/tests"
               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
@@ -184,14 +184,14 @@
             >
               <ArrowLeft size={20} />
             </Link>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">{test.title}</h1>
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-gray-900 truncate">{test.title}</h1>
               <p className="text-sm text-gray-500 mt-0.5">
                 Savollar boshqaruvi • {questions.length} ta savol
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setIsTestFormOpen(true)}
               className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
@@ -215,7 +215,7 @@
         {/* Questions Section */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
           {/* Section Header */}
-          <div className="flex items-center justify-between p-5 border-b border-gray-200">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Savollar</h2>
               <p className="text-sm text-gray-500 mt-0.5">

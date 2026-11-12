@@ -5,6 +5,7 @@ import logging
 import sys
 import os
 import httpx
+from bot.utils.backend_http import BackendClient
 
 # Add parent directories to path for imports
 _app_root = os.path.abspath(os.path.dirname(__file__))
@@ -88,7 +89,7 @@ async def main():
     redis_storage = RedisStorage.from_url(settings.REDIS_URL + "/1")
     dp = Dispatcher(storage=redis_storage)  # ← BITTA Dispatcher!
 
-    http_client = httpx.AsyncClient(
+    http_client = BackendClient(
         timeout=30.0,
         limits=httpx.Limits(max_connections=100)
     )

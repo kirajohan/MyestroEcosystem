@@ -15,6 +15,7 @@ from bot.keyboards.reply import (
     admin_contact_kb,
 )
 import httpx
+from bot.utils.backend_http import BackendClient
 
 
 router = Router()
@@ -54,7 +55,7 @@ async def show_profile(message: types.Message, state: FSMContext, from_callback:
 
     # Backend'dan yangi ma'lumotlarni olish
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with BackendClient(timeout=5.0) as client:
             resp = await client.get(f"{API_BASE_URL}/sync/user/{telegram_id}")
             if resp.status_code == 200:
                 data = resp.json()
@@ -349,7 +350,7 @@ async def password_change_confirm(message: types.Message, state: FSMContext):
     telegram_id = message.from_user.id
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with BackendClient(timeout=10.0) as client:
             resp = await client.put(
                 f"{API_BASE_URL}/sync/user/{telegram_id}",
                 json={"password": new_password},
@@ -400,7 +401,7 @@ async def profile_edit_cefr(message: types.Message, state: FSMContext):
         return
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with BackendClient(timeout=10.0) as client:
             resp = await client.put(
                 f"{API_BASE_URL}/sync/user/{telegram_id}",
                 json={"cefr_level": level},
@@ -513,7 +514,7 @@ async def profile_edit_value(message: types.Message, state: FSMContext):
 
     # Update via backend
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with BackendClient(timeout=10.0) as client:
             resp = await client.put(
                 f"{API_BASE_URL}/sync/user/{telegram_id}",
                 json={api_field: new_value},

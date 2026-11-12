@@ -1,3 +1,4 @@
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'https://myestroeco-backend-production.up.railway.app';
@@ -10,7 +11,7 @@ export async function GET(
   try {
     const backendUrl = `${BACKEND_URL}/api/bot-texts/${params.id}`;
     
-    const res = await fetch(backendUrl, {
+    const res = await backendFetch(backendUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -45,7 +46,7 @@ export async function PUT(
     const body = await request.json();
     const backendUrl = `${BACKEND_URL}/api/bot-texts/${params.id}`;
     
-    const res = await fetch(backendUrl, {
+    const res = await backendFetch(backendUrl, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -80,7 +81,7 @@ export async function DELETE(
   try {
     const backendUrl = `${BACKEND_URL}/api/bot-texts/${params.id}`;
     
-    const res = await fetch(backendUrl, {
+    const res = await backendFetch(backendUrl, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

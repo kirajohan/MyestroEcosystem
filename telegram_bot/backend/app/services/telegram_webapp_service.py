@@ -39,7 +39,7 @@ class TelegramWebAppService:
             # 3. Secret key: HMAC_SHA256(bot_token, "WebAppData")
             secret_key = hmac.new(
                 b"WebAppData",
-                settings.TELEGRAM_BOT_TOKEN.encode(),
+                settings.BOT_TOKEN.encode(),
                 hashlib.sha256,
             ).digest()
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "@/app/providers";
 
 const DEMO_TABS = [
   { id: "ielts", label: "IELTS", color: "from-red-500 to-orange-500" },
@@ -10,6 +11,7 @@ const DEMO_TABS = [
 ];
 
 export function InteractiveDemoSection() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("ielts");
   const [writingText, setWritingText] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -72,7 +74,7 @@ export function InteractiveDemoSection() {
 <section className="relative py-24 overflow-hidden">
   {/* Gradient fon - boshqa bo'limlar bilan silliq o'tish */}
     {/* (butun bo'lim bo'ylab backdrop-blur-xl olib tashlandi: ostidagi Aurora allaqachon yumshoq, farq sezilmaydi, lekin GPU yuki katta) */}
-    <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-950/80 to-slate-900" />
+    <div className="absolute inset-0 bg-gradient-to-b from-slate-50 via-white/80 to-slate-50 dark:from-slate-900 dark:via-slate-950/80 dark:to-slate-900" />
 
     {/* Neon glow effektlari — blur-3xl filter o'rniga radial-gradient (ko'rinish bir xil, arzon) */}
     <div
@@ -95,29 +97,29 @@ export function InteractiveDemoSection() {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <div className="inline-block bg-orange-500/20 text-orange-400 text-sm font-semibold px-4 py-2 rounded-full mb-4 border border-orange-500/30">
-            Sinab ko`ring
+          <div className="inline-block bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30 text-sm font-semibold px-4 py-2 rounded-full mb-4 border">
+            {t("demo.badge")}
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Interaktiv{" "}
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
+            {t("demo.title_a")}
             <span className="bg-gradient-to-r from-orange-500 to-amber-400 bg-clip-text text-transparent">
-              o`rganish
+              {t("demo.title_b")}
             </span>
           </h2>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-            Sun`iy intellekt yordamida yozishingiz va gapirishingizni real vaqtda tekshiring.
+          <p className="text-slate-600 dark:text-slate-400 text-lg max-w-2xl mx-auto">
+            {t("demo.sub")}
           </p>
         </motion.div>
 
         {/* Exam Format Tabs */}
         <div className="flex justify-center mb-10">
-          <div className="bg-slate-900/50 backdrop-blur-md p-1.5 rounded-2xl border border-slate-800 inline-flex">
+          <div className="bg-white/70 dark:bg-slate-900/50 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 inline-flex">
             {DEMO_TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`relative px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                  activeTab === tab.id ? "text-white" : "text-slate-400 hover:text-white"
+                  activeTab === tab.id ? "text-white" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 {activeTab === tab.id && (
@@ -145,14 +147,14 @@ export function InteractiveDemoSection() {
           >
             {/* Glassmorphism & Dark Glow Border */}
             <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-3xl blur opacity-20 group-hover:opacity-50 transition duration-500" />
-            <div className="relative bg-slate-900/80 border border-slate-800 rounded-3xl p-6 h-full flex flex-col">
+            <div className="relative bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 h-full flex flex-col">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-xl shadow-lg">
                   ✍️
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">AI Writing Checker</h3>
-                  <p className="text-xs text-slate-400">Grammatika va uslubni tekshirish</p>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">AI Writing Checker</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t("demo.writer_sub")}</p>
                 </div>
               </div>
 
@@ -160,8 +162,8 @@ export function InteractiveDemoSection() {
                 <textarea
                   value={writingText}
                   onChange={(e) => setWritingText(e.target.value)}
-                  placeholder="Ingliz tilida qisqa matn yozing (masalan: I has went to school yesterday)..."
-                  className="w-full flex-1 bg-slate-950/50 border border-slate-800 rounded-xl p-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 resize-none transition-all min-h-[160px]"
+                  placeholder={t("demo.placeholder")}
+                  className="w-full flex-1 bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 resize-none transition-all min-h-[160px]"
                 />
                 
                 {/* ⚡ Laser Scanning Effect */}
@@ -189,10 +191,10 @@ export function InteractiveDemoSection() {
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
                       />
-                      Tahlil qilinmoqda...
+                      {t("demo.analyzing")}
                     </>
                   ) : (
-                    <>🚀 Tekshirish</>
+                    <>{t("demo.check")}</>
                   )}
                 </button>
               </div>
@@ -204,10 +206,10 @@ export function InteractiveDemoSection() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="mt-6 pt-6 border-t border-slate-800 overflow-hidden"
+                    className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800 overflow-hidden"
                   >
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-slate-400 text-sm font-medium">Umumiy Ball</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">{t("demo.overall")}</span>
                       <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
                         7.0
                       </span>
@@ -220,10 +222,10 @@ export function InteractiveDemoSection() {
                     </div>
 
                     <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                      <p className="text-sm text-red-300">
-                        <span className="font-semibold">Xato:</span>{" "}
+                      <p className="text-sm text-red-600 dark:text-red-300">
+                        <span className="font-semibold">{t("demo.mistake")}</span>{" "}
                         <span className="line-through opacity-70">I has went</span>{" "}
-                        <span className="text-emerald-400 font-semibold">➔ I went</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">➔ I went</span>
                       </p>
                     </div>
                   </motion.div>
@@ -240,14 +242,14 @@ export function InteractiveDemoSection() {
             className="relative group"
           >
             <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-3xl blur opacity-20 group-hover:opacity-50 transition duration-500" />
-            <div className="relative bg-slate-900/80 border border-slate-800 rounded-3xl p-6 h-full flex flex-col">
+            <div className="relative bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 h-full flex flex-col">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-xl shadow-lg">
                   🎤
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">Speaking Visualizer</h3>
-                  <p className="text-xs text-slate-400">Talaffuz va ravonlikni baholash</p>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Speaking Visualizer</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t("demo.voice_sub")}</p>
                 </div>
                 {isRecording && (
                   <span className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-red-400 bg-red-500/10 px-2 py-1 rounded-full border border-red-500/20">
@@ -257,7 +259,7 @@ export function InteractiveDemoSection() {
                 )}
               </div>
 
-              <div className="flex-1 flex flex-col items-center justify-center min-h-[200px] bg-slate-950/50 rounded-2xl border border-slate-800/50 relative overflow-hidden">
+              <div className="flex-1 flex flex-col items-center justify-center min-h-[200px] bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800/50 relative overflow-hidden">
                 {/* 🎵 Dynamic Soundwave Animation */}
                 <div className="flex items-center gap-1.5 h-16">
                   {Array.from({ length: 24 }).map((_, i) => (
@@ -281,16 +283,16 @@ export function InteractiveDemoSection() {
                       className={`w-1.5 rounded-full ${
                         isRecording
                           ? "bg-gradient-to-t from-purple-500 to-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
-                          : "bg-slate-700"
+                          : "bg-slate-300 dark:bg-slate-700"
                       }`}
                     />
                   ))}
                 </div>
 
-                <p className="mt-6 text-slate-400 text-sm text-center px-4">
+                <p className="mt-6 text-slate-600 dark:text-slate-400 text-sm text-center px-4">
                   {isRecording
-                    ? "Gapirishni davom eting... AI tinglamoqda."
-                    : "Mikrofon tugmasini bosib, 60 soniya davomida ingliz tilida gapiring."}
+                    ? t("demo.rec_on")
+                    : t("demo.rec_off")}
                 </p>
               </div>
 
@@ -303,9 +305,9 @@ export function InteractiveDemoSection() {
                 }`}
               >
                 {isRecording ? (
-                  <>⏹ To`xtatish</>
+                  <>{t("demo.stop")}</>
                 ) : (
-                  <>🎙 Yozib olishni boshlash</>
+                  <>{t("demo.start_rec")}</>
                 )}
               </button>
 
@@ -317,9 +319,9 @@ export function InteractiveDemoSection() {
                    animate={{ opacity: 1, y: 0 }}
                    className="mt-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg"
                  >
-                   <p className="text-sm text-purple-300 flex items-center gap-2">
+                   <p className="text-sm text-purple-700 dark:text-purple-300 flex items-center gap-2">
                      <span className="text-lg">✨</span>
-                     <span>AI tahlili: Fluency 85%, Pronunciation 78%. Ajoyib natija!</span>
+                     <span>{t("demo.ai_result")}</span>
                    </p>
                  </motion.div>
                 )}
@@ -339,10 +341,10 @@ function ProgressMeter({ label, score, color }: { label: string; score: number; 
   return (
     <div>
       <div className="flex justify-between text-xs mb-1.5">
-        <span className="text-slate-300 font-medium">{label}</span>
-        <span className="text-slate-400">{score}%</span>
+        <span className="text-slate-700 dark:text-slate-300 font-medium">{label}</span>
+        <span className="text-slate-500 dark:text-slate-400">{score}%</span>
       </div>
-      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+      <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${score}%` }}

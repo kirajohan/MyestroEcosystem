@@ -3,6 +3,7 @@
 Provides functions to fetch and format conversation history from Backend API.
 """
 
+from bot.utils.backend_http import BackendClient
 from typing import List, Dict, Optional
 from bot.config import settings
 
@@ -27,7 +28,7 @@ async def fetch_conversation_context(
     import httpx
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with BackendClient(timeout=5.0) as client:
             resp = await client.get(
                 f"{api_url}/users/me/conversations?limit={limit}",
                 headers={"X-Telegram-User-ID": str(user_id)},

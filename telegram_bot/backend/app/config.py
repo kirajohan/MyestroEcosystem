@@ -13,9 +13,12 @@ class Settings(BaseSettings):
     # JWT
     JWT_ACCESS_SECRET: str = "b376f24c1d2bfbaacfa9ef51027b74f40cb3aa9a8497aa50dd38c52c6bff5d07"
     JWT_REFRESH_SECRET: str = "b376f24c1d2bfbaacfa9ef51027b74f40cb3aa9a8497aa50dd38c52c6bff5d07"
-    JWT_ACCESS_EXPIRE: int = 15  # minutes
+    JWT_ACCESS_EXPIRE: int = 1 # minutes
     JWT_REFRESH_EXPIRE: int = 10080  # minutes (7 days)
     
+    # Servislararo (bot -> backend) autentifikatsiya kaliti. Bo'sh bo'lsa himoya O'CHIQ (faqat ogohlantirish).
+    INTERNAL_API_KEY: str = ""
+
     # OpenRouter
     OPENROUTER_API_KEY: str = "[REDACTED]"
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"

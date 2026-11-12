@@ -1,4 +1,5 @@
 // C:\Projects\MyestroEco\MyestroEco\admin\app\api\broadcast\history\route.ts
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: Token topilmadi' }, { status: 401 });
     }
 
-    const backendResp = await fetch(`${API_BASE_URL}/broadcast/history`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/broadcast/history`, {
       method: 'GET',
       headers: { 
         'Content-Type': 'application/json',

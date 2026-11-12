@@ -81,7 +81,7 @@ export function MobileSidebar() {
       {/* Mobile menu button — Header'da ko'rinadi */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-3 left-3 z-50 md:hidden p-2.5 bg-white rounded-lg shadow-md border border-slate-200 hover:bg-slate-50 transition"
+        className="fixed top-3 left-3 z-[70] md:hidden p-2.5 bg-white rounded-lg shadow-md border border-slate-200 hover:bg-slate-50 transition"
       >
         <AnimatePresence mode="wait">
           {isOpen ? (
@@ -115,7 +115,7 @@ export function MobileSidebar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-30 bg-slate-900/60 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm md:hidden"
             onClick={() => setIsOpen(false)}
           />
         )}
@@ -129,7 +129,7 @@ export function MobileSidebar() {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed left-0 top-0 h-screen w-72 bg-slate-900 flex flex-col z-40 md:hidden border-r border-slate-800"
+            className="fixed left-0 top-0 h-screen w-72 bg-slate-900 flex flex-col z-[60] md:hidden border-r border-slate-800"
           >
             {/* Logo + User */}
             <div className="p-5 border-b border-slate-800">

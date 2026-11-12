@@ -1,3 +1,4 @@
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     backendFormData.append('file', file);
 
     // Backend MEDIA_UPLOAD channeliga yuklab, telegram_file_id qaytaradi
-    const backendResp = await fetch(`${API_BASE_URL}/broadcast/upload-media`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/broadcast/upload-media`, {
       method: 'POST',
       body: backendFormData,
     });

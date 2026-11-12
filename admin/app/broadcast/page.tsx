@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -142,7 +143,7 @@ export default function BroadcastPage() {
         payload.target_user_ids = targetUserIds;
       }
 
-      const res = await fetch('/api/broadcast', {
+      const res = await authFetch('/api/broadcast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -162,7 +163,7 @@ export default function BroadcastPage() {
 
     async function poll() {
       try {
-        const res = await fetch(`/api/broadcast/status/${broadcastId}`);
+        const res = await authFetch(`/api/broadcast/status/${broadcastId}`);
         if (!res.ok) return;
         const data: BroadcastProgress = await res.json();
         setProgress(data);
@@ -207,12 +208,12 @@ export default function BroadcastPage() {
   const StatusIcon = statusConfig?.icon || Clock;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/30 p-4 md:p-6">
+    <div className="bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
       <div className="mx-auto max-w-6xl">
         {/* ─── Header ─── */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-lg shadow-orange-500/30">
+            <div className="flex h-10 w-10 md:h-14 md:w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-lg shadow-orange-500/30">
               <Megaphone className="h-7 w-7 text-white" />
             </div>
             <div>
@@ -318,7 +319,7 @@ export default function BroadcastPage() {
                 Media (ixtiyoriy)
               </h2>
 
-              <div className="grid grid-cols-4 gap-2 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
                 {(Object.keys(MEDIA_ICONS) as MediaType[]).map((type) => {
                   const Icon = MEDIA_ICONS[type];
                   const isSelected = mediaType === type;

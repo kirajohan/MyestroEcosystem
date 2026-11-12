@@ -2,45 +2,17 @@
 
 import { memo, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-
-const KEYWORDS = [
-  "AI",
-  "texnologiyalari",
-  "shaxsiylashtirilgan",
-  "feedback",
-  "real",
-  "vaqtda",
-  "tuzatish",
-];
+import { useLanguage } from "@/app/providers";
 
 const METHOD_CARDS = [
-  {
-    icon: "🧠",
-    title: "Active Recall",
-    desc: "Faol eslash orqali bilimni mustahkamlash",
-    color: "from-cyan-500 to-blue-600",
-  },
-  {
-    icon: "🔄",
-    title: "Spaced Repetition",
-    desc: "Unutish egri chizigiga qarshi takrorlash",
-    color: "from-purple-500 to-pink-600",
-  },
-  {
-    icon: "⚡",
-    title: "Instant AI Feedback",
-    desc: "Xatolarni darhol tuzatish va tushuntirish",
-    color: "from-amber-500 to-orange-600",
-  },
-  {
-    icon: "🎯",
-    title: "Personalized Path",
-    desc: "Sizning darajangizga mos shaxsiy yo'l",
-    color: "from-emerald-500 to-teal-600",
-  },
+  { icon: "🧠", title: "Active Recall", descKey: "method.c1", color: "from-cyan-500 to-blue-600" },
+  { icon: "🔄", title: "Spaced Repetition", descKey: "method.c2", color: "from-purple-500 to-pink-600" },
+  { icon: "⚡", title: "Instant AI Feedback", descKey: "method.c3", color: "from-amber-500 to-orange-600" },
+  { icon: "🎯", title: "Personalized Path", descKey: "method.c4", color: "from-emerald-500 to-teal-600" },
 ];
 
 export function MethodSection() {
+  const { t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
   
   // ✨ YANGI: Ko'proq scroll joyi
@@ -54,8 +26,8 @@ export function MethodSection() {
   const cardsY = useTransform(scrollYProgress, [0.25, 0.4], [50, 0]);
   const glassOpacity = useTransform(scrollYProgress, [0, 0.15], [0.3, 1]);
 
-  const fullText =
-    "Biz isbotlangan til o'rganish metodlarini zamonaviy AI texnologiyalari bilan birlashtirib, shaxsiylashtirilgan feedback, real vaqtda tuzatish va tez o'sishni ta'minlaymiz.";
+  const fullText = t("method.text");
+  const keywords = t("method.keywords").split(",");
   
   const words = fullText.split(" ");
 
@@ -87,7 +59,7 @@ export function MethodSection() {
           {/* Glass Container - Mobile uchun yengilroq */}
           <motion.div
             style={{ opacity: glassOpacity }}
-            className="relative rounded-2xl md:rounded-[2.5rem] bg-slate-900/60 backdrop-blur-md border border-slate-700/50 p-6 md:p-12 lg:p-16 shadow-2xl overflow-hidden"
+            className="relative rounded-2xl md:rounded-[2.5rem] bg-white/70 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200 dark:border-slate-700/50 p-6 md:p-12 lg:p-16 shadow-2xl overflow-hidden"
           >
             {/* Background Glow */}
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 pointer-events-none" />
@@ -99,13 +71,13 @@ export function MethodSection() {
               viewport={{ once: true }}
               className="text-center mb-6 md:mb-10 relative z-10"
             >
-              <div className="inline-block bg-cyan-500/20 text-cyan-400 text-xs md:text-sm font-semibold px-3 md:px-4 py-1.5 md:py-2 rounded-full mb-3 md:mb-4 border border-cyan-500/30">
-                Bizning Metodika
+              <div className="inline-block bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-400 dark:border-cyan-500/30 text-xs md:text-sm font-semibold px-3 md:px-4 py-1.5 md:py-2 rounded-full mb-3 md:mb-4 border">
+                {t("method.badge")}
               </div>
-              <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white">
-                Qanday{" "}
+              <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-slate-900 dark:text-white">
+                {t("method.title_a")}
                 <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                  ishlaydi?
+                  {t("method.title_b")}
                 </span>
               </h2>
             </motion.div>
@@ -120,7 +92,7 @@ export function MethodSection() {
                 
                 const start = groupIndex / totalGroups;
                 const end = start + 1 / totalGroups;
-                const isKeyword = KEYWORDS.includes(word.replace(/[.,]/g, ""));
+                const isKeyword = keywords.includes(word.replace(/[.,]/g, ""));
 
                 return (
                   <WordReveal
@@ -146,7 +118,7 @@ export function MethodSection() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: idx * 0.1 }}
-                  className="group relative bg-slate-800/50 border border-slate-700/50 rounded-xl md:rounded-2xl p-4 md:p-5 hover:border-cyan-500/50 transition-all duration-300"
+                  className="group relative bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl md:rounded-2xl p-4 md:p-5 hover:border-cyan-500/50 transition-all duration-300"
                 >
                   {/* Gradient Glow on Hover */}
                   <div
@@ -159,10 +131,10 @@ export function MethodSection() {
                     >
                       {card.icon}
                     </div>
-                    <h3 className="text-base md:text-lg font-bold text-white mb-1">
+                    <h3 className="text-base md:text-lg font-bold text-slate-900 dark:text-white mb-1">
                       {card.title}
                     </h3>
-                    <p className="text-xs md:text-sm text-slate-400">{card.desc}</p>
+                    <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400">{t(card.descKey)}</p>
                   </div>
                 </motion.div>
               ))}
@@ -195,7 +167,7 @@ const WordReveal = memo(function WordReveal({
       className={`inline-block mr-2 md:mr-3 mb-2 transition-all duration-300 ${
         isKeyword
           ? "bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(34,211,238,0.6)]"
-          : "text-white"
+          : "text-slate-900 dark:text-white"
       }`}
     >
       {word}

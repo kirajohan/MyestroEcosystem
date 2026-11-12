@@ -4,6 +4,7 @@ Tests API — Telegram Quiz Poll uchun testlar va savollar.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from app.core.deps import require_admin, require_service_or_admin
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 from typing import List, Optional
@@ -143,7 +144,7 @@ async def get_public_tests_all(
 
 
 # ── CREATE TEST ──
-@router.post("", response_model=TestOut, status_code=201)
+@router.post("", response_model=TestOut, status_code=201, dependencies=[Depends(require_admin)])
 async def create_test(
     test_data: TestCreate,
     db: AsyncSession = Depends(get_async_db)
@@ -194,7 +195,7 @@ async def get_test(
 
 
 # ── UPDATE TEST ──
-@router.put("/{test_id}", response_model=TestOut)
+@router.put("/{test_id}", response_model=TestOut, dependencies=[Depends(require_admin)])
 async def update_test(
     test_id: int,
     test_data: TestUpdate,
@@ -237,7 +238,7 @@ async def update_test(
 
 
 # ── DELETE TEST ──
-@router.delete("/{test_id}", status_code=204)
+@router.delete("/{test_id}", status_code=204, dependencies=[Depends(require_admin)])
 async def delete_test(
     test_id: int,
     db: AsyncSession = Depends(get_async_db)
@@ -303,7 +304,7 @@ async def get_test_questions(
 
 
 # ── CREATE QUESTION ──
-@router.post("/{test_id}/questions", response_model=QuestionOut, status_code=201)
+@router.post("/{test_id}/questions", response_model=QuestionOut, status_code=201, dependencies=[Depends(require_admin)])
 async def create_question(
     test_id: int,
     question_data: QuestionCreate,
@@ -353,7 +354,7 @@ async def create_question(
 
 
 # ── CREATE TEST ATTEMPT ──
-@router.post("/attempts", response_model=TestAttemptOut, status_code=201)
+@router.post("/attempts", response_model=TestAttemptOut, status_code=201, dependencies=[Depends(require_service_or_admin)])
 async def create_test_attempt(
     attempt: TestAttemptCreate,
     db: AsyncSession = Depends(get_async_db)
@@ -416,7 +417,7 @@ class GeneratedQuestion(BaseModel):
 # AI GENERATE ENDPOINT
 # ══════════════════════════════════════════════════════════════
 
-@router.post("/ai-generate", response_model=TestOut, status_code=201)
+@router.post("/ai-generate", response_model=TestOut, status_code=201, dependencies=[Depends(require_admin)])
 async def ai_generate_and_create_test(
     req: AITestGenerateRequest,
     db: AsyncSession = Depends(get_async_db)

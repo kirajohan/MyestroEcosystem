@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, FormEvent } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { authFetch } from '@/lib/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -135,7 +136,7 @@ export default function BlockEditPage() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
 
-      const blocksRes = await fetch(
+      const blocksRes = await authFetch(
         `${API_URL}/api/v2/exam/admin/exams/${examId}/blocks`,
         { headers }
       );
@@ -160,7 +161,7 @@ export default function BlockEditPage() {
         time_limit_sec: found.time_limit_sec || 600,
       });
 
-      const itemsRes = await fetch(
+      const itemsRes = await authFetch(
         `${API_URL}/api/v2/exam/admin/blocks/${blockId}/items`,
         { headers }
       );
@@ -200,7 +201,7 @@ export default function BlockEditPage() {
     setSavingBlock(true);
 
     try {
-      const res = await fetch(`${API_URL}/api/v2/exam/admin/blocks/${blockId}`, {
+      const res = await authFetch(`${API_URL}/api/v2/exam/admin/blocks/${blockId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -358,7 +359,7 @@ export default function BlockEditPage() {
         : `${API_URL}/api/v2/exam/admin/blocks/${blockId}/items`;
       const method = selectedItemId ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -386,7 +387,7 @@ export default function BlockEditPage() {
     if (!confirm('Bu savolni ochirishni xohlaysizmi?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/v2/exam/admin/items/${itemId}`, {
+      const res = await authFetch(`${API_URL}/api/v2/exam/admin/items/${itemId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -431,7 +432,7 @@ export default function BlockEditPage() {
   const BlockIcon = currentBlockType?.icon || FileText;
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
+    <div className="flex flex-col min-h-full bg-slate-50">
       {/* Header */}
       <header className="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
         <div className="px-4 md:px-6 py-4 flex items-center gap-3">
@@ -456,7 +457,7 @@ export default function BlockEditPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:flex-row">
         {/* Sidebar - Items List */}
-        <aside className="w-full lg:w-80 lg:sticky lg:top-[73px] lg:h-[calc(100vh-73px)] bg-white lg:border-r border-slate-200 flex flex-col shrink-0 lg:overflow-hidden">
+        <aside className="w-full lg:w-80 lg:sticky lg:top-0 lg:h-[calc(100vh-4rem-73px)] bg-white lg:border-r border-slate-200 flex flex-col shrink-0 lg:overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Savollar</h2>
@@ -643,7 +644,7 @@ export default function BlockEditPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 mb-1.5">Tartib</label>
                   <input
@@ -782,7 +783,7 @@ export default function BlockEditPage() {
                           className="w-full px-4 py-2.5 border border-purple-200 rounded-xl bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all resize-none"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-medium text-purple-800 mb-1.5">
                             Min sozlar
@@ -846,7 +847,7 @@ export default function BlockEditPage() {
                           className="w-full px-4 py-2.5 border border-rose-200 rounded-xl bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all resize-none"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-medium text-rose-800 mb-1.5">
                             Tayyorgarlik (sek)
@@ -967,7 +968,7 @@ export default function BlockEditPage() {
                   )}
 
                   {/* Order + Score */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-slate-900 mb-1.5">
                         Tartib

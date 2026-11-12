@@ -1,6 +1,7 @@
 // components/broadcast/MediaUploader.tsx
 "use client";
 
+import { authFetch } from '@/lib/auth';
 import { useState, useRef, useCallback } from "react";
 
 interface UploadedFile {
@@ -37,7 +38,7 @@ export default function MediaUploader({ onUploadComplete, uploadedFiles, onRemov
       formData.append("file", file);
 
       try {
-        const res = await fetch("/api/broadcast/upload", {
+        const res = await authFetch("/api/broadcast/upload", {
           method: "POST",
           body: formData,
         });

@@ -96,8 +96,8 @@ export function DirectMessage({ telegramId, userName }: DirectMessageProps) {
       </div>
 
       {/* Action buttons */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500">
+      <div className="flex items-center justify-end gap-3">
+        <p className="hidden sm:block text-xs text-slate-500 mr-auto">
           <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-xs">
             Ctrl
           </kbd>

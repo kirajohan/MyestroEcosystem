@@ -2,59 +2,48 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "@/app/providers";
 
 const JOURNEY_STEPS = [
   {
     level: "A1",
     title: "Beginner",
-    duration: "2-3 oy",
     icon: "🌱",
-    description: "Ingliz tilining asoslari: alifbo, oddiy so'zlar, kundalik iboralar.",
-    skills: ["O'zingizni tanishtirish", "Raqamlar va ranglar", "Oddiy savollar berish", "Kundalik iboralar"],
   },
   {
     level: "A2",
     title: "Elementary",
-    duration: "3-4 oy",
     icon: "🌿",
-    description: "Oddiy muloqot, kundalik vaziyatlar, qisqa matnlarni tushunish.",
-    skills: ["Do'konlarda xarid qilish", "Yo'l so'rash", "Qisqa hikoyalar o'qish", "Oddiy xatlar yozish"],
   },
   {
     level: "B1",
     title: "Intermediate",
-    duration: "4-6 oy",
     icon: "🌳",
-    description: "Mustaqil muloqot, murakkabroq matnlar, fikr bildirish.",
-    skills: ["Sayohat rejalashtirish", "Ish suhbatlari", "Maqolalar o'qish", "Insho yozish (150 so'z)"],
   },
   {
     level: "B2",
     title: "Upper Intermediate",
-    duration: "6-8 oy",
     icon: "🚀",
-    description: "Erkin muloqot, professional mavzular, murakkab grammatika.",
-    skills: ["Biznes muzokaralar", "Prezentatsiyalar", "Ilmiy matnlar", "Rasmiy xatlar"],
   },
   {
     level: "C1",
     title: "Advanced",
-    duration: "8-12 oy",
     icon: "⭐",
-    description: "Professional daraja, murakkab tahlillar, akademik yozish.",
-    skills: ["Akademik yozish", "Debatlar", "Ilmiy tadqiqot", "IELTS 7.0+"],
   },
   {
     level: "C2",
     title: "Proficiency",
-    duration: "12+ oy",
     icon: "👑",
-    description: "Mukammal bilish, native speaker darajasi, har qanday mavzu.",
-    skills: ["Adabiy tahlil", "Professional tarjima", "Murakkab munozaralar", "IELTS 8.5+"],
   },
 ];
 
 export function LearningJourney() {
+  const { t } = useLanguage();
+  const stepText = (idx: number) => ({
+    duration: t(`j.${idx + 1}.dur`),
+    description: t(`j.${idx + 1}.desc`),
+    skills: t(`j.${idx + 1}.skills`).split("|"),
+  });
   const [selectedStep, setSelectedStep] = useState<number | null>(null);
 
   // Modal ochiqligida orqa sahifa scroll bo'lmasin (iOS/Android)
@@ -76,18 +65,18 @@ export function LearningJourney() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <div className="inline-block bg-orange-500/20 text-orange-400 text-sm font-semibold px-4 py-2 rounded-full mb-4 border border-orange-500/30">
-            O'quv Yo'li
+          <div className="inline-block bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30 text-sm font-semibold px-4 py-2 rounded-full mb-4 border">
+            {t("journey.badge")}
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            A1 dan C2 gacha{" "}
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
+            {t("journey.title_a")}
             {/* ✅ 3. Asosiy rang ORANGE ga o'zgartirildi */}
             <span className="bg-gradient-to-r from-orange-500 to-rose-500 bg-clip-text text-transparent">
-              transformatsiya
+              {t("journey.title_b")}
             </span>
           </h2>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-            Har bir daraja sizni yangi imkoniyatlarga olib chiqadi
+          <p className="text-slate-600 dark:text-slate-400 text-lg max-w-2xl mx-auto">
+            {t("journey.sub")}
           </p>
         </motion.div>
 
@@ -95,7 +84,7 @@ export function LearningJourney() {
         <div className="relative max-w-3xl mx-auto">
           
           {/* Markaziy chiziq (Orange) */}
-          <div className="absolute left-4 md:left-1/2 transform md:-translate-x-1/2 w-1 h-full bg-slate-800 rounded-full overflow-hidden">
+          <div className="absolute left-4 md:left-1/2 transform md:-translate-x-1/2 w-1 h-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
             <motion.div
               initial={{ height: "0%" }}
               whileInView={{ height: "100%" }}
@@ -126,22 +115,22 @@ export function LearningJourney() {
                     <motion.div
                       whileHover={{ scale: 1.02, y: -5 }}
                       onClick={() => setSelectedStep(idx)}
-                      className="cursor-pointer group bg-slate-900/40 border border-slate-800 rounded-2xl p-5 md:p-6 hover:border-orange-500/50 transition-all duration-300 shadow-lg"
+                      className="cursor-pointer group bg-white/80 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 md:p-6 hover:border-orange-500/50 transition-all duration-300 shadow-lg"
                     >
                       <div className="flex items-center gap-4 mb-3">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-2xl shadow-lg shadow-orange-500/20">
                           {step.icon}
                         </div>
                         <div>
-                          <div className="text-xs text-orange-400 font-semibold">{step.duration}</div>
-                          <h3 className="text-lg md:text-xl font-bold text-white">
+                          <div className="text-xs text-orange-600 dark:text-orange-400 font-semibold">{stepText(idx).duration}</div>
+                          <h3 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">
                             {step.level} - {step.title}
                           </h3>
                         </div>
                       </div>
-                      <p className="text-sm text-slate-300 mb-3">{step.description}</p>
-                      <div className="text-xs text-orange-400 font-semibold flex items-center gap-1">
-                        Batafsil ko'rish
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">{stepText(idx).description}</p>
+                      <div className="text-xs text-orange-600 dark:text-orange-400 font-semibold flex items-center gap-1">
+                        {t("journey.more")}
                         <span className="animate-nudge-x inline-block">→</span>
                       </div>
                     </motion.div>
@@ -151,7 +140,7 @@ export function LearningJourney() {
                   <div className="absolute left-4 md:left-1/2 transform -translate-x-1/2 z-10">
                     <motion.div
                       whileHover={{ scale: 1.3 }}
-                      className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 shadow-[0_0_15px_rgba(249,115,22,0.8)] border-4 border-slate-950"
+                      className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 shadow-[0_0_15px_rgba(249,115,22,0.8)] border-4 border-white dark:border-slate-950"
                     />
                   </div>
 
@@ -195,7 +184,7 @@ export function LearningJourney() {
                 </div>
                 <div>
                   <div className="text-sm text-orange-400 font-semibold">
-                    {JOURNEY_STEPS[selectedStep].duration}
+                    {stepText(selectedStep).duration}
                   </div>
                   <h2 className="text-2xl md:text-3xl font-bold text-white">
                     {JOURNEY_STEPS[selectedStep].level} - {JOURNEY_STEPS[selectedStep].title}
@@ -203,12 +192,12 @@ export function LearningJourney() {
                 </div>
               </div>
 
-              <p className="text-slate-300 text-lg mb-6">{JOURNEY_STEPS[selectedStep].description}</p>
+              <p className="text-slate-300 text-lg mb-6">{stepText(selectedStep).description}</p>
 
               <div className="mb-6">
-                <h3 className="text-lg font-bold text-white mb-3">Nima o'rganasiz:</h3>
+                <h3 className="text-lg font-bold text-white mb-3">{t("journey.learn")}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {JOURNEY_STEPS[selectedStep].skills.map((skill: string, idx: number) => (
+                  {stepText(selectedStep).skills.map((skill: string, idx: number) => (
                     <motion.div
                       key={idx}
                       initial={{ opacity: 0, x: -10 }}
@@ -227,7 +216,7 @@ export function LearningJourney() {
                 onClick={() => setSelectedStep(null)}
                 className="w-full py-3 bg-gradient-to-r from-orange-500 to-rose-500 text-white font-bold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-orange-500/20"
               >
-                Tushundim
+                {t("journey.ok")}
               </button>
             </motion.div>
           </motion.div>

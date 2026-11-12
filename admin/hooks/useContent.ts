@@ -1,3 +1,4 @@
+import { authFetch } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ContentItem } from '@/lib/types';
 
@@ -6,7 +7,7 @@ export function useContentList() {
   return useQuery({
     queryKey: ['content'],
     queryFn: async () => {
-      const resp = await fetch('/api/content');
+      const resp = await authFetch('/api/content');
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
         throw new Error(err.detail || 'Contentni olishda xatolik');
@@ -26,7 +27,7 @@ export function useCreateContent() {
 
   return useMutation({
     mutationFn: async (formData: FormData) => {
-      const resp = await fetch('/api/content', {
+      const resp = await authFetch('/api/content', {
         method: 'POST',
         body: formData,
       });
@@ -59,7 +60,7 @@ export function useUpdateContent() {
 
   return useMutation({
     mutationFn: async ({ id, formData }: { id: number; formData: FormData }) => {
-      const resp = await fetch(`/api/contents/${id}`, {
+      const resp = await authFetch(`/api/contents/${id}`, {
         method: 'PATCH',
         body: formData,
       });
@@ -92,7 +93,7 @@ export function useDeleteContent() {
 
   return useMutation({
     mutationFn: async (id: number) => {
-      const resp = await fetch(`/api/contents/${id}`, {
+      const resp = await authFetch(`/api/contents/${id}`, {
         method: 'DELETE',
       });
       

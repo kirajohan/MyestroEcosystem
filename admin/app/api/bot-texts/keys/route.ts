@@ -1,3 +1,4 @@
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -7,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const backendUrl = `${BACKEND_URL}/api/bot-texts/keys`;
     
-    const res = await fetch(backendUrl, {
+    const res = await backendFetch(backendUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

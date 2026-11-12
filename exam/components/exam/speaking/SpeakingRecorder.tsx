@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion  } from "framer-motion";
 import { getSessionToken } from "@/lib/session";
+import { useLanguage } from "@/app/providers";
 
 interface SpeakingRecorderProps {
   itemId: number;
@@ -27,6 +28,7 @@ export default function SpeakingRecorder({
   apiUrl,
   onUploaded,
 }: SpeakingRecorderProps) {
+  const { t } = useLanguage();
   const [stage, setStage] = useState<Stage>("idle");
   const [prepLeft, setPrepLeft] = useState(preparationTimeSec);
   const [recordLeft, setRecordLeft] = useState(answerTimeSec);
@@ -63,9 +65,7 @@ export default function SpeakingRecorder({
       streamRef.current = stream;
       return stream;
     } catch (err) {
-      setMicError(
-        "Mikrofonga ruxsat berilmadi. Brauzer sozlamalaridan mikrofonni yoqing."
-      );
+      setMicError(t("speak.mic_denied"));
       return null;
     }
   };
@@ -214,14 +214,14 @@ export default function SpeakingRecorder({
           if (xhr.status >= 200 && xhr.status < 300) resolve();
           else reject(new Error(`HTTP ${xhr.status}`));
         };
-        xhr.onerror = () => reject(new Error("Upload xatosi"));
+        xhr.onerror = () => reject(new Error(t("speak.upload_error")));
         xhr.send(formData);
       });
 
       setStage("done");
       onUploaded?.();
     } catch (err) {
-      setMicError(err instanceof Error ? err.message : "Yuklashda xato");
+      setMicError(err instanceof Error ? err.message : t("speak.upload_error"));
       setStage("review");
     }
   };
@@ -233,7 +233,7 @@ export default function SpeakingRecorder({
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-50 to-orange-50 border border-rose-200/60 shadow-xl p-6 md:p-8">
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-50 to-orange-50 dark:from-slate-900 dark:to-slate-900 border border-rose-200/60 dark:border-rose-900/50 shadow-xl p-6 md:p-8">
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <motion.div
@@ -245,25 +245,25 @@ export default function SpeakingRecorder({
         </motion.div>
         <div>
           <div className="text-xs uppercase tracking-widest text-rose-600 font-bold">
-            Speaking Task
+            {t("speak.task")}
           </div>
-          <div className="text-xs text-slate-500">
-            Tayyorgarlik: {preparationTimeSec}s • Gapirish: {answerTimeSec}s
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            {t("speak.timing", { a: preparationTimeSec, b: answerTimeSec })}
           </div>
         </div>
       </div>
 
       {/* Topic */}
-      <div className="bg-white/70 rounded-xl p-4 mb-5 border border-rose-100">
+      <div className="bg-white/70 dark:bg-slate-800/70 rounded-xl p-4 mb-5 border border-rose-100 dark:border-slate-700">
         {instruction && (
-          <p className="text-sm text-slate-600 mb-2">{instruction}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">{instruction}</p>
         )}
-        <h3 className="text-lg font-bold text-slate-900">{topic}</h3>
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white">{topic}</h3>
       </div>
 
       {/* Error */}
       {micError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-sm mb-4">
+        <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 p-3 rounded-xl text-sm mb-4">
           ⚠️ {micError}
         </div>
       )}
@@ -276,15 +276,15 @@ export default function SpeakingRecorder({
           onClick={startPreparation}
           className="w-full py-4 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-shadow"
         >
-          🎙️ Boshlash (mikrofon tekshiriladi)
+          {t("speak.start")}
         </motion.button>
       )}
 
       {/* ═══ STAGE: PREPARING ═══ */}
       {stage === "preparing" && (
         <div className="text-center py-6">
-          <div className="text-sm text-slate-600 mb-3">
-            💭 Javobingizni o'ylab ko'ring...
+          <div className="text-sm text-slate-600 dark:text-slate-300 mb-3">
+            {t("speak.think")}
           </div>
           <motion.div
             key={prepLeft}
@@ -307,7 +307,7 @@ export default function SpeakingRecorder({
             onClick={() => setStage("ready")}
             className="text-sm text-rose-600 hover:text-rose-700 font-semibold"
           >
-            Tayyorman, o'tkazib yuborish →
+            {t("speak.skip_prep")}
           </button>
         </div>
       )}
@@ -320,8 +320,8 @@ export default function SpeakingRecorder({
           onClick={startRecording}
           className="w-full py-4 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-3"
         >
-          <span className="w-3 h-3 rounded-full bg-white animate-pulse" />
-          🔴 Yozishni boshlash
+          <span className="w-3 h-3 rounded-full bg-white dark:bg-slate-900 animate-pulse" />
+          {t("speak.start_rec")}
         </motion.button>
       )}
 
@@ -340,7 +340,7 @@ export default function SpeakingRecorder({
           </div>
           <div
             className={`text-4xl font-bold mb-4 tabular-nums ${
-              recordLeft <= 10 ? "text-red-600 animate-pulse" : "text-slate-900"
+              recordLeft <= 10 ? "text-red-600 animate-pulse" : "text-slate-900 dark:text-white"
             }`}
           >
             {formatTime(recordLeft)}
@@ -349,7 +349,7 @@ export default function SpeakingRecorder({
             onClick={stopRecording}
             className="px-8 py-3 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 transition-colors"
           >
-            ⏹ To'xtatish
+            {t("speak.stop")}
           </button>
         </div>
       )}
@@ -357,9 +357,9 @@ export default function SpeakingRecorder({
       {/* ═══ STAGE: REVIEW ═══ */}
       {stage === "review" && audioUrl && (
         <div className="space-y-4">
-          <div className="bg-white/80 rounded-xl p-4 border border-rose-100">
-            <div className="text-sm font-semibold text-slate-700 mb-2">
-              ✅ Sizning javobingiz
+          <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl p-4 border border-rose-100 dark:border-slate-700">
+            <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+              {t("speak.your_answer")}
             </div>
             <audio ref={audioRef} src={audioUrl} controls className="w-full" />
           </div>
@@ -368,13 +368,13 @@ export default function SpeakingRecorder({
               onClick={recordAgain}
               className="flex-1 py-3 rounded-xl border-2 border-rose-300 text-rose-600 font-semibold hover:bg-rose-50 transition-colors"
             >
-              🔄 Qayta yozish
+              {t("speak.rerecord")}
             </button>
             <button
               onClick={submitAudio}
               className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold hover:shadow-lg transition-shadow"
             >
-              📤 Yuborish
+              {t("speak.submit")}
             </button>
           </div>
         </div>
@@ -383,14 +383,14 @@ export default function SpeakingRecorder({
       {/* ═══ STAGE: UPLOADING ═══ */}
       {stage === "uploading" && (
         <div className="text-center py-6">
-          <div className="text-slate-600 mb-3">Audio yuklanmoqda...</div>
+          <div className="text-slate-600 dark:text-slate-300 mb-3">{t("speak.uploading")}</div>
           <div className="h-2 bg-rose-100 rounded-full overflow-hidden mb-2">
             <div
               className="h-full bg-gradient-to-r from-rose-500 to-orange-500 transition-all"
               style={{ width: `${uploadProgress}%` }}
             />
           </div>
-          <div className="text-sm text-slate-500 tabular-nums">{uploadProgress}%</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400 tabular-nums">{uploadProgress}%</div>
         </div>
       )}
 
@@ -403,10 +403,10 @@ export default function SpeakingRecorder({
         >
           <div className="text-5xl mb-3">🎉</div>
           <div className="text-lg font-bold text-emerald-600 mb-1">
-            Javob yuborildi!
+            {t("speak.done")}
           </div>
-          <div className="text-sm text-slate-500">
-            AI transkripsiya va baholash jarayoni boshlandi.
+          <div className="text-sm text-slate-500 dark:text-slate-400">
+            {t("speak.done_sub")}
           </div>
         </motion.div>
       )}

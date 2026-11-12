@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { toast } from 'sonner';
+import { authFetch, getAccessToken, getRefreshToken, refreshAccessToken } from '@/lib/auth';
 
 // ✅ YAGONA konstanta — barcha fetch va axios uchun
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://myestroeco-backend-production.up.railway.app';
@@ -34,7 +35,7 @@ export async function getBotTexts(lang?: string): Promise<BotText[]> {
   const params = new URLSearchParams();
   if (lang) params.append('lang', lang);
   const url = `${API_BASE_URL}/api/bot-texts${params.toString() ? `?${params}` : ''}`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await authFetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to fetch bot texts');
   return res.json();
 }
@@ -43,25 +44,25 @@ export async function getBotTextsBulk(lang?: string): Promise<BotText[]> {
   const params = new URLSearchParams();
   if (lang) params.append('lang', lang);
   const url = `${API_BASE_URL}/api/bot-texts/bulk${params.toString() ? `?${params}` : ''}`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await authFetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to fetch bot texts bulk');
   return res.json();
 }
 
 export async function getBotTextStats(): Promise<BotTextStats> {
-  const res = await fetch(`${API_BASE_URL}/api/bot-texts/stats`, { cache: 'no-store' });
+  const res = await authFetch(`${API_BASE_URL}/api/bot-texts/stats`, { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to fetch stats');
   return res.json();
 }
 
 export async function getBotTextKeys(): Promise<string[]> {
-  const res = await fetch(`${API_BASE_URL}/api/bot-texts/keys`, { cache: 'no-store' });
+  const res = await authFetch(`${API_BASE_URL}/api/bot-texts/keys`, { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to fetch keys');
   return res.json();
 }
 
 export async function upsertBotText(data: BotTextCreate): Promise<BotText> {
-  const res = await fetch(`${API_BASE_URL}/api/bot-texts`, {
+  const res = await authFetch(`${API_BASE_URL}/api/bot-texts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -71,7 +72,7 @@ export async function upsertBotText(data: BotTextCreate): Promise<BotText> {
 }
 
 export async function bulkUpsertBotTexts(texts: BotTextCreate[]): Promise<BotText[]> {
-  const res = await fetch(`${API_BASE_URL}/api/bot-texts/bulk-upsert`, {
+  const res = await authFetch(`${API_BASE_URL}/api/bot-texts/bulk-upsert`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(texts),
@@ -81,7 +82,7 @@ export async function bulkUpsertBotTexts(texts: BotTextCreate[]): Promise<BotTex
 }
 
 export async function updateBotText(id: number, text: string): Promise<BotText> {
-  const res = await fetch(`${API_BASE_URL}/api/bot-texts/${id}`, {
+  const res = await authFetch(`${API_BASE_URL}/api/bot-texts/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
@@ -91,7 +92,7 @@ export async function updateBotText(id: number, text: string): Promise<BotText> 
 }
 
 export async function deleteBotText(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/bot-texts/${id}`, { method: 'DELETE' });
+  const res = await authFetch(`${API_BASE_URL}/api/bot-texts/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to delete bot text');
 }
 
@@ -102,22 +103,14 @@ export async function uploadMedia(
   file: File,
   fileType: 'audio' | 'image' = 'audio'
 ): Promise<{ url: string; file_name: string; size_bytes: number; content_type: string }> {
-  const token = typeof window !== 'undefined'
-    ? localStorage.getItem('myestro_admin_token')
-    : null;
-
-  if (!token) throw new Error('Token topilmadi. Qayta login qiling.');
+  if (!getAccessToken()) throw new Error('Token topilmadi. Qayta login qiling.');
 
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await fetch(
+  const res = await authFetch(
     `${API_BASE_URL}/api/v2/exam/admin/media/upload?file_type=${fileType}`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    }
+    { method: 'POST', body: formData }
   );
 
   if (!res.ok) {
@@ -130,22 +123,14 @@ export async function uploadMedia(
 export async function uploadAudioToTelegram(
   file: File
 ): Promise<{ file_id: string; file_name: string; duration: number; size_bytes: number }> {
-  const token = typeof window !== 'undefined'
-    ? localStorage.getItem('myestro_admin_token')
-    : null;
-
-  if (!token) throw new Error('Token topilmadi. Qayta login qiling.');
+  if (!getAccessToken()) throw new Error('Token topilmadi. Qayta login qiling.');
 
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await fetch(
+  const res = await authFetch(
     `${API_BASE_URL}/api/v2/exam/admin/media/upload-audio`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    }
+    { method: 'POST', body: formData }
   );
 
   if (!res.ok) {
@@ -165,87 +150,38 @@ export const api = axios.create({
 
 // ✅ 1. Request interceptor — token'ni avtomatik qo'shish
 api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('myestro_admin_token');
-    if (token && !config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  const token = getAccessToken();
+  if (token && !config.headers.Authorization) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// ✅ 2. Refresh queue — bir vaqtda ko'p 401 chiqsa, bitta refresh kutib turadi
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (err: unknown) => void;
-}> = [];
-
-const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve(token!)));
-  failedQueue = [];
-};
-
+// ✅ 2. 401 → yagona single-flight refresh (lib/auth.ts), so'ng BIR marta qayta urinish
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
 
-    // ✅ 3. 401 → refresh qilib, qayta urinish (faqat BIR marta)
     if (
       error.response?.status === 401 &&
       original &&
       !original._retry &&
       !original.url?.includes('/auth/')   // refresh/login'ni o'zi loop bo'lmasin
     ) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({
-            resolve: (token) => {
-              original.headers.Authorization = `Bearer ${token}`;
-              resolve(api(original));
-            },
-            reject,
-          });
-        });
-      }
-
       original._retry = true;
-      isRefreshing = true;
+      const newToken = await refreshAccessToken();
 
-      try {
-        const refreshToken =
-          typeof window !== 'undefined'
-            ? localStorage.getItem('myestro_admin_refresh_token')
-            : null;
-
-        if (!refreshToken) throw new Error('Refresh token yo\'q');
-
-        const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
-          refresh_token: refreshToken,
-        });
-
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('myestro_admin_token', data.access_token);
-          if (data.refresh_token) {
-            localStorage.setItem('myestro_admin_refresh_token', data.refresh_token);
-          }
-        }
-
-        processQueue(null, data.access_token);
-        original.headers.Authorization = `Bearer ${data.access_token}`;
+      if (newToken) {
+        original.headers.Authorization = `Bearer ${newToken}`;
         return api(original);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('myestro_admin_token');
-          localStorage.removeItem('myestro_admin_refresh_token');
-          window.location.href = '/login';
-        }
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
+
+      // Refresh token yaroqsiz bo'lib sessiya tozalangan bo'lsa — login'ga
+      if (typeof window !== 'undefined' && !getRefreshToken()) {
+        window.location.href = '/login';
+      }
+      return Promise.reject(error);
     }
 
     // Qolgan xatolar — toast (eski logika o'zgarmadi)

@@ -36,7 +36,7 @@ export default function TestListTable({ tests, onEdit, onDelete }: TestListTable
   return (
     <>
       {/* Desktop Table */}
-      <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {/* Table Header */}
         <div className="grid grid-cols-12 gap-4 px-6 py-3.5 bg-slate-50 border-b border-slate-200">
           <div className="col-span-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
@@ -174,7 +174,7 @@ export default function TestListTable({ tests, onEdit, onDelete }: TestListTable
       </div>
 
       {/* Mobile Cards */}
-      <div className="md:hidden space-y-3">
+      <div className="lg:hidden space-y-3">
         {tests.map((test, index) => {
           const cefrColor = CEFR_COLORS[test.cefr_level] || {
             bg: 'bg-slate-50',

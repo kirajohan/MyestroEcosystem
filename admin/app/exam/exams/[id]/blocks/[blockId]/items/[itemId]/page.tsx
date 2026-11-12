@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, FormEvent } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { authFetch } from '@/lib/auth';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -76,7 +77,7 @@ export default function ItemEditPage() {
   const loadItem = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/v2/exam/admin/blocks/${blockId}/items`, {
+      const res = await authFetch(`${API_URL}/api/v2/exam/admin/blocks/${blockId}/items`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Yuklanmadi');
@@ -157,7 +158,7 @@ export default function ItemEditPage() {
         : `${API_URL}/api/v2/exam/admin/blocks/${blockId}/items`;
       const method = itemId ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -342,7 +343,7 @@ export default function ItemEditPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-900 mb-1.5">Tartib</label>
               <input

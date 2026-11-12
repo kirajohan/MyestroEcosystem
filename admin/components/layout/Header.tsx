@@ -218,10 +218,10 @@ export function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 md:left-60 h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 z-40">
+      <header className="fixed top-0 left-0 right-0 md:left-64 h-16 bg-white border-b border-slate-200 flex items-center justify-between pl-16 pr-4 md:px-6 z-40">
         {/* Chap tomon */}
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
+        <div className="flex items-center gap-3 min-w-0">
+          <h2 className="text-lg md:text-xl font-bold truncate text-slate-900 tracking-tight">
             {pageTitle}
           </h2>
         </div>
@@ -295,7 +295,7 @@ export function Header() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-2 w-80 md:w-96 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden"
+                  className="fixed inset-x-3 top-16 md:absolute md:inset-auto md:right-0 md:top-auto md:mt-2 md:w-96 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden"
                 >
                   <div className="flex items-center justify-between p-4 border-b border-slate-100">
                     <h3 className="font-semibold text-slate-900">Bildirishnomalar</h3>
@@ -406,7 +406,7 @@ export function Header() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
               transition={{ duration: 0.15 }}
-              className="fixed top-[15%] left-1/2 -translate-x-1/2 w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50"
+              className="fixed top-[15%] left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50"
             >
               {/* Search Input */}
               <div className="flex items-center gap-3 p-4 border-b border-slate-200">

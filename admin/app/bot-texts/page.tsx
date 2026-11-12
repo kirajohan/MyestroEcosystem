@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -27,7 +28,7 @@ export default function BotTextsPage() {
       if (filterLang !== 'all') params.append('lang', filterLang);
       if (filterKey) params.append('key', filterKey);
       
-      const res = await fetch(`/api/bot-texts${params}`);
+      const res = await authFetch(`/api/bot-texts${params}`);
       if (res.ok) {
         const data = await res.json();
         setTexts(data);
@@ -50,7 +51,7 @@ export default function BotTextsPage() {
 
   const handleSave = async (id: number) => {
     try {
-      const res = await fetch(`/api/bot-texts/${id}`, {
+      const res = await authFetch(`/api/bot-texts/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: editText }),
@@ -69,7 +70,7 @@ export default function BotTextsPage() {
     if (!confirm('Are you sure?')) return;
     
     try {
-      const res = await fetch(`/api/bot-texts/${id}`, {
+      const res = await authFetch(`/api/bot-texts/${id}`, {
         method: 'DELETE',
       });
       
@@ -82,11 +83,11 @@ export default function BotTextsPage() {
   };
 
   return (
-    <div className="p-6">
+    <div>
       <h1 className="text-2xl font-bold mb-6">Bot Texts (CMS)</h1>
       
       {/* Filters */}
-      <div className="flex gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <select
           value={filterLang}
           onChange={(e) => setFilterLang(e.target.value)}
@@ -112,7 +113,7 @@ export default function BotTextsPage() {
         <div>Loading...</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse border">
+          <table className="w-full min-w-[640px] border-collapse border">
             <thead>
               <tr className="bg-gray-100">
                 <th className="border p-2">ID</th>

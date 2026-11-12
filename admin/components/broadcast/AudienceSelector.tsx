@@ -1,6 +1,7 @@
 // components/broadcast/AudienceSelector.tsx
 "use client";
 
+import { authFetch } from '@/lib/auth';
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { UserResponse } from "@/lib/types";
 import { useAudienceSelection, type FilterState, DEFAULT_FILTER } from "@/hooks/useAudienceSelection";
@@ -44,7 +45,7 @@ export default function AudienceSelector({ onSelectionChange }: AudienceSelector
       if (f.lang) params.set("lang", f.lang);
       if (f.is_active) params.set("is_active", f.is_active);
 
-      const res = await fetch(`${API_BASE}/users?${params.toString()}`);
+      const res = await authFetch(`${API_BASE}/users?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch users");
       const data = await res.json();
       setUsers(data.data || []);

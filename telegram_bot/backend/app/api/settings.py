@@ -8,6 +8,7 @@ Phase 5: Global settings for enabling/disabling features
 """
 
 import logging
+from app.core.deps import require_admin, require_service_or_admin
 from typing import Dict, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -60,7 +61,7 @@ def get_ai_global_status_public(db: Session = Depends(get_db)):
     return {"value": setting.value}
 
 
-@router.put("/ai", response_model=SystemSettingResponse)
+@router.put("/ai", response_model=SystemSettingResponse, dependencies=[Depends(require_admin)])
 def toggle_global_ai(
     request: SystemSettingUpdateRequest,
     db: Session = Depends(get_db),
@@ -83,7 +84,7 @@ def toggle_global_ai(
 # NEW PHASE 5 ENDPOINTS
 # ══════════════════════════════════════════════════════════════
 
-@router.get("/global", response_model=Dict[str, dict])
+@router.get("/global", response_model=Dict[str, dict], dependencies=[Depends(require_admin)])
 async def get_global_settings(
     db: Session = Depends(get_db),
     redis: Redis = Depends(get_redis),
@@ -132,7 +133,7 @@ async def get_global_settings(
     return response
 
 
-@router.get("/global/{setting_key}", response_model=dict)
+@router.get("/global/{setting_key}", response_model=dict, dependencies=[Depends(require_service_or_admin)])
 async def get_setting(
     setting_key: str,
     db: Session = Depends(get_db),
@@ -175,7 +176,7 @@ async def get_setting(
     return result
 
 
-@router.patch("/global/{setting_key}", response_model=dict)
+@router.patch("/global/{setting_key}", response_model=dict, dependencies=[Depends(require_admin)])
 async def update_global_setting(
     setting_key: str,
     payload: SystemSettingUpdateRequest,

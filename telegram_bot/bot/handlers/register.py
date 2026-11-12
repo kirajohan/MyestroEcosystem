@@ -10,6 +10,7 @@ Flow:
 """
 
 import httpx
+from bot.utils.backend_http import BackendClient
 from typing import Optional
 from aiogram.filters import StateFilter, Command, or_f
 from aiogram import Router, types, F
@@ -369,7 +370,7 @@ async def _register_user(
             "cefr_level": level,
             "lang": lang,
         }
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with BackendClient(timeout=10.0) as client:
             response = await client.post(
                 REGISTER_INIT_URL,
                 json=payload,

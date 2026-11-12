@@ -1,6 +1,7 @@
 """Broadcast API endpoints — Create and manage broadcast campaigns."""
 
 import json
+from app.core.deps import require_admin
 import logging
 from typing import List, Optional
 from datetime import datetime
@@ -185,15 +186,17 @@ class BroadcastService:
 # ══════════════════════════════════════════════════════════════
 
 
-@router.post("/send", response_model=dict)
+@router.post("/send", response_model=dict, dependencies=[Depends(require_admin)])
 async def send_broadcast(
     request: BroadcastCreate,
     db: Session = Depends(get_db),
     redis: Redis = Depends(get_redis),
+    admin: User = Depends(require_admin),
 ):
     try:
         service = BroadcastService(redis, db)
-        result = service.create_broadcast(request, admin_id=0)
+        logger.info("Broadcast requested by admin id=%s", admin.id)
+        result = service.create_broadcast(request, admin_id=admin.id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -202,7 +205,7 @@ async def send_broadcast(
         raise HTTPException(status_code=500, detail="Failed to create broadcast")
 
 
-@router.get("/status/{broadcast_id}", response_model=dict)
+@router.get("/status/{broadcast_id}", response_model=dict, dependencies=[Depends(require_admin)])
 async def get_broadcast_status(
     broadcast_id: str,
     redis: Redis = Depends(get_redis),
@@ -224,7 +227,7 @@ async def get_broadcast_status(
     }
 
 
-@router.get("/history", response_model=List[dict])
+@router.get("/history", response_model=List[dict], dependencies=[Depends(require_admin)])
 async def get_broadcast_history(
     limit: int = 50,
     redis: Redis = Depends(get_redis),
@@ -254,7 +257,7 @@ import httpx
 from fastapi import UploadFile, File
 
 
-@router.post("/upload-media")
+@router.post("/upload-media", dependencies=[Depends(require_admin)])
 async def upload_broadcast_media(file: UploadFile = File(...)):
     """Admin paneldan kelgan media faylni Telegram kanalga yuklaydi."""
     file.file.seek(0, os.SEEK_END)
@@ -329,7 +332,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session as DBSession
 
 
-@router.get("/placeholders")
+@router.get("/placeholders", dependencies=[Depends(require_admin)])
 def get_placeholders(db: DBSession = Depends(get_db)):
     """Broadcast uchun mavjud placeholder'larni qaytaradi."""
 

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from app.core.deps import require_admin
 from pydantic import BaseModel
 from typing import Optional
 from app.services.ai_service import ask_ai
@@ -15,7 +16,7 @@ class AIChatResponse(BaseModel):
     response: str
 
 
-@router.post("/ai-chat", response_model=AIChatResponse)
+@router.post("/ai-chat", response_model=AIChatResponse, dependencies=[Depends(require_admin)])
 async def admin_ai_chat(
     data: AIChatRequest,
 ):

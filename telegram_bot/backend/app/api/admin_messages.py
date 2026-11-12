@@ -1,6 +1,7 @@
 """Admin messages API — inbox for user messages sent to admin."""
 
 import json
+from app.core.deps import require_admin, require_service_or_admin
 import logging
 from typing import List, Optional
 
@@ -52,7 +53,7 @@ def get_message(
     return msg
 
 
-@router.post("", response_model=AdminMessageResponse)
+@router.post("", response_model=AdminMessageResponse, dependencies=[Depends(require_service_or_admin)])
 def create_message(
     data: AdminMessageCreate,
     db: DBSession = Depends(get_db),

@@ -1,0 +1,8 @@
+"""pytest sozlamasi: bot/ va backend/ (app.*) import yo'llari."""
+import os
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+for path in (ROOT, os.path.join(ROOT, "backend")):
+    if path not in sys.path:
+        sys.path.insert(0, path)

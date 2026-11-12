@@ -33,121 +33,40 @@ const LearningJourney = dynamic(() =>
 );
 
 const FEATURES = [
-  // Asosiy Ko'nikmalar
-  { 
-    icon: "🎧", 
-    title: "Listening", 
-    desc: "Haqiqiy audio materiallar orqali tinglab tushunishni rivojlantiring.", 
-    color: "from-blue-500 to-cyan-500" 
-  },
-  { 
-    icon: "📖", 
-    title: "Reading", 
-    desc: "Qiziqarli matnlar bilan so'z boyligingizni oshiring.", 
-    color: "from-emerald-500 to-teal-500" 
-  },
-  { 
-    icon: "✍️", 
-    title: "Writing", 
-    desc: "AI yordamida insholaringizni tekshirtiring va grammatikani to'g'rilang.", 
-    color: "from-amber-500 to-orange-500" 
-  },
-  { 
-    icon: "🎤", 
-    title: "Speaking", 
-    desc: "Ovozli suhbatlar orqali talaffuzingizni mukammallashtiring.", 
-    color: "from-rose-500 to-pink-500" 
-  },
-  // Xalqaro Standartlar
-  { 
-    icon: "🇬🇧", 
-    title: "IELTS", 
-    desc: "Academic va General Training uchun maxsus tayyorgarlik va strategiyalar.", 
-    color: "from-red-500 to-orange-500" 
-  },
-  { 
-    icon: "🇪🇺", 
-    title: "CEFR", 
-    desc: "A1 dan C2 gacha Yevropa standartlari bo'yicha aniq baholash tizimi.", 
-    color: "from-blue-600 to-indigo-600" 
-  },
-  { 
-    icon: "🇺🇸", 
-    title: "TOEFL", 
-    desc: "Amerika universitetlari uchun iBT formatida puxta mashqlar.", 
-    color: "from-green-500 to-emerald-600" 
-  },
+  { id: "listening", icon: "🎧", title: "Listening", color: "from-blue-500 to-cyan-500" },
+  { id: "reading", icon: "📖", title: "Reading", color: "from-emerald-500 to-teal-500" },
+  { id: "writing", icon: "✍️", title: "Writing", color: "from-amber-500 to-orange-500" },
+  { id: "speaking", icon: "🎤", title: "Speaking", color: "from-rose-500 to-pink-500" },
+  { id: "ielts", icon: "🇬🇧", title: "IELTS", color: "from-red-500 to-orange-500" },
+  { id: "cefr", icon: "🇪🇺", title: "CEFR", color: "from-blue-600 to-indigo-600" },
+  { id: "toefl", icon: "🇺🇸", title: "TOEFL", color: "from-green-500 to-emerald-600" },
 ];
 
 const STATS = [
-  { value: 10000, label: "Talabalar", suffix: "+" },
-  { value: 94, label: "Muvaffaqiyat", suffix: "%" },
-  { value: 50, label: "Davlatlar", suffix: "+" },
-  { value: 4.9, label: "Reyting", suffix: "★" },
+  { value: 10000, key: "stat.students", suffix: "+" },
+  { value: 94, key: "stat.success", suffix: "%" },
+  { value: 50, key: "stat.countries", suffix: "+" },
+  { value: 4.9, key: "stat.rating", suffix: "★" },
 ];
 
 const TESTIMONIALS = [
-  { name: "John D.", text: "Lorem ipsum dolor sit amet.", rating: 5 },
-  { name: "Sarah K.", text: "Consectetur adipiscing elit.", rating: 5 },
-  { name: "Mike R.", text: "Sed do eiusmod tempor.", rating: 5 },
-  { name: "Anna L.", text: "Ut enim ad minim veniam.", rating: 5 },
+  { name: "John D.", key: "rev.1", rating: 5 },
+  { name: "Sarah K.", key: "rev.2", rating: 5 },
+  { name: "Mike R.", key: "rev.3", rating: 5 },
+  { name: "Anna L.", key: "rev.4", rating: 5 },
 ];
 
-const FAQ_ITEMS = [
-  { 
-    q: "🚀 Myestro nima va qanday ishlaydi?", 
-    a: "Myestro — bu AI yordamida ingliz tilini o'rganish platformasi. Siz Telegram bot orqali AI o'qituvchi bilan suhbatlashasiz, imtihonlar topshirasiz va o'z progressingizni kuzatasiz.",
-    highlight: "💡 AI sizning xatolaringizni darhol tuzatadi va tushuntiradi."
-  },
-  { 
-    q: "🎯 Qanday darajadagilar uchun mos?", 
-    a: "Platforma boshlang'ich (A1) dan yuqori (C1) darajagacha bo'lgan barcha foydalanuvchilar uchun mo'ljallangan. Ro'yxatdan o'tishda sizning darajangiz aniqlanadi va shunga mos kontent taqdim etiladi.",
-    highlight: "📊 CEFR standartlari bo'yicha A1, A2, B1, B2, C1 darajalari mavjud."
-  },
-  { 
-    q: "💰 Narxlari qanday va qanday to'lash mumkin?", 
-    a: "Hozirda platforma bepul beta-versiyada ishlaydi. Kelajakda oylik obuna modellari joriy etiladi. To'lovlar Click, Payme va xalqaro kartalar orqali amalga oshiriladi.",
-    highlight: "🎁 Hozir ro'yxatdan o'ting va birinchi 3 oy bepul foydalaning!"
-  },
-  { 
-    q: "🤖 AI qanday yordam beradi?", 
-    a: "AI o'qituvchi sizning har bir xatongizni tahlil qiladi, grammatik tuzatishlar kiritadi, yangi so'zlar taklif qiladi va shaxsiylashtirilgan mashqlar beradi. Bu xuddi shaxsiy repetitor bilan ishlashga o'xshaydi.",
-    highlight: "⚡ AI 24/7 ishlaydi va istalgan vaqtda yordam berishga tayyor."
-  },
-  { 
-    q: "📱 Qanday qurilmalarda ishlaydi?", 
-    a: "Platforma Telegram bot orqali ishlagani uchun istalgan qurilmada (telefon, planshet, kompyuter) ishlaydi. Internet ulanishi bo'lsa bas.",
-    highlight: "🌍 Qayerda bo'lsangiz ham o'rganishingiz mumkin."
-  },
-  { 
-    q: "📊 Natijalarimni qanday kuzataman?", 
-    a: "Shaxsiy kabintingizda barcha imtihon natijalaringiz, progressingiz va CEFR darajangiz o'zgarishi ko'rsatiladi. Haftalik va oylik hisobotlar ham mavjud.",
-    highlight: "📈 Har hafta progressingizni ko'rib, motivatsiyangiz oshadi."
-  },
-  { 
-    q: "🎓 Sertifikat berasizlarmi?", 
-    a: "Hozircha rasmiy sertifikat berilmaydi, lekin kelajakda IELTS va CEFR standartlariga mos sertifikatlar joriy etiladi. Hozircha sizning natijalaringiz va progressingiz platformada saqlanadi.",
-    highlight: "🏆 Kelajakda xalqaro e'tirof etilgan sertifikatlar rejalashtirilgan."
-  },
-  { 
-    q: "🔒 Ma'lumotlarim xavfsizmi?", 
-    a: "Ha, barcha ma'lumotlar shifrlangan holda saqlanadi. Biz GDPR va maxfiylik siyosatiga qat'iy rioya qilamiz. Sizning ma'lumotlaringiz faqat sizga xizmat ko'rsatish uchun ishlatiladi.",
-    highlight: "🛡️ Ma'lumotlaringiz to'liq himoyalangan va uchinchi tomonlarga berilmaydi."
-  },
-  { 
-    q: "👥 Guruh darslari bormi?", 
-    a: "Hozircha faqat individual AI o'qituvchi bilan ishlash mavjud. Kelajakda guruh darslari va jonli darslar qo'shiladi.",
-    highlight: "🤝 Guruh darslari 2025-yilda joriy etiladi."
-  },
-  { 
-    q: "❓ Yana savollarim bo'lsa, kimga murojaat qilaman?", 
-    a: "Bot orqali admin bilan bog'lanishingiz mumkin. Shuningdek, Telegram kanalimizda yangiliklar va yordam materiallari mavjud.",
-    highlight: "💬 @myestro_support — biz doimo yordam berishga tayyormiz!"
-  }
-];
+const FAQ_COUNT = 10;
 
 export default function LandingPage() {
   const { t } = useLanguage();
+
+  const features = FEATURES.map((f) => ({ ...f, desc: t(`feat.${f.id}`) }));
+  const faqItems = Array.from({ length: FAQ_COUNT }, (_, i) => ({
+    q: t(`faq.${i + 1}.q`),
+    a: t(`faq.${i + 1}.a`),
+    highlight: t(`faq.${i + 1}.h`),
+  }));
 
   return (
     <main className="min-h-screen min-h-[100dvh] overflow-x-hidden supports-[overflow:clip]:overflow-x-clip relative">
@@ -210,12 +129,12 @@ export default function LandingPage() {
             className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20 max-w-3xl mx-auto"
           >
             {STATS.map((stat) => (
-              <div key={stat.label} className="text-center">
+              <div key={stat.key} className="text-center">
                 <div className="text-3xl md:text-4xl font-bold bg-gradient-to-br from-orange-500 to-rose-500 bg-clip-text text-transparent">
                   <AnimatedCounter value={stat.value} suffix={stat.suffix} />
                 </div>
                 <div className="text-base-secondary text-sm mt-1">
-                  {stat.label}
+                  {t(stat.key)}
                 </div>
               </div>
             ))}
@@ -236,20 +155,20 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              Barcha imkoniyatlar{" "}
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-slate-900 dark:text-white">
+              {t("feat.title_a")}
               <span className="bg-gradient-to-r from-orange-500 to-rose-500 bg-clip-text text-transparent">
-                bir joyda
+                {t("feat.title_b")}
               </span>
             </h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              Myestro platformasi sizning ingliz tili bilimingizni yangi bosqichga olib chiqadi.
+            <p className="text-slate-600 dark:text-slate-400 text-lg max-w-2xl mx-auto">
+              {t("feat.sub")}
             </p>
           </motion.div>
         </div>
         
         {/* Faqat HorizontalRoulette, ichida RouletteCard va SpotlightCard ishlaydi */}
-        <HorizontalRoulette items={FEATURES} />
+        <HorizontalRoulette items={features} />
       </section>
 
       {/* ═══ DEMO ═══ */}
@@ -273,14 +192,16 @@ export default function LandingPage() {
           className="text-center mb-12"
         >
           <h2 className="text-base-primary text-4xl md:text-5xl font-bold">
-            Minglab <span className="text-gradient-brand">talabalar</span> sevgan
+            {t("rev.title_a")}
+            <span className="text-gradient-brand">{t("rev.title_b")}</span>
+            {t("rev.title_c")}
           </h2>
         </motion.div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <AnimatePresence>
-            {TESTIMONIALS.map((t, i) => (
+            {TESTIMONIALS.map((item, i) => (
               <motion.div
-                key={t.name}
+                key={item.name}
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
@@ -288,13 +209,13 @@ export default function LandingPage() {
                 whileHover={{ y: -5 }}
                 className="card rounded-2xl p-6"
               >
-                <div className="flex mb-3 text-orange-500">{"★".repeat(t.rating)}</div>
-                <p className="text-base-secondary mb-4">"{t.text}"</p>
+                <div className="flex mb-3 text-orange-500">{"★".repeat(item.rating)}</div>
+                <p className="text-base-secondary mb-4">"{t(item.key)}"</p>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-rose-500" />
                   <div>
-                    <div className="text-base-primary font-semibold">{t.name}</div>
-                    <div className="text-base-muted text-xs">Talaba</div>
+                    <div className="text-base-primary font-semibold">{item.name}</div>
+                    <div className="text-base-muted text-xs">{t("rev.role")}</div>
                   </div>
                 </div>
               </motion.div>
@@ -304,7 +225,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ FAQ ═══ */}
-      <FAQ items={FAQ_ITEMS} />
+      <FAQ items={faqItems} />
 
       {/* ═══ CTA ═══ */}
       <section className="relative py-24 overflow-hidden">
@@ -316,16 +237,16 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="text-4xl md:text-6xl font-bold text-white mb-6"
           >
-            Ingliz tilini mukammal bilishga tayyormisiz?
+            {t("cta.title")}
           </motion.h2>
           <p className="text-xl text-white/90 mb-10">
-            Telegram orqali kirib, birinchi imtihoningizni topshiring.
+            {t("cta.sub")}
           </p>
           <Link
             href="/login"
             className="inline-flex items-center gap-2 bg-white text-orange-600 text-xl font-bold px-10 py-5 rounded-xl hover:bg-orange-50 transition-colors shadow-2xl"
           >
-            🚀 Bepul boshlash
+            {t("cta.btn")}
           </Link>
         </div>
       </section>

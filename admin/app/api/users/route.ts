@@ -1,3 +1,4 @@
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8002';
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     if (lang) params.set('lang', lang);
     if (is_active) params.set('is_active', is_active);
 
-    const backendResp = await fetch(`${API_BASE_URL}/users?${params.toString()}`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/users?${params.toString()}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });

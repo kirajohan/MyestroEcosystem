@@ -12,6 +12,7 @@ from aiogram.types import Message, CallbackQuery, TelegramObject
 from aiogram.fsm.context import FSMContext
 from bot.config import settings, API_BASE_URL
 import httpx
+from bot.utils.backend_http import BackendClient
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ async def get_global_bot_status():
         return _settings_cache.get("BOT_ENABLED", "true")
     
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
+        async with BackendClient(timeout=3.0) as client:
             response = await client.get(f"{API_BASE_URL}/settings/global/BOT_ENABLED")
             if response.status_code == 200:
                 data = response.json()

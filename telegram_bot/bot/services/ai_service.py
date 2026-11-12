@@ -1,5 +1,6 @@
 import logging
 import httpx
+from bot.utils.backend_http import BackendClient
 from bot.config import settings
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ class AIService:
         logger.info(f"Testing OpenRouter API with key length: {len(self.api_key)}")
         
         try:
-            async with httpx.AsyncClient(timeout=5) as client:
+            async with BackendClient(timeout=5) as client:
                 # Try with Bearer token
                 response = await client.get(
                     f"{self.api_url}/models",

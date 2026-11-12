@@ -80,7 +80,7 @@ export default function LoginPage() {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 sm:p-8">
           {/* Header */}
           <div className="text-center mb-6">
             <motion.div

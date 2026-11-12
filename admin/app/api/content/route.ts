@@ -1,10 +1,11 @@
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8002';
 
 export async function GET() {
   try {
-    const backendResp = await fetch(`${API_BASE_URL}/content`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/content`, {
       method: 'GET',
     });
 
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
 
     // Forward to backend content endpoint
-    const backendResp = await fetch(`${API_BASE_URL}/content`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/content`, {
       method: 'POST',
       body: formData,
     });

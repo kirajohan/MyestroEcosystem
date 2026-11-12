@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, CheckCircle2, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
@@ -24,7 +25,7 @@ export default function PlaceholderHints({ onInsert }: PlaceholderHintsProps) {
   useEffect(() => {
     async function fetchPlaceholders() {
       try {
-        const res = await fetch('/api/broadcast/placeholders');
+        const res = await authFetch('/api/broadcast/placeholders');
         if (res.ok) {
           const data = await res.json();
           setPlaceholders(data.placeholders || []);

@@ -7,13 +7,11 @@ import {
   QuestionUpdate,
   TestWithQuestions,
 } from '@/types/test';
+import { authFetch } from '@/lib/auth';
 
 // ══════════════════════════════════════════════════════════════
-// API CLIENT — Token bilan + Auto-refresh interceptor
+// API CLIENT — authFetch (token + single-flight refresh) ustida
 // ══════════════════════════════════════════════════════════════
-
-const TOKEN_KEY = 'myestro_admin_token';
-const REFRESH_TOKEN_KEY = 'myestro_admin_refresh_token';
 
 export class ApiError extends Error {
   status: number;
@@ -25,105 +23,15 @@ export class ApiError extends Error {
   }
 }
 
-// ─── Token Refresh Logikasi ─────────────────────────────────
-let isRefreshing = false;
-let refreshPromise: Promise<string | null> | null = null;
-
-async function refreshAccessToken(): Promise<string | null> {
-  // Agar boshqa joyda refresh bo'layotgan bo'lsa, uni kutamiz
-  if (isRefreshing && refreshPromise) {
-    return refreshPromise;
-  }
-
-  isRefreshing = true;
-  refreshPromise = (async () => {
-    try {
-      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-      if (!refreshToken) return null;
-
-      const res = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-
-      if (!res.ok) {
-        console.error('❌ Refresh failed:', res.status);
-        return null;
-      }
-
-      const data = await res.json();
-      const newAccessToken = data.access_token;
-      const newRefreshToken = data.refresh_token;
-
-      if (newAccessToken) {
-        localStorage.setItem(TOKEN_KEY, newAccessToken);
-        if (newRefreshToken) {
-          localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
-        }
-        console.log('✅ Token refreshed successfully');
-        return newAccessToken;
-      }
-
-      return null;
-    } catch (error) {
-      console.error('❌ Refresh token error:', error);
-      return null;
-    } finally {
-      isRefreshing = false;
-      refreshPromise = null;
-    }
-  })();
-
-  return refreshPromise;
-}
-
-// ─── Asosiy request funksiyasi ──────────────────────────────
-async function request<T>(
-  endpoint: string,
-  options: RequestInit = {},
-  isRetry = false
-): Promise<T> {
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   try {
-    // ✅ Token'ni qo'shish
-    const token = localStorage.getItem(TOKEN_KEY);
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(endpoint, {
+    const response = await authFetch(endpoint, {
       ...options,
-      headers,
+      headers: { 'Content-Type': 'application/json', ...(options.headers as Record<string, string>) },
     });
 
-    // ✅ 401 Unauthorized — token eskirgan, refresh qilishga urinish
-    if (response.status === 401 && !isRetry) {
-      console.log('🔄 401 received, attempting to refresh token...');
-      const newToken = await refreshAccessToken();
-      
-      if (newToken) {
-        // Yangi token bilan qayta urinish
-        console.log('🔄 Retrying request with new token...');
-        return request<T>(endpoint, options, true);
-      } else {
-        // Refresh muvaffaqiyatsiz — login sahifaga yo'naltirish
-        console.error('❌ Refresh failed, redirecting to login');
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
-        localStorage.removeItem('myestro_admin_user');
-        
-        // Login sahifaga redirect (faqat browser'da)
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
-        }
-        
-        throw new ApiError('Sessiya tugadi. Qayta tizimga kiring.', 401);
-      }
+    if (response.status === 401) {
+      throw new ApiError('Sessiya tugadi. Qayta tizimga kiring.', 401);
     }
 
     if (!response.ok) {
@@ -145,7 +53,6 @@ async function request<T>(
     );
   }
 }
-
 // ─── TESTS API ─────────────────────────────────────────────
 
 export const testsApi = {

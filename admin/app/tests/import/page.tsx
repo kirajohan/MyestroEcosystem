@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { authFetch } from '@/lib/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload,
@@ -183,7 +184,7 @@ export default function TestsImportPage() {
     try {
       const parsed = JSON.parse(jsonInput);
 
-      const res = await fetch(`${API_URL}/api/tests/import/json/preview`, {
+      const res = await authFetch(`${API_URL}/api/tests/import/json/preview`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -228,7 +229,7 @@ export default function TestsImportPage() {
     try {
       const parsed = JSON.parse(jsonInput);
 
-      const res = await fetch(`${API_URL}/api/tests/import/json/confirm`, {
+      const res = await authFetch(`${API_URL}/api/tests/import/json/confirm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -287,7 +288,7 @@ export default function TestsImportPage() {
       </div>
 
       {/* Steps indicator */}
-      <div className="hidden md:flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
+      <div className="hidden md:flex items-center gap-4 overflow-x-auto p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
         <div
           className={`flex items-center gap-2 ${
             jsonInput && !result ? 'text-orange-600' : 'text-slate-400'
@@ -550,7 +551,7 @@ export default function TestsImportPage() {
 
                 <div className="p-5">
                   {/* Stats */}
-                  <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                     <div className="bg-white/70 rounded-xl p-3 text-center">
                       <FileQuestion
                         className={`w-5 h-5 mx-auto mb-1 ${
@@ -675,7 +676,7 @@ export default function TestsImportPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3 mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                     <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 text-center">
                       <p className="text-2xl font-bold">{result.tests_created}</p>
                       <p className="text-xs text-white/80">Testlar</p>

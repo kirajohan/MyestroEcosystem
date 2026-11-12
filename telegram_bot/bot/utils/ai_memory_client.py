@@ -3,6 +3,7 @@
 import logging
 from typing import Dict, Any, Optional
 import httpx
+from bot.utils.backend_http import BackendClient
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class AIMemoryClient:
             return self.http_client
         
         if not self._default_client:
-            self._default_client = httpx.AsyncClient(
+            self._default_client = BackendClient(
                 timeout=30.0,
                 limits=httpx.Limits(max_keepalive_connections=5)
             )

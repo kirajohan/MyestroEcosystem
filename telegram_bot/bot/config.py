@@ -30,13 +30,14 @@ class Settings(BaseSettings):
     WEBAPP_URL: str = os.getenv("WEBAPP_URL", "https://a1b2c3d4.ngrok-free.app")
     BACKEND_URL: str = os.getenv("BACKEND_URL", "https://myestroeco-backend-production.up.railway.app")
     API_BASE_URL: str = os.getenv("API_BASE_URL", "http://myestro-backend:8002")
+    INTERNAL_API_KEY: str = os.getenv("INTERNAL_API_KEY", "")  # bot -> backend servis kaliti
 
     # ─── AI ────────────────────────────────────────────────
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     OPENROUTER_BASE_URL: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
     RAG_ENABLED: bool = os.getenv("RAG_ENABLED", "true").lower() == "true"
     # ─── Auth ──────────────────────────────────────────────
-    SECRET_KEY: str = "b376f24c1d2bfbaacfa9ef51027b74f40cb3aa9a8497aa50dd38c52c6bff5d07"
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
 
@@ -44,6 +45,14 @@ class Settings(BaseSettings):
     BOT_GLOBAL_ENABLED: str = os.getenv("BOT_GLOBAL_ENABLED", "true")
     AI_GLOBAL_ENABLED: str = os.getenv("AI_GLOBAL_ENABLED", "true")
     AI_TRIAL_LIMIT: int = int(os.getenv("AI_TRIAL_LIMIT", "3"))
+    AI_AGENT_MODEL: str = os.getenv("AI_AGENT_MODEL", "openai/gpt-4o-mini")
+    AI_STREAM_MODE: str = os.getenv("AI_STREAM_MODE", "edit")  # "edit" | "draft" (sendMessageDraft)
+    AI_STREAM_DRAFT_INTERVAL: float = float(os.getenv("AI_STREAM_DRAFT_INTERVAL", "0.4"))
+    AI_TG_RATE: float = float(os.getenv("AI_TG_RATE", "25"))  # barcha oqimlar uchun Telegram so'rov/s
+    AI_RATE_PER_MINUTE: int = int(os.getenv("AI_RATE_PER_MINUTE", "8"))
+    AI_RATE_PER_DAY: int = int(os.getenv("AI_RATE_PER_DAY", "150"))
+    AI_ADMIN_RATE_PER_MINUTE: int = int(os.getenv("AI_ADMIN_RATE_PER_MINUTE", "20"))
+    AI_ADMIN_RATE_PER_DAY: int = int(os.getenv("AI_ADMIN_RATE_PER_DAY", "1000"))
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
     # ─── Properties ────────────────────────────────────────

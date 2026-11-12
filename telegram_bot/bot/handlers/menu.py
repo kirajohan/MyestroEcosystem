@@ -21,6 +21,7 @@ from bot.utils.api_client import fetch_public_tests # Yangi API chaqiruvi
 
 from bot.config import settings, API_BASE_URL
 import httpx
+from bot.utils.backend_http import BackendClient
 from bot.utils.i18n import get_text
 from bot.states.registrations_filter import IsRegistered, IsNotRegistered
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -39,7 +40,7 @@ async def fetch_content_list(content_type: str, page: int = 1):
     """Paginatsiya bilan content fetch."""
     offset = (page - 1) * LIMIT
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with BackendClient(timeout=10.0) as client:
             resp = await client.get(
                 f"{API_BASE_URL}/content/public?content_type={content_type}&limit={LIMIT}&offset={offset}"
             )
@@ -434,7 +435,7 @@ async def settings_ai_toggle_reply(message: types.Message, state: FSMContext):
 
     # Sync with Backend
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with BackendClient(timeout=5.0) as client:
             # API endpoint ni tekshiring
             endpoint = f"{API_BASE_URL}/sync/users/{db_user_id}/ai-toggle"
             print(f"[AI TOGGLE] Calling endpoint: {endpoint}")
@@ -637,7 +638,7 @@ async def process_content_select(callback: types.CallbackQuery, state: FSMContex
     await callback.answer("⏳ Yuklanmoqda...")
     
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with BackendClient(timeout=10.0) as client:
             resp = await client.get(f"{API_BASE_URL}/content/public/{item_id}")
             if resp.status_code == 200:
                 item = resp.json()
@@ -751,7 +752,7 @@ async def handle_admin_contact_text(message: types.Message, state: FSMContext):
         file_id = message.sticker.file_id
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with BackendClient(timeout=10.0) as client:
             payload = {
                 "user_id": db_user_id,
                 "user_telegram_id": user_id,
@@ -831,7 +832,7 @@ async def handle_settings_ai_toggle(callback: types.CallbackQuery, state: FSMCon
     new_status = not ai_enabled
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with BackendClient(timeout=5.0) as client:
             endpoint = f"{API_BASE_URL}/sync/users/{db_user_id}/ai-toggle"
             resp = await client.put(endpoint, json={"ai_enabled": new_status})
             

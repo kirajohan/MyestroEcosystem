@@ -73,7 +73,7 @@ export function UserEditForm({ user, onSave, onCancel, isLoading }: UserEditForm
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {/* Full Name */}
       <div>
         <label className="block text-sm font-semibold text-slate-900 mb-1.5">
@@ -105,7 +105,7 @@ export function UserEditForm({ user, onSave, onCancel, isLoading }: UserEditForm
       </div>
 
       {/* Role & CEFR Level */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-semibold text-slate-900 mb-1.5">
             Rol
@@ -140,7 +140,7 @@ export function UserEditForm({ user, onSave, onCancel, isLoading }: UserEditForm
       </div>
 
       {/* Target Level & Telegram ID */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-semibold text-slate-900 mb-1.5">
             Target Level
@@ -218,7 +218,7 @@ export function UserEditForm({ user, onSave, onCancel, isLoading }: UserEditForm
       </div>
 
       {/* Checkboxes */}
-      <div className="flex items-center gap-6 pt-2">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-2">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"

@@ -1,4 +1,5 @@
 from typing import List, Optional
+from app.core.deps import require_admin, get_current_user
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session as DBSession
@@ -15,7 +16,7 @@ from app.core.security import hash_password
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("", response_model=UsersListResponse)
+@router.get("", response_model=UsersListResponse, dependencies=[Depends(require_admin)])
 def list_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
@@ -26,7 +27,7 @@ def list_users(
     return {"data": [UserResponse.model_validate(u) for u in users], "total": total}
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/{user_id}", response_model=UserResponse, dependencies=[Depends(require_admin)])
 def get_user(
     user_id: int,
     db: DBSession = Depends(get_db),
@@ -37,7 +38,7 @@ def get_user(
     return UserResponse.model_validate(user)
 
 
-@router.get("/{user_id}/chats", response_model=List[ThreadResponse])
+@router.get("/{user_id}/chats", response_model=List[ThreadResponse], dependencies=[Depends(require_admin)])
 def get_user_chats(
     user_id: int,
     db: DBSession = Depends(get_db),
@@ -49,7 +50,7 @@ def get_user_chats(
     return [ThreadResponse.model_validate(t) for t in threads]
 
 
-@router.put("/{user_id}/ai-toggle", response_model=UserResponse)
+@router.put("/{user_id}/ai-toggle", response_model=UserResponse, dependencies=[Depends(require_admin)])
 def toggle_user_ai(
     user_id: int,
     request: UserAIToggleRequest,
@@ -70,13 +71,15 @@ def toggle_user_ai(
 def update_me(
     request: dict,
     db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """Update current user's profile."""
-    user = db.query(User).filter(User.is_active == True).first()
+    """Update current user's profile (faqat o'zining; rol o'zgartirib bo'lmaydi)."""
+    user = db.query(User).filter(User.id == current_user.id, User.is_active == True).first()
     if not user:
         raise NotFoundException("User not found")
 
-    allowed_fields = ["full_name", "email", "phone", "cefr_level", "target_level", "lang", "role"]
+    # DIQQAT: "role" ataylab yo'q — foydalanuvchi o'z huquqini oshira olmasin
+    allowed_fields = ["full_name", "email", "phone", "cefr_level", "target_level", "lang"]
     for field, value in request.items():
         if field in allowed_fields and hasattr(user, field):
             setattr(user, field, value)
@@ -86,7 +89,7 @@ def update_me(
     return UserResponse.model_validate(user)
 
 
-@router.put("/{user_id}", response_model=UserResponse)
+@router.put("/{user_id}", response_model=UserResponse, dependencies=[Depends(require_admin)])
 def update_user(
     user_id: int,
     request: dict,
@@ -111,7 +114,7 @@ def update_user(
     return UserResponse.model_validate(user)
 
 
-@router.delete("/{user_id}")
+@router.delete("/{user_id}", dependencies=[Depends(require_admin)])
 def delete_user(
     user_id: int,
     db: DBSession = Depends(get_db),
@@ -125,7 +128,7 @@ def delete_user(
     return {"message": "User soft-deleted"}
 
 
-@router.put("/{user_id}/activate")
+@router.put("/{user_id}/activate", dependencies=[Depends(require_admin)])
 def activate_user(
     user_id: int,
     db: DBSession = Depends(get_db),

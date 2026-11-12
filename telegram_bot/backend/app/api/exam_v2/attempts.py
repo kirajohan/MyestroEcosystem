@@ -382,15 +382,16 @@ async def submit_attempt(
 
     # 1. Attempt'ni "submitted" qilish
     attempt.status = "submitted"
-    attempt.submitted_at = func.now()
+    attempt.submitted_at = datetime.now(timezone.utc)
     await db.commit()
 
     logger.info(f"📝 Attempt {attempt_id} submitted by user {current_user.id}")
 
     # 2. Auto-scoring (tez — faqat Reading/Listening)
+    ai_scheduled = False
     try:
         auto_result = await auto_score_attempt(attempt_id, db)
-        
+
         has_ai_tasks = auto_result.get("pending_ai", 0) > 0
         
         if has_ai_tasks:
@@ -402,7 +403,8 @@ async def submit_attempt(
                 process_ai_evaluation_background,
                 attempt_id
             )
-            
+            ai_scheduled = True
+
             return {
                 "attempt_id": attempt_id,
                 "status": "scoring",
@@ -414,7 +416,7 @@ async def submit_attempt(
         else:
             # Faqat Reading/Listening — darhol "completed"
             attempt.status = "completed"
-            attempt.completed_at = func.now()
+            attempt.completed_at = datetime.now(timezone.utc)
             attempt.total_score = auto_result.get("total_score", 0)
             await db.commit()
             
@@ -434,12 +436,13 @@ async def submit_attempt(
         # Xato bo'lsa ham, background task'ni ishga tushirish
         attempt.status = "scoring"
         await db.commit()
-        
-        background_tasks.add_task(
-            process_ai_evaluation_background,
-            attempt_id
-        )
-        
+
+        if not ai_scheduled:
+            background_tasks.add_task(
+                process_ai_evaluation_background,
+                attempt_id
+            )
+
         return {
             "attempt_id": attempt_id,
             "status": "scoring",

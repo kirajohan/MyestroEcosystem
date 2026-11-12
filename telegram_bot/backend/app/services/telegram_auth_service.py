@@ -34,7 +34,7 @@ class TelegramAuthService:
         data_check_string = "\n".join(f"{k}={v}" for k, v in sorted_items)
 
         # Bot token'dan secret key olamiz
-        secret_key = hashlib.sha256(settings.TELEGRAM_BOT_TOKEN.encode()).digest()
+        secret_key = hashlib.sha256(settings.BOT_TOKEN.encode()).digest()
 
         # HMAC hisoblaymiz
         computed_hash = hmac.new(

@@ -1,6 +1,7 @@
 """AI assistant endpoints with memory system support."""
 
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.deps import require_admin, require_service_or_admin
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,7 +38,7 @@ class AIQueryResponse(BaseModel):
 # LEGACY ENDPOINTS (backwards compatible)
 # ═══════════════════════════════════════════════════════════════════
 
-@router.get("/query", response_model=AIQueryResponse)
+@router.get("/query", response_model=AIQueryResponse, dependencies=[Depends(require_service_or_admin)])
 async def query_ai(
     prompt: str,
     db: AsyncSession = Depends(get_async_db),
@@ -47,7 +48,7 @@ async def query_ai(
     return AIQueryResponse(response=result)
 
 
-@router.post("/analyze-logs")
+@router.post("/analyze-logs", dependencies=[Depends(require_admin)])
 async def analyze_logs(
     db: AsyncSession = Depends(get_async_db),
 ):
@@ -102,7 +103,7 @@ from app.models.user import User  # <-- User modelini import qiling
     "/query-with-memory",
     response_model=ChatQueryWithMemoryResponse,
     summary="Query AI with memory context",
-)
+dependencies=[Depends(require_service_or_admin)])
 async def query_with_memory(
     request: ChatQueryWithMemoryRequest,
     db: AsyncSession = Depends(get_async_db),          # <-- QO'SHILDI
@@ -145,8 +146,8 @@ async def query_with_memory(
 @router.get(
     "/session/{telegram_id}",  # <-- O'ZGARTIRISH: user_id emas, telegram_id
     response_model=AIMemorySessionResponse,
-    summary="Get user's active AI session"
-)
+    summary="Get user's active AI session",
+dependencies=[Depends(require_service_or_admin)])
 async def get_session(
     telegram_id: int,  # <-- O'ZGARTIRISH
     db: AsyncSession = Depends(get_async_db),          # <-- QO'SHILDI
@@ -173,8 +174,8 @@ async def get_session(
     
 @router.post(
     "/session/{telegram_id}/clear",
-    summary="Clear session memory cache"
-)
+    summary="Clear session memory cache",
+dependencies=[Depends(require_service_or_admin)])
 async def clear_session_memory(
     telegram_id: int,  # <-- telegram_id qabul qilamiz
     db: AsyncSession = Depends(get_async_db),
@@ -209,8 +210,8 @@ async def clear_session_memory(
 @router.post(
     "/cleanup-expired",
     summary="Cleanup expired sessions",
-    tags=["admin"]
-)
+    tags=["admin"],
+dependencies=[Depends(require_admin)])
 async def cleanup_expired_sessions(
     memory_service: AIMemoryService = Depends(get_memory_service),
 ):

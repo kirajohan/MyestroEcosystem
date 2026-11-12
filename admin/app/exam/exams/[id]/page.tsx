@@ -18,6 +18,8 @@ import {
   PenTool,
   Mic,
   AlertCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://myestroeco-backend-production.up.railway.app';
@@ -58,6 +60,10 @@ export default function ExamDetailPage() {
   const [exam, setExam] = useState<Exam | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // YANGI: Publish holatini o'zgartirish paytidagi loading holati
+  const [updatingPublish, setUpdatingPublish] = useState(false);
+
   const [showAddBlock, setShowAddBlock] = useState(false);
   const [savingBlock, setSavingBlock] = useState(false);
   const [deleteBlockId, setDeleteBlockId] = useState<number | null>(null);
@@ -91,6 +97,34 @@ export default function ExamDetailPage() {
   useEffect(() => {
     if (token) loadData();
   }, [token, loadData]);
+
+  // YANGI: Publish holatini o'zgartirish funksiyasi
+  const handleTogglePublish = async () => {
+    if (!exam) return;
+    setUpdatingPublish(true);
+    try {
+      const res = await fetch(`${API_URL}/api/v2/exam/admin/exams/${examId}/publish`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ is_published: !exam.is_published }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      
+      const data = await res.json();
+      // [FE-01.1] Server state'ni to'g'ridan-to'g'ri yangilash (optimistik yangilash)
+      setExam((prev) => prev ? { ...prev, is_published: data.is_published } : null);
+    } catch (err) {
+      console.error('Publish statusini o\'zgartirishda xato:', err);
+      // [FE-04.2] Foydalanuvchiga aniq xato xabari
+      alert('Holatni o\'zgartirishda xatolik yuz berdi. Qaytadan urinib ko\'ring.');
+    } finally {
+      setUpdatingPublish(false);
+    }
+  };
 
   function openAddBlockModal() {
     const nextOrder = blocks.length + 1;
@@ -187,20 +221,31 @@ export default function ExamDetailPage() {
       >
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-5">
           <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
+            <div className="flex-1 min-w-0 break-words">
               <h1 className="text-xl md:text-2xl font-bold text-white">{exam.title}</h1>
               <p className="text-sm text-white/80 font-mono mt-1">{exam.code}</p>
             </div>
-            <span
-              className={`flex-shrink-0 inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold ${
+            
+            {/* O'ZGARTIRILDI: Interaktiv Publish/Draft tugmasi */}
+            <button
+              onClick={handleTogglePublish}
+              disabled={updatingPublish}
+              className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
                 exam.is_published
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-white/20 text-white backdrop-blur-sm'
-              }`}
+                  ? 'bg-emerald-500/20 text-emerald-100 border-emerald-400/30 hover:bg-emerald-500/30'
+                  : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              title={exam.is_published ? "Draft holatiga o'tkazish" : "Publish qilish"}
             >
-              {exam.is_published && <CheckCircle2 className="w-3 h-3" />}
+              {updatingPublish ? (
+                <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : exam.is_published ? (
+                <EyeOff className="w-3.5 h-3.5" />
+              ) : (
+                <Eye className="w-3.5 h-3.5" />
+              )}
               {exam.is_published ? 'Published' : 'Draft'}
-            </span>
+            </button>
           </div>
         </div>
 
@@ -235,7 +280,7 @@ export default function ExamDetailPage() {
 
       {/* Blocks Section */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <FileText className="w-5 h-5 text-orange-500" />
             Blocklar
@@ -354,7 +399,7 @@ export default function ExamDetailPage() {
                   <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
                     <Plus className="w-5 h-5 text-white" />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0 break-words">
                     <h2 className="text-lg font-bold text-white">Yangi Block qoshish</h2>
                     <p className="text-xs text-white/80">Skill turini tanlang</p>
                   </div>
@@ -491,7 +536,7 @@ export default function ExamDetailPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed inset-x-4 top-[20%] md:inset-auto md:left-1/2 md:top-[25%] md:-translate-x-1/2 w-full md:max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden"
+              className="fixed inset-x-4 top-[10%] max-h-[85vh] overflow-y-auto md:inset-auto md:left-1/2 md:top-[25%] md:-translate-x-1/2 w-full md:max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 z-50"
             >
               <div className="p-5 border-b border-slate-100">
                 <div className="flex items-center gap-3">

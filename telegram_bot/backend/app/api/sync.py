@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from app.core.deps import require_service_or_admin
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session as DBSession
@@ -39,7 +40,7 @@ class ErrorReportRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
-@router.post("/telegram-message")
+@router.post("/telegram-message", dependencies=[Depends(require_service_or_admin)])
 def sync_telegram_message(
     data: SyncMessageRequest,
     db: DBSession = Depends(get_db),
@@ -75,7 +76,7 @@ def sync_telegram_message(
     return {"status": "synced", "message_id": message.id}
 
 
-@router.post("/reply/{user_id}")
+@router.post("/reply/{user_id}", dependencies=[Depends(require_service_or_admin)])
 def sync_reply(
     user_id: int,
     data: ReplyRequest,
@@ -104,7 +105,7 @@ def sync_reply(
     return {"status": "reply_stored", "message_id": message.id}
 
 
-@router.post("/error")
+@router.post("/error", dependencies=[Depends(require_service_or_admin)])
 def sync_error(
     data: ErrorReportRequest,
     db: DBSession = Depends(get_db),
@@ -124,7 +125,7 @@ def sync_error(
     return {"status": "logged", "error_id": log.id}
 
 
-@router.get("/user/{telegram_id}")
+@router.get("/user/{telegram_id}", dependencies=[Depends(require_service_or_admin)])
 def get_sync_user(
     telegram_id: int,
     db: DBSession = Depends(get_db),
@@ -139,7 +140,7 @@ def get_sync_user(
     return UserResponse.model_validate(user)
 
 
-@router.post("/user")
+@router.post("/user", dependencies=[Depends(require_service_or_admin)])
 def create_sync_user(
     data: dict,
     db: DBSession = Depends(get_db),
@@ -171,7 +172,7 @@ def create_sync_user(
     return UserResponse.model_validate(user)
 
 
-@router.put("/users/{telegram_id}/ai-toggle")
+@router.put("/users/{telegram_id}/ai-toggle", dependencies=[Depends(require_service_or_admin)])
 def toggle_user_ai_sync(
     telegram_id: int,
     data: dict,
@@ -187,7 +188,7 @@ def toggle_user_ai_sync(
     return {"ai_enabled": user.ai_enabled}
 
 
-@router.put("/user/{telegram_id}")
+@router.put("/user/{telegram_id}", dependencies=[Depends(require_service_or_admin)])
 def update_sync_user(
     telegram_id: int,
     data: dict,

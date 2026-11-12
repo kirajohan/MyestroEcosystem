@@ -2,6 +2,7 @@
 
 import os
 import httpx
+from bot.utils.backend_http import BackendClient
 import logging
 from typing import Optional, Dict, Any
 
@@ -24,7 +25,7 @@ async def load_texts_from_backend(lang: Optional[str] = None) -> list[Dict[str, 
         url = f"{API_BASE_URL}/api/bot-texts/bulk"
         params = {"lang": lang} if lang else {}
         
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with BackendClient(timeout=10.0) as client:
             response = await client.get(url, params=params)
             response.raise_for_status()
             return response.json()

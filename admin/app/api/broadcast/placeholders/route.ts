@@ -1,3 +1,4 @@
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
 
-    const backendResp = await fetch(`${API_BASE_URL}/api/broadcast/placeholders`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/api/broadcast/placeholders`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

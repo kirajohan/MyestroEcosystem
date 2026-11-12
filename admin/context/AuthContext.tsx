@@ -2,6 +2,18 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  USER_KEY,
+  TOKEN_REFRESHED_EVENT,
+  AUTH_CLEARED_EVENT,
+  getAccessToken,
+  getRefreshToken,
+  getTokenExp,
+  isTokenExpiring,
+  refreshAccessToken,
+} from '@/lib/auth';
 
 interface AuthUser {
   id: number;
@@ -24,10 +36,6 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = 'myestro_admin_token';
-const REFRESH_TOKEN_KEY = 'myestro_admin_refresh_token';
-const USER_KEY = 'myestro_admin_user';
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,44 +45,96 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Check localStorage on mount
-  useEffect(() => {
-    try {
-      const storedToken = localStorage.getItem(TOKEN_KEY);
-      const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-      const storedUser = localStorage.getItem(USER_KEY);
-      
-      if (storedToken && storedUser) {
-        setToken(storedToken);
-        setRefreshTokenValue(storedRefreshToken);
-        setUser(JSON.parse(storedUser));
-        setIsLoggedIn(true);
-      }
-    } catch {
-      // Ignore parse errors
-    } finally {
-      setIsLoading(false);
-    }
+  const resetState = useCallback(() => {
+    setToken(null);
+    setRefreshTokenValue(null);
+    setUser(null);
+    setIsLoggedIn(false);
   }, []);
 
-  // Auto-refresh token before expiry (every 14 minutes for 15min token)
-  // useEffect(() => {
-  //   if (!isLoggedIn || !refreshTokenValue) return;
+  // Check localStorage on mount (eskirgan access token bo'lsa avval refresh qilinadi)
+  useEffect(() => {
+    let cancelled = false;
 
-  //   const refreshInterval = setInterval(async () => {
-  //     try {
-  //       const newToken = await refreshToken();
-  //       if (!newToken) {
-  //         logout();
-  //       }
-  //     } catch (err) {
-  //       console.error('Auto-refresh failed:', err);
-  //       logout();
-  //     }
-  //   }, 14 * 60 * 1000); // 14 minutes
+    (async () => {
+      try {
+        const storedUser = localStorage.getItem(USER_KEY);
+        let storedToken = getAccessToken();
 
-  //   return () => clearInterval(refreshInterval);
-  // }, [isLoggedIn, refreshTokenValue]);
+        if (storedToken && storedUser && isTokenExpiring(storedToken)) {
+          storedToken = (await refreshAccessToken()) ?? getAccessToken();
+        }
+
+        if (cancelled) return;
+
+        if (storedToken && storedUser) {
+          setToken(storedToken);
+          setRefreshTokenValue(getRefreshToken());
+          setUser(JSON.parse(storedUser));
+          setIsLoggedIn(true);
+        }
+      } catch {
+        // Ignore parse errors
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Token yangilanganda / boshqa tabda o'zgarganda / sessiya tozalanganda state'ni sinxronlash
+  useEffect(() => {
+    const onRefreshed = () => {
+      setToken(getAccessToken());
+      setRefreshTokenValue(getRefreshToken());
+    };
+    const onCleared = () => {
+      resetState();
+      router.push('/login');
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === TOKEN_KEY || e.key === REFRESH_TOKEN_KEY) {
+        const t = getAccessToken();
+        if (!t) onCleared();
+        else onRefreshed();
+      }
+    };
+
+    window.addEventListener(TOKEN_REFRESHED_EVENT, onRefreshed);
+    window.addEventListener(AUTH_CLEARED_EVENT, onCleared);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(TOKEN_REFRESHED_EVENT, onRefreshed);
+      window.removeEventListener(AUTH_CLEARED_EVENT, onCleared);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [resetState, router]);
+
+  // Proaktiv refresh: access token tugashidan 60s oldin; tab qaytganda ham tekshiriladi
+  useEffect(() => {
+    if (!isLoggedIn || !token) return;
+
+    const exp = getTokenExp(token);
+    const delay = exp ? Math.max(exp * 1000 - Date.now() - 60_000, 5_000) : 10 * 60_000;
+    const timer = setTimeout(() => {
+      refreshAccessToken();
+    }, delay);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && isTokenExpiring(getAccessToken())) {
+        refreshAccessToken();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [isLoggedIn, token]);
 
   const login = async (email: string, password: string) => {
     setError(null);
@@ -173,45 +233,7 @@ const loginWithPhone = async (phone: string, password: string) => {
   }
 };
 
-  const refreshToken = useCallback(async (): Promise<string | null> => {
-    try {
-      const currentRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-      if (!currentRefreshToken) {
-        return null;
-      }
-
-      const res = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: currentRefreshToken }),
-      });
-
-      if (!res.ok) {
-        return null;
-      }
-
-      const data = await res.json();
-      const newAccessToken = data.access_token;
-      const newRefreshToken = data.refresh_token;
-
-      if (newAccessToken) {
-        localStorage.setItem(TOKEN_KEY, newAccessToken);
-        if (newRefreshToken) {
-          localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
-        }
-        setToken(newAccessToken);
-        if (newRefreshToken) {
-          setRefreshTokenValue(newRefreshToken);
-        }
-        return newAccessToken;
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      return null;
-    }
-  }, []);
+  const refreshToken = useCallback(() => refreshAccessToken(), []);
 
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);

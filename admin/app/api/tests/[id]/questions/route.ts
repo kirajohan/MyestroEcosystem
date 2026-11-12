@@ -1,3 +1,4 @@
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 // DIQQAT: Faqat ichki tarmoq URL ishlatiladi. NEXT_PUBLIC_API_URL client-side uchun, bu yerda ishlamaydi.
@@ -14,7 +15,7 @@ export async function GET(
     const { id } = params;
 
     // DIQQAT: "/api/tests" emas, faqat "/tests"
-    const backendResp = await fetch(`${API_BASE_URL}/tests/${id}/questions`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/tests/${id}/questions`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -66,7 +67,7 @@ export async function POST(
     }
 
     // DIQQAT: "/api/tests" emas, faqat "/tests"
-    const backendResp = await fetch(`${API_BASE_URL}/tests/${id}/questions`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/tests/${id}/questions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

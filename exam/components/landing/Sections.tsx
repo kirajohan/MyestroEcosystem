@@ -3,23 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, useScroll, useTransform, useInView, MotionValue, useSpring } from "framer-motion";
-import { useTheme } from "@/app/providers";
+import { useTheme, useLanguage } from "@/app/providers";
 
 // ═══════════════════════════════════════════════════════════
 // KINETIC HERO — Rotating words with blur effect
 // ═══════════════════════════════════════════════════════════
 
-const ROTATING_WORDS = [
-  "Interactive Stories",
-  "AI Practice",
-  "Live Conversations",
-  "Real Exams",
-];
+const ROTATING_WORD_KEYS = ["hero.w1", "hero.w2", "hero.w3", "hero.w4"];
 
 export function KineticHero() {
   const [wordIndex, setWordIndex] = useState(0);
   const [softBlur, setSoftBlur] = useState(false);
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const isDark = theme === "dark";
 
   useEffect(() => {
@@ -35,7 +31,7 @@ export function KineticHero() {
     const start = () => {
       if (interval) return;
       interval = setInterval(() => {
-        setWordIndex((i) => (i + 1) % ROTATING_WORDS.length);
+        setWordIndex((i) => (i + 1) % ROTATING_WORD_KEYS.length);
       }, 2500);
     };
     const stop = () => {
@@ -58,7 +54,7 @@ export function KineticHero() {
         isDark ? "text-white" : "text-slate-900"
       }`}
     >
-      Master English through
+      {t("hero.through")}
       <br />
       <span className="inline-block relative h-[1.2em] overflow-hidden align-bottom">
         <AnimatePresence mode="wait">
@@ -70,7 +66,7 @@ export function KineticHero() {
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="inline-block bg-gradient-to-r from-orange-600 to-rose-500 bg-clip-text text-transparent"
           >
-            {ROTATING_WORDS[wordIndex]}
+            {t(ROTATING_WORD_KEYS[wordIndex])}
           </motion.span>
         </AnimatePresence>
       </span>
@@ -171,6 +167,7 @@ export function HorizontalRoulette({ items }: { items: any[] }) {
 }
 
 function RouletteCard({ item }: { item: any }) {
+  const { t } = useLanguage();
   const cardRef = useRef<HTMLDivElement>(null);
 
   const rotateX = useSpring(0, { stiffness: 300, damping: 30 });
@@ -243,8 +240,8 @@ function RouletteCard({ item }: { item: any }) {
 
         {/* ✅ PASTKI QISM ORALIG'I */}
         <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-slate-800 flex items-center justify-between">
-          <span className="text-[10px] md:text-xs text-slate-500 uppercase tracking-wider">Feature</span>
-          <span className="text-emerald-400 text-xs md:text-sm font-semibold">Batafsil →</span>
+          <span className="text-[10px] md:text-xs text-slate-500 uppercase tracking-wider">{t("card.feature")}</span>
+          <span className="text-emerald-400 text-xs md:text-sm font-semibold">{t("card.more")}</span>
         </div>
       </div>
     </motion.div>

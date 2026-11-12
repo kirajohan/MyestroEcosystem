@@ -1,6 +1,7 @@
 """Bot text API — CMS for managing bot messages from admin panel."""
 
 from fastapi import APIRouter, Depends, Query
+from app.core.deps import require_admin, require_service_or_admin
 from fastapi import status as http_status
 from typing import List, Optional, Dict
 from sqlalchemy.orm import Session as DBSession
@@ -31,7 +32,7 @@ async def notify_bot_cache_refresh():
 # EXISTING CRUD ENDPOINTS (CACHE INVALIDATION QO'SHILDI)
 # ══════════════════════════════════════════════════════════════
 
-@router.get("", response_model=List[BotTextResponse])
+@router.get("", response_model=List[BotTextResponse], dependencies=[Depends(require_admin)])
 def list_bot_texts(
     key: Optional[str] = Query(None),
     lang: Optional[str] = Query(None),
@@ -46,7 +47,7 @@ def list_bot_texts(
     return query.all()
 
 
-@router.post("", response_model=BotTextResponse)
+@router.post("", response_model=BotTextResponse, dependencies=[Depends(require_admin)])
 async def create_bot_text(
     data: BotTextCreate,
     db: DBSession = Depends(get_db),
@@ -75,7 +76,7 @@ async def create_bot_text(
     return entry
 
 
-@router.put("/{id}", response_model=BotTextResponse)
+@router.put("/{id}", response_model=BotTextResponse, dependencies=[Depends(require_admin)])
 async def update_bot_text(
     id: int,
     data: BotTextUpdate,
@@ -94,7 +95,7 @@ async def update_bot_text(
     return entry
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", dependencies=[Depends(require_admin)])
 async def delete_bot_text(
     id: int,
     db: DBSession = Depends(get_db),
@@ -115,7 +116,7 @@ async def delete_bot_text(
 # BULK ENDPOINTS (Cache va Admin Panel uchun)
 # ══════════════════════════════════════════════════════════════
 
-@router.get("/bulk", response_model=List[BotTextResponse])
+@router.get("/bulk", response_model=List[BotTextResponse], dependencies=[Depends(require_service_or_admin)])
 def get_all_bot_texts_bulk(
     lang: Optional[str] = Query(None, description="Filter by language (uz, ru, en)"),
     db: DBSession = Depends(get_db),
@@ -131,7 +132,7 @@ def get_all_bot_texts_bulk(
     return query.all()
 
 
-@router.post("/bulk-upsert", response_model=List[BotTextResponse])
+@router.post("/bulk-upsert", response_model=List[BotTextResponse], dependencies=[Depends(require_admin)])
 async def bulk_upsert_bot_texts(
     texts: List[BotTextCreate],
     db: DBSession = Depends(get_db),
@@ -178,7 +179,7 @@ async def bulk_upsert_bot_texts(
         raise
 
 
-@router.get("/keys", response_model=List[str])
+@router.get("/keys", response_model=List[str], dependencies=[Depends(require_admin)])
 def get_all_bot_text_keys(
     db: DBSession = Depends(get_db),
 ):
@@ -191,7 +192,7 @@ def get_all_bot_text_keys(
     return [key[0] for key in keys]
 
 
-@router.get("/stats")
+@router.get("/stats", dependencies=[Depends(require_admin)])
 def get_bot_texts_stats(
     db: DBSession = Depends(get_db),
 ):

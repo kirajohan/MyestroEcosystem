@@ -630,6 +630,22 @@ TRANSLATIONS = {
             "So'rovlar hajmi oshgan. Iltimos, 30 soniyadan so'ng qayta urinib ko'ring.\n"
             "Xatolik takrorlansa, <a href='https://t.me/myestro_support'>bizga xabar bering</a>."
         ),
+        "ai.busy": (
+            "⏳ <b>AI hali oldingi savolingizga javob yozmoqda.</b>\n\nIltimos, kuting yoki ⏹ <b>Stop</b> tugmasini bosing."
+        ),
+        "ai.stopped": "⏹ To'xtatildi.",
+        "ai.thinking_short": "O'ylayapman",
+        "ai.rate_limited": "⏳ <b>Juda ko'p so'rov yubordingiz.</b>\n\nBiroz kutib, qayta urinib ko'ring.",
+        "ai.rate_limited_day": "⏳ <b>Bugungi AI limiti tugadi.</b>\n\nErtaga qayta urinib ko'ring.",
+        "ai.timeout": "⏱ Javob juda uzoq davom etdi. Iltimos, qayta urinib ko'ring.",
+        "ai.inactive": "🚫 Hisobingiz faol emas. Qo'llab-quvvatlashga murojaat qiling.",
+        "ai.confirm": "✅ Tasdiqlash",
+        "ai.cancel": "❌ Bekor qilish",
+        "ai.action_done": "✅ Bajarildi.",
+        "ai.action_cancelled": "❌ Bekor qilindi.",
+        "ai.action_expired": "⌛ Tasdiqlash muddati tugagan. Qaytadan so'rang.",
+        "ai.action_forbidden": "🚫 Bu amal sizga tegishli emas.",
+        "ai.no_active": "Hozir faol AI so'rov yo'q.",
         "ai.thinking": (
             "🧠 <b>AI o'ylayapdi...</b>\n\n"
             "Javob tayyorlanmoqda, bir oz kuting ⏳"
@@ -1368,6 +1384,22 @@ TRANSLATIONS = {
             "Высокая нагрузка на серверы. Пожалуйста, повторите попытку через 30 секунд.\n"
             "Если ошибка повторится, <a href='https://t.me/myestro_support'>сообщите нам</a>."
         ),
+        "ai.busy": (
+            "⏳ <b>ИИ ещё отвечает на ваш предыдущий вопрос.</b>\n\nПодождите или нажмите ⏹ <b>Stop</b>."
+        ),
+        "ai.stopped": "⏹ Остановлено.",
+        "ai.thinking_short": "Думаю",
+        "ai.rate_limited": "⏳ <b>Слишком много запросов.</b>\n\nПодождите немного и повторите.",
+        "ai.rate_limited_day": "⏳ <b>Дневной лимит ИИ исчерпан.</b>\n\nПопробуйте завтра.",
+        "ai.timeout": "⏱ Ответ занял слишком много времени. Попробуйте ещё раз.",
+        "ai.inactive": "🚫 Ваш аккаунт неактивен. Обратитесь в поддержку.",
+        "ai.confirm": "✅ Подтвердить",
+        "ai.cancel": "❌ Отмена",
+        "ai.action_done": "✅ Выполнено.",
+        "ai.action_cancelled": "❌ Отменено.",
+        "ai.action_expired": "⌛ Время подтверждения истекло. Повторите запрос.",
+        "ai.action_forbidden": "🚫 Это действие вам недоступно.",
+        "ai.no_active": "Сейчас нет активного запроса к ИИ.",
         "ai.thinking": (
             "🧠 <b>ИИ думает...</b>\n\n"
             "Ответ готовится, пожалуйста, подождите ⏳"
@@ -2101,6 +2133,22 @@ TRANSLATIONS = {
             "High server demand. Please retry in 30 seconds.\n"
             "If the error persists, <a href='https://t.me/myestro_support'>let us know</a>."
         ),
+        "ai.busy": (
+            "⏳ <b>AI is still answering your previous question.</b>\n\nPlease wait or press ⏹ <b>Stop</b>."
+        ),
+        "ai.stopped": "⏹ Stopped.",
+        "ai.thinking_short": "Thinking",
+        "ai.rate_limited": "⏳ <b>Too many requests.</b>\n\nPlease wait a bit and try again.",
+        "ai.rate_limited_day": "⏳ <b>Daily AI limit reached.</b>\n\nTry again tomorrow.",
+        "ai.timeout": "⏱ The answer took too long. Please try again.",
+        "ai.inactive": "🚫 Your account is inactive. Please contact support.",
+        "ai.confirm": "✅ Confirm",
+        "ai.cancel": "❌ Cancel",
+        "ai.action_done": "✅ Done.",
+        "ai.action_cancelled": "❌ Cancelled.",
+        "ai.action_expired": "⌛ Confirmation expired. Please ask again.",
+        "ai.action_forbidden": "🚫 This action is not available to you.",
+        "ai.no_active": "No active AI request right now.",
         "ai.thinking": (
             "🧠 <b>AI is thinking...</b>\n\n"
             "Preparing your response, please wait ⏳"

@@ -59,8 +59,8 @@ export default function OptionButton({
       whileTap={{ scale: 0.98 }}
       className={`group relative w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all overflow-hidden text-left ${
         isSelected
-          ? "border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50 shadow-lg"
-          : "border-slate-200 hover:border-slate-300 bg-white"
+          ? "border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/60 dark:to-teal-950/60 shadow-lg"
+          : "border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-900"
       }`}
     >
       {/* Spotlight effect */}
@@ -87,7 +87,7 @@ export default function OptionButton({
         className={`relative flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base transition-all ${
           isSelected
             ? "bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg"
-            : "bg-slate-100 text-slate-700 group-hover:bg-slate-200"
+            : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 group-hover:bg-slate-200"
         }`}
       >
         {letter}
@@ -112,7 +112,7 @@ export default function OptionButton({
       {/* Option text */}
       <span
         className={`flex-1 text-sm md:text-base transition-colors ${
-          isSelected ? "text-emerald-900 font-semibold" : "text-slate-800"
+          isSelected ? "text-emerald-900 dark:text-emerald-200 font-semibold" : "text-slate-800 dark:text-slate-100"
         }`}
       >
         {option.text}

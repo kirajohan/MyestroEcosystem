@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useTheme } from "@/app/providers";
+import { useTheme, useLanguage } from "@/app/providers";
 
 const SOCIAL_LINKS = [
   {
@@ -35,14 +35,22 @@ const SOCIAL_LINKS = [
 ];
 
 const LEGAL_LINKS = [
-  { name: "Ommaviy offerta", href: "/offerta" },
-  { name: "Maxfiylik siyosati", href: "/privacy" },
-  { name: "Foydalanish shartlari", href: "/terms" },
-  { name: "Hujjatlar", href: "/docs" },
+  { key: "footer.offer", href: "/offerta" },
+  { key: "footer.privacy", href: "/privacy" },
+  { key: "footer.terms", href: "/terms" },
+  { key: "footer.docs_link", href: "/docs" },
+];
+
+const NAV_SECTIONS = [
+  { id: "features", key: "nav_features" },
+  { id: "method", key: "nav_method" },
+  { id: "results", key: "nav_results" },
+  { id: "faq", key: "nav_faq" },
 ];
 
 export default function Footer() {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const isDark = theme === "dark";
 
   return (
@@ -62,25 +70,25 @@ export default function Footer() {
               </span>
             </div>
             <p className={`text-sm leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-              AI texnologiyalari yordamida ingliz tili imtihonlari. Darajangizni aniqlang va o'sishni boshlang.
+              {t("footer.desc")}
             </p>
           </div>
 
           {/* Navigation */}
           <div>
             <h4 className={`font-semibold mb-4 ${isDark ? "text-white" : "text-slate-900"}`}>
-              Sahifa
+              {t("footer.pages")}
             </h4>
             <ul className="space-y-2.5">
-              {["features", "method", "results", "faq"].map((section) => (
-                <li key={section}>
+              {NAV_SECTIONS.map((section) => (
+                <li key={section.id}>
                   <a
-                    href={`#${section}`}
-                    className={`text-sm capitalize transition-colors ${
+                    href={`#${section.id}`}
+                    className={`text-sm transition-colors ${
                       isDark ? "text-slate-400 hover:text-orange-400" : "text-slate-600 hover:text-orange-600"
                     }`}
                   >
-                    {section}
+                    {t(section.key)}
                   </a>
                 </li>
               ))}
@@ -91,7 +99,7 @@ export default function Footer() {
                     isDark ? "text-slate-400 hover:text-orange-400" : "text-slate-600 hover:text-orange-600"
                   }`}
                 >
-                  Kirish
+                  {t("nav_login")}
                 </Link>
               </li>
             </ul>
@@ -100,7 +108,7 @@ export default function Footer() {
           {/* Legal */}
           <div>
             <h4 className={`font-semibold mb-4 ${isDark ? "text-white" : "text-slate-900"}`}>
-              Hujjatlar
+              {t("footer.docs")}
             </h4>
             <ul className="space-y-2.5">
               {LEGAL_LINKS.map((link) => (
@@ -111,7 +119,7 @@ export default function Footer() {
                       isDark ? "text-slate-400 hover:text-orange-400" : "text-slate-600 hover:text-orange-600"
                     }`}
                   >
-                    {link.name}
+                    {t(link.key)}
                   </Link>
                 </li>
               ))}
@@ -121,7 +129,7 @@ export default function Footer() {
           {/* Contact + Admin */}
           <div>
             <h4 className={`font-semibold mb-4 ${isDark ? "text-white" : "text-slate-900"}`}>
-              Aloqa
+              {t("footer.contact")}
             </h4>
             <ul className="space-y-2.5">
               <li>
@@ -133,7 +141,7 @@ export default function Footer() {
                     isDark ? "text-slate-400 hover:text-orange-400" : "text-slate-600 hover:text-orange-600"
                   }`}
                 >
-                  📩 Admin bilan bog'lanish
+                  {t("footer.admin_contact")}
                 </a>
               </li>
               <li>
@@ -161,7 +169,7 @@ export default function Footer() {
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
-                Admin panel
+                {t("footer.admin_panel")}
               </Link>
             </div>
           </div>
@@ -174,7 +182,7 @@ export default function Footer() {
           }`}
         >
           <p className={`text-sm ${isDark ? "text-slate-500" : "text-slate-500"}`}>
-            © 2026 Myestro. Barcha huquqlar himoyalangan.
+            {t("footer.rights")}
           </p>
 
           <div className="flex items-center gap-2">

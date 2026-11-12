@@ -1,3 +1,4 @@
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'https://myestroeco-backend-production.up.railway.app';
 
@@ -26,7 +27,7 @@ export async function PATCH(
     const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for file uploads
 
     try {
-      const backendResp = await fetch(`${API_BASE_URL}/content/${id}`, {
+      const backendResp = await backendFetch(`${API_BASE_URL}/content/${id}`, {
         method: 'PATCH',
         body: formData,
         signal: controller.signal,
@@ -90,7 +91,7 @@ export async function DELETE(
   try {
     const { id } = params;
 
-    const backendResp = await fetch(`${API_BASE_URL}/content/${id}`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/content/${id}`, {
       method: 'DELETE',
     });
 

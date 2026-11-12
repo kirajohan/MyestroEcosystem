@@ -26,6 +26,7 @@ import {
   Inbox as InboxIcon,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { authFetch } from '@/lib/auth';
 
 interface Message {
   id: number;
@@ -49,14 +50,13 @@ async function fetchWithAuth(url: string, token: string | null, options: Request
     ...(options.headers as Record<string, string>),
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+  // `token` parametri eskirgan bo'lishi mumkin — authFetch har doim joriy tokenni oladi va 401 da refresh qiladi
+  void token;
 
   const separator = url.includes('?') ? '&' : '?';
   const cacheBustUrl = `${url}${separator}_t=${Date.now()}`;
 
-  const response = await fetch(cacheBustUrl, {
+  const response = await authFetch(cacheBustUrl, {
     ...options,
     headers,
     cache: 'no-store',
@@ -315,7 +315,7 @@ export default function InboxPage() {
   const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
+    <div className="flex h-[calc(100dvh-4rem)] bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
       {/* ─── Left Panel: Conversation List ─── */}
       <div
         className={`${

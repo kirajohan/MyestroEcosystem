@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query
+from app.core.deps import require_admin
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
@@ -20,7 +21,7 @@ from app.models.exam import (
 router = APIRouter(prefix="/stats", tags=["stats"])
 
 
-@router.get("", response_model=StatsResponse)
+@router.get("", response_model=StatsResponse, dependencies=[Depends(require_admin)])
 def get_stats(
     db: DBSession = Depends(get_db),
 ):
@@ -47,7 +48,7 @@ def get_stats(
     )
 
 
-@router.get("/activity", response_model=list)
+@router.get("/activity", response_model=list, dependencies=[Depends(require_admin)])
 def get_activity(
     days: int = Query(7, ge=1, le=90),
     db: DBSession = Depends(get_db),
@@ -67,7 +68,7 @@ def get_activity(
     return [{"date": str(r.date), "count": r.count} for r in rows]
 
 
-@router.get("/cefr", response_model=CEFRDistribution)
+@router.get("/cefr", response_model=CEFRDistribution, dependencies=[Depends(require_admin)])
 def get_cefr_distribution(
     db: DBSession = Depends(get_db),
 ):
@@ -86,7 +87,7 @@ def get_cefr_distribution(
 # ✅ YANGI: DASHBOARD ENDPOINT
 # ══════════════════════════════════════════════════════════════
 
-@router.get("/dashboard")
+@router.get("/dashboard", dependencies=[Depends(require_admin)])
 def get_dashboard_stats(
     db: DBSession = Depends(get_db),
 ):

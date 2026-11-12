@@ -1,4 +1,5 @@
 // C:\Projects\MyestroEco\MyestroEco\admin\app\api\broadcast\[id]\route.ts
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
@@ -18,7 +19,7 @@ export async function GET(
       return NextResponse.json({ error: 'id majburiy' }, { status: 400 });
     }
 
-    const backendResp = await fetch(`${API_BASE_URL}/broadcast/status/${id}`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/broadcast/status/${id}`, {
       method: 'GET',
       headers: {
         'Authorization': authHeader,
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
     const backendFormData = new FormData();
     backendFormData.append('file', file);
 
-    const backendResp = await fetch(`${API_BASE_URL}/broadcast/upload-media`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/broadcast/upload-media`, {
       method: 'POST',
       headers: {
         'Authorization': authHeader,

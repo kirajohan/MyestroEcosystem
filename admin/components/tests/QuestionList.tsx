@@ -67,7 +67,7 @@ export default function QuestionList({ questions, onEdit, onDelete }: QuestionLi
             transition={{ delay: index * 0.03 }}
             className="p-5 hover:bg-slate-50/50 transition-colors group"
           >
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
               {/* Question Content */}
               <div className="flex-1 min-w-0">
                 {/* Question Number + Text */}
@@ -81,7 +81,7 @@ export default function QuestionList({ questions, onEdit, onDelete }: QuestionLi
                 </div>
 
                 {/* Options */}
-                <div className="mt-3 ml-10 flex flex-wrap gap-2">
+                <div className="mt-3 ml-0 sm:ml-10 flex flex-wrap gap-2">
                   {question.options.map((option, optIdx) => {
                     const optionText = getOptionText(option);
                     const isCorrect = optIdx === correctIdx;
@@ -90,7 +90,7 @@ export default function QuestionList({ questions, onEdit, onDelete }: QuestionLi
                     return (
                       <span
                         key={optIdx}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        className={`inline-flex max-w-full min-w-0 items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium break-words transition-colors ${
                           isCorrect
                             ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                             : 'bg-slate-50 text-slate-600 border border-slate-200'
@@ -112,7 +112,7 @@ export default function QuestionList({ questions, onEdit, onDelete }: QuestionLi
 
                 {/* Explanation */}
                 {question.explanation && (
-                  <div className="mt-3 ml-10 flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                  <div className="mt-3 ml-0 sm:ml-10 flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-lg">
                     <Lightbulb size={14} className="text-amber-500 mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-amber-800 italic leading-relaxed">
                       {question.explanation}

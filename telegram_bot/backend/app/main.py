@@ -35,7 +35,6 @@ from app.services.admin_ai_service import AIToolsService
 from app.services.ai_agent import AIAgent
 
 from app.api.exam_v2.router import exam_v2_router
-from app.api.exam_v2.admin import router as exam_admin_router
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +108,16 @@ def create_app() -> FastAPI:
     media_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/media", StaticFiles(directory=str(media_dir)), name="media")
 
+    # Xavfsizlik: kodda yozilgan standart sirlar ishlatilayotgan bo'lsa ogohlantirish
+    _KNOWN_DEFAULT_SECRET = "b376f24c1d2bfbaacfa9ef51027b74f40cb3aa9a8497aa50dd38c52c6bff5d07"
+    if _KNOWN_DEFAULT_SECRET in (settings.JWT_ACCESS_SECRET, settings.JWT_REFRESH_SECRET):
+        logger.critical(
+            "🚨 JWT sirlari kodda yozilgan standart qiymatda! Har kim admin token yasay oladi. "
+            "Railway'da JWT_ACCESS_SECRET va JWT_REFRESH_SECRET ni yangi tasodifiy qiymatga almashtiring."
+        )
+    if not settings.INTERNAL_API_KEY:
+        logger.warning("⚠️ INTERNAL_API_KEY bo'sh — bot→backend endpointlari himoyasiz.")
+
     # CORS middleware
     app.add_middleware(
         CORSMiddleware,
@@ -138,7 +147,6 @@ def create_app() -> FastAPI:
     app.include_router(inbox.router)
     app.include_router(logs.router)
     app.include_router(ws_router)
-    app.include_router(exam_admin_router)
     app.include_router(exam_v2_router)
     app.include_router(internal_router)
 

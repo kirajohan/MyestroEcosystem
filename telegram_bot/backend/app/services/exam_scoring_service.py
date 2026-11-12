@@ -100,13 +100,18 @@ async def auto_score_attempt(
             if correct_option_ids:
                 user_selected = answer.selected_options or []
                 correct_count = len([
-                    opt for opt in user_selected 
+                    opt for opt in user_selected
                     if opt in correct_option_ids
                 ])
+                # Noto'g'ri tanlangan variantlar ballni kamaytiradi
+                wrong_count = len([
+                    opt for opt in user_selected
+                    if opt not in correct_option_ids
+                ])
                 total_correct = len(correct_option_ids)
-                
+
                 if total_correct > 0:
-                    score_ratio = correct_count / total_correct
+                    score_ratio = max(0.0, (correct_count - wrong_count) / total_correct)
                     auto_score = float(item.max_score) * score_ratio
                 else:
                     auto_score = 0.0

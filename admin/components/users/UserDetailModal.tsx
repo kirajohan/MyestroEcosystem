@@ -55,10 +55,10 @@ export function UserDetailModal({ user, isOpen, onClose }: UserDetailModalProps)
         initial={{ scale: 0.95, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden max-h-[90vh] flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-gradient-to-r from-orange-50 to-orange-50">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-100 bg-gradient-to-r from-orange-50 to-orange-50">
           <h2 className="text-xl font-bold text-slate-900">Foydalanuvchi malumotlari</h2>
           <button
             onClick={onClose}
@@ -69,7 +69,7 @@ export function UserDetailModal({ user, isOpen, onClose }: UserDetailModalProps)
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto">
           {/* Full Name */}
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Toliq Ism</p>
@@ -158,7 +158,7 @@ export function UserDetailModal({ user, isOpen, onClose }: UserDetailModalProps)
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2 p-6 border-t border-slate-100 bg-slate-50">
+        <div className="flex gap-2 p-4 sm:p-6 border-t border-slate-100 bg-slate-50">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}

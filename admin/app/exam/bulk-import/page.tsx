@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { authFetch } from '@/lib/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -237,7 +238,7 @@ export default function BulkImportPage() {
     try {
       const payload = JSON.parse(jsonInput);
 
-      const res = await fetch(`${API_URL}/api/v2/exam/admin/bulk-import`, {
+      const res = await authFetch(`${API_URL}/api/v2/exam/admin/bulk-import`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "@/app/providers";
 
 interface WritingEditorProps {
   itemId: number;
@@ -21,9 +22,10 @@ export default function WritingEditor({
   minWords = 0,
   maxWords = 500,
   isSaving,
-  title = "Writing Task",
+  title,
   instruction,
 }: WritingEditorProps) {
+  const { t } = useLanguage();
   const [text, setText] = useState(initialValue);
   const [focusMode, setFocusMode] = useState(false);
   const [pasteWarning, setPasteWarning] = useState(false);
@@ -82,9 +84,9 @@ export default function WritingEditor({
   latestRef.current = { text, initialValue, itemId, onSave };
 
   const flushSave = useCallback(() => {
-    const { text: t, initialValue: iv, itemId: id, onSave: save } = latestRef.current;
+    const { text: txt, initialValue: iv, itemId: id, onSave: save } = latestRef.current;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    if (t !== iv) save(id, t);
+    if (txt !== iv) save(id, txt);
   }, []);
 
   // Block/item almashganda yoki sahifadan chiqilganda yo'qolmasligi uchun
@@ -159,7 +161,7 @@ export default function WritingEditor({
           } ${
             focusMode
               ? "bg-slate-900/95 border border-white/10"
-              : "bg-white/90 backdrop-blur-xl border border-slate-200/60"
+              : "bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/60 dark:border-slate-700/60"
           }`}
           style={
             isFocused && !focusMode
@@ -180,7 +182,7 @@ export default function WritingEditor({
           {/* ── Header ── */}
           <div
             className={`flex items-center justify-between gap-3 px-5 py-3 border-b ${
-              focusMode ? "border-white/10" : "border-slate-200/60"
+              focusMode ? "border-white/10" : "border-slate-200/60 dark:border-slate-700/60"
             }`}
           >
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -188,13 +190,13 @@ export default function WritingEditor({
               <div className="min-w-0 flex-1">
                 <h3
                   className={`text-xs font-bold uppercase tracking-widest truncate ${
-                    focusMode ? "text-orange-400" : "text-orange-600"
+                    focusMode ? "text-orange-400" : "text-orange-600 dark:text-orange-400"
                   }`}
                 >
-                  {title}
+                  {title || t("write.title_default")}
                 </h3>
                 {instruction && !focusMode && (
-                  <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
                     {instruction}
                   </p>
                 )}
@@ -210,11 +212,11 @@ export default function WritingEditor({
                     ? "bg-orange-500 text-white"
                     : focusMode
                     ? "text-slate-300 hover:bg-white/10"
-                    : "text-slate-600 hover:bg-slate-100"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
-                title="Zen / Focus mode"
+                title={t("write.focus_title")}
               >
-                {focusMode ? "✕ Exit" : "🧘 Focus"}
+                {focusMode ? t("write.exit") : t("write.focus")}
               </button>
             </div>
           </div>
@@ -234,7 +236,7 @@ export default function WritingEditor({
                   exit={{ opacity: 0, y: -10 }}
                   className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-amber-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg"
                 >
-                  ⚠️ Paste blocked — please type your own answer
+                  {t("write.paste_blocked")}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -252,11 +254,11 @@ export default function WritingEditor({
                   flushSave();
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Start writing your answer here..."
+                placeholder={t("write.placeholder")}
                 className={`w-full resize-none outline-none transition-colors ${
                   focusMode
                     ? "bg-transparent text-slate-100 placeholder-slate-600"
-                    : "bg-transparent text-slate-800 placeholder-slate-400"
+                    : "bg-transparent text-slate-800 dark:text-slate-100 placeholder-slate-400"
                 } ${focusMode ? "text-lg leading-relaxed" : "text-base"}`}
                 style={{
                   minHeight: focusMode ? "60vh" : "300px",
@@ -287,7 +289,7 @@ export default function WritingEditor({
           {/* ── Footer: Word counter + Status ── */}
           <div
             className={`flex items-center justify-between gap-4 px-5 py-3 border-t ${
-              focusMode ? "border-white/10" : "border-slate-200/60"
+              focusMode ? "border-white/10" : "border-slate-200/60 dark:border-slate-700/60"
             }`}
           >
             {/* Left: Word counter + Target Ring */}
@@ -300,7 +302,7 @@ export default function WritingEditor({
                     cx={ringSize / 2}
                     cy={ringSize / 2}
                     r={radius}
-                    stroke={focusMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"}
+                    stroke="currentColor" className={focusMode ? "text-white/10" : "text-black/10 dark:text-white/10"}
                     strokeWidth={strokeWidth}
                     fill="none"
                   />
@@ -325,17 +327,17 @@ export default function WritingEditor({
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span
                     className={`text-lg font-bold tabular-nums ${
-                      focusMode ? "text-white" : "text-slate-900"
+                      focusMode ? "text-white" : "text-slate-900 dark:text-white"
                     }`}
                   >
                     {wordCount}
                   </span>
                   <span
                     className={`text-[9px] uppercase tracking-wider font-semibold ${
-                      focusMode ? "text-slate-500" : "text-slate-400"
+                      focusMode ? "text-slate-500 dark:text-slate-400" : "text-slate-400"
                     }`}
                   >
-                    words
+                    {t("write.words")}
                   </span>
                 </div>
 
@@ -357,18 +359,19 @@ export default function WritingEditor({
               <div className="space-y-0.5">
                 <div
                   className={`text-xs font-semibold ${
-                    focusMode ? "text-slate-300" : "text-slate-700"
+                    focusMode ? "text-slate-300" : "text-slate-700 dark:text-slate-200"
                   }`}
                 >
-                  Target: {targetMin}
-                  {maxWords ? ` - ${maxWords}` : "+"} words
+                  {maxWords
+                    ? t("write.target", { a: targetMin, b: maxWords })
+                    : t("write.target_min", { a: targetMin })}
                 </div>
                 <div
                   className={`text-[10px] ${
-                    focusMode ? "text-slate-500" : "text-slate-400"
+                    focusMode ? "text-slate-500 dark:text-slate-400" : "text-slate-400"
                   }`}
                 >
-                  {charCount} characters
+                  {t("write.chars", { n: charCount })}
                 </div>
                 <div
                   className={`text-[10px] font-semibold ${
@@ -377,15 +380,15 @@ export default function WritingEditor({
                       : reachedMin
                       ? "text-emerald-600"
                       : focusMode
-                      ? "text-slate-500"
-                      : "text-slate-500"
+                      ? "text-slate-500 dark:text-slate-400"
+                      : "text-slate-500 dark:text-slate-400"
                   }`}
                 >
                   {exceededMax
-                    ? `⚠️ ${wordCount - maxWords} words over limit`
+                    ? t("write.over", { n: wordCount - maxWords })
                     : reachedMin
-                    ? "✓ Target reached!"
-                    : `${targetMin - wordCount} more to target`}
+                    ? t("write.reached")
+                    : t("write.more", { n: targetMin - wordCount })}
                 </div>
               </div>
             </div>
@@ -399,10 +402,10 @@ export default function WritingEditor({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="flex items-center gap-1.5 text-xs text-slate-500"
+                    className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
                   >
                     <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
-                    Saving...
+                    {t("write.saving")}
                   </motion.div>
                 ) : (
                   <motion.div
@@ -425,7 +428,7 @@ export default function WritingEditor({
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    Saved
+                    {t("write.saved")}
                   </motion.div>
                 )}
               </AnimatePresence>

@@ -254,7 +254,7 @@ export default function ContentPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -306,7 +306,7 @@ export default function ContentPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden sticky top-24"
+            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden lg:sticky lg:top-24"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-5">

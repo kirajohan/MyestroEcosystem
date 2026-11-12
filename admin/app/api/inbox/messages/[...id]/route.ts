@@ -1,3 +1,4 @@
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'https://myestroeco-backend-production.up.railway.app';
@@ -16,7 +17,7 @@ export async function GET(
 
     if (!subPath) {
       // GET /api/inbox/messages/{id} — get single message
-      const backendResp = await fetch(`${API_BASE_URL}/admin-messages/${messageId}`, {
+      const backendResp = await backendFetch(`${API_BASE_URL}/admin-messages/${messageId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -65,7 +66,7 @@ export async function POST(
         );
       }
 
-      const backendResp = await fetch(`${API_BASE_URL}/admin-messages/${messageId}/reply`, {
+      const backendResp = await backendFetch(`${API_BASE_URL}/admin-messages/${messageId}/reply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,7 +89,7 @@ export async function POST(
 
     if (subPath === 'read') {
       // POST /api/inbox/messages/{id}/read — mark as read
-      const backendResp = await fetch(`${API_BASE_URL}/admin-messages/${messageId}/read`, {
+      const backendResp = await backendFetch(`${API_BASE_URL}/admin-messages/${messageId}/read`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +128,7 @@ export async function DELETE(
 
     if (!subPath) {
       // DELETE /api/inbox/messages/{id} — delete message
-      const backendResp = await fetch(`${API_BASE_URL}/admin-messages/${messageId}`, {
+      const backendResp = await backendFetch(`${API_BASE_URL}/admin-messages/${messageId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

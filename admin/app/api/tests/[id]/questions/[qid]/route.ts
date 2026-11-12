@@ -1,5 +1,6 @@
 // admin/app/api/tests/[id]/questions/[qid]/route.ts
 
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
@@ -10,7 +11,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const { id, qid } = params;
     const body = await request.json();
 
-    const backendResp = await fetch(
+    const backendResp = await backendFetch(
       `${API_BASE_URL}/tests/${id}/questions/${qid}`, // "/api" olib tashlandi
       {
         method: 'PUT',
@@ -50,7 +51,7 @@ export async function DELETE(
   try {
     const { id, qid } = params;
 
-    const backendResp = await fetch(
+    const backendResp = await backendFetch(
       `${API_BASE_URL}/api/tests/${id}/questions/${qid}`,
       { method: 'DELETE' }
     );

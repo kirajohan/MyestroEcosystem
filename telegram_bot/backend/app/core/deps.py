@@ -96,5 +96,45 @@ def log_api_request(request: Request, db: DBSession, user_id: Optional[int] = No
     return _log
 
 
+import hmac
+import logging
+
+_deps_logger = logging.getLogger(__name__)
+_warned_no_internal_key = False
+
+
+def require_service_or_admin(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: DBSession = Depends(get_db),
+):
+    """
+    Bot (servis) yoki admin uchun endpointlar.
+    - `X-Internal-Key` sarlavhasi `INTERNAL_API_KEY` ga teng bo'lsa — o'tadi (bot).
+    - Aks holda admin JWT talab qilinadi.
+    - INTERNAL_API_KEY o'rnatilmagan bo'lsa — himoya O'CHIQ (orqaga moslik), lekin ogohlantiriladi.
+    """
+    global _warned_no_internal_key
+    key = settings.INTERNAL_API_KEY
+    if not key:
+        if not _warned_no_internal_key:
+            _warned_no_internal_key = True
+            _deps_logger.warning(
+                "⚠️ INTERNAL_API_KEY o'rnatilmagan — bot endpointlari (sync, ai, ...) HIMOYASIZ. "
+                "Railway'da backend va bot servislariga bir xil INTERNAL_API_KEY qo'ying."
+            )
+        return None
+
+    provided = request.headers.get("x-internal-key", "")
+    if provided and hmac.compare_digest(provided.encode(), key.encode()):
+        return None
+
+    user = get_current_user(credentials, db)
+    if user.role not in ("admin", "superadmin"):
+        raise ForbiddenException("Requires admin role or service key")
+    return user
+
+
 require_admin = require_role(["admin", "superadmin"])
 require_superadmin = require_role(["superadmin"])
+require_service = require_service_or_admin

@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import httpx
+from bot.utils.backend_http import BackendClient
 from aiogram import Bot
 from bot.config import settings
 
@@ -49,11 +50,11 @@ async def upload_content_to_telegram(bot: Bot, content_id: int, file_path: str, 
         
         # Save file_id to backend
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with BackendClient(timeout=10.0) as client:
                 resp = await client.post(
                     f"{CONTENT_API}/{content_id}/set-telegram-file-id",
                     json={"telegram_file_id": telegram_file_id},
-                    headers={"Authorization": f"Bearer {settings.BOT_TOKEN}"}
+                    headers={}
                 )
                 if resp.status_code == 200:
                     logger.info(f"[CONTENT UPLOADER] Saved telegram_file_id for {content_type} {content_id}")

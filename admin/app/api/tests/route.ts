@@ -1,3 +1,4 @@
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
       url += `&level=${level}`;
     }
 
-    const backendResp = await fetch(url, {
+    const backendResp = await backendFetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     // DIQQAT: Bu yerda ham "/api/tests" emas, "/tests" bo'lishi kerak
-    const backendResp = await fetch(`${API_BASE_URL}/tests`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/tests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

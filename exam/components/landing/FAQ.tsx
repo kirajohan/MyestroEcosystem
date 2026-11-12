@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTheme } from "@/app/providers";
+import { useTheme, useLanguage } from "@/app/providers";
 
 interface FAQItemProps {
   q: string;
@@ -105,6 +105,7 @@ interface FAQProps {
 
 export default function FAQ({ items }: FAQProps) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const isDark = theme === "dark";
 
   return (
@@ -115,17 +116,17 @@ export default function FAQ({ items }: FAQProps) {
         viewport={{ once: true }}
         className="text-center mb-12"
       >
-        <div className="inline-block bg-orange-500/20 text-orange-400 text-sm font-semibold px-4 py-2 rounded-full mb-4 border border-orange-500/30">
-          FAQ
+        <div className="inline-block bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30 text-sm font-semibold px-4 py-2 rounded-full mb-4 border">
+          {t("faq.badge")}
         </div>
         <h2
           className={`text-4xl md:text-5xl font-bold ${
             isDark ? "text-white" : "text-slate-900"
           }`}
         >
-          Ko'p so'raladigan{" "}
+          {t("faq.title_a")}
           <span className="bg-gradient-to-r from-orange-500 to-rose-500 bg-clip-text text-transparent">
-            savollar
+            {t("faq.title_b")}
           </span>
         </h2>
       </motion.div>
@@ -151,12 +152,12 @@ export default function FAQ({ items }: FAQProps) {
         className="text-center mt-12"
       >
         <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-          Boshqa savollaringiz bormi?{" "}
+          {t("faq.more_q")}{" "}
           <a
             href="https://t.me/myestro_support"
             className="text-orange-500 hover:text-orange-600 font-semibold transition-colors"
           >
-            Biz bilan bog'laning →
+            {t("faq.contact")}
           </a>
         </p>
       </motion.div>

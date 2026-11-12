@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "@/app/providers";
 
 interface ReadingPassageProps {
   text: string;
@@ -18,9 +19,10 @@ const HIGHLIGHT_COLORS = [
 
 export default function ReadingPassage({ 
   text, 
-  title = "Passage",
+  title,
   instruction  // ← YANGI
 }: ReadingPassageProps) {
+  const { t } = useLanguage();
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -147,25 +149,25 @@ export default function ReadingPassage({
         className={`relative overflow-hidden rounded-2xl border shadow-xl transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           focusMode
             ? "bg-slate-900/95 border-white/10 backdrop-blur-xl lg:-mx-4 lg:scale-[1.02]"
-            : "bg-white/80 backdrop-blur-xl border-slate-200/60"
+            : "bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-slate-200/60 dark:border-slate-700/60"
         }`}
       >
         {/* ── Header: title + controls ── */}
         <div
           className={`flex items-center justify-between gap-3 px-5 py-3 border-b ${
-            focusMode ? "border-white/10" : "border-slate-200/60"
+            focusMode ? "border-white/10" : "border-slate-200/60 dark:border-slate-700/60"
           }`}
         >
           <div>
             <h3
               className={`text-xs font-bold uppercase tracking-widest flex items-center gap-2 ${
-                focusMode ? "text-orange-400" : "text-orange-600"
+                focusMode ? "text-orange-400" : "text-orange-600 dark:text-orange-400"
               }`}
             >
-              📖 {title}
+              📖 {title || t("read.title_default")}
             </h3>
             <div className={`text-[11px] mt-0.5 ${focusMode ? "text-slate-500" : "text-slate-400"}`}>
-              ≈ {readTime} min read • {wordCount} words • {Math.round(progress * 100)}%
+              {t("read.stats", { m: readTime, w: wordCount, p: Math.round(progress * 100) })}
             </div>
           </div>
 
@@ -173,18 +175,18 @@ export default function ReadingPassage({
             <button
               onClick={() => setFontSize((s) => Math.max(13, s - 1))}
               className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
-                focusMode ? "text-slate-300 hover:bg-white/10" : "text-slate-600 hover:bg-slate-100"
+                focusMode ? "text-slate-300 hover:bg-white/10" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
-              title="Kichikroq shrift"
+              title={t("read.font_smaller")}
             >
               A−
             </button>
             <button
               onClick={() => setFontSize((s) => Math.min(22, s + 1))}
               className={`px-2 py-1 rounded-lg text-sm font-bold transition-colors ${
-                focusMode ? "text-slate-300 hover:bg-white/10" : "text-slate-600 hover:bg-slate-100"
+                focusMode ? "text-slate-300 hover:bg-white/10" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
-              title="Kattaroq shrift"
+              title={t("read.font_larger")}
             >
               A+
             </button>
@@ -195,9 +197,9 @@ export default function ReadingPassage({
                   ? "bg-orange-500 text-white"
                   : focusMode
                   ? "text-slate-300 hover:bg-white/10"
-                  : "text-slate-600 hover:bg-slate-100"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
-              title="Serif / Sans"
+              title={t("read.serif_title")}
               style={{ fontFamily: "Georgia, serif" }}
             >
               Serif
@@ -207,11 +209,11 @@ export default function ReadingPassage({
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
                 focusMode
                   ? "bg-orange-500 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
-              title="Zen / Focus mode"
+              title={t("read.focus_title")}
             >
-              {focusMode ? "✕ Exit" : "🧘 Focus"}
+              {focusMode ? t("read.exit") : t("read.focus")}
             </button>
           </div>
         </div>
@@ -222,22 +224,22 @@ export default function ReadingPassage({
             className={`px-5 py-3 border-b text-sm ${
               focusMode
                 ? "bg-blue-950/40 border-white/10 text-blue-300"
-                : "bg-gradient-to-r from-blue-50 to-indigo-50 border-slate-200/60 text-blue-900"
+                : "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-slate-200/60 dark:border-slate-700/60 text-blue-900 dark:text-blue-200"
             }`}
           >
             <div
               className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${
-                focusMode ? "text-blue-400" : "text-blue-700"
+                focusMode ? "text-blue-400" : "text-blue-700 dark:text-blue-400"
               }`}
             >
-              📋 Instructions
+              {t("read.instructions")}
             </div>
             <p className="leading-relaxed">{instruction}</p>
           </div>
         )}
 
         {/* ── Reading progress bar ── */}
-        <div className={`h-1 ${focusMode ? "bg-white/10" : "bg-slate-200/60"}`}>
+        <div className={`h-1 ${focusMode ? "bg-white/10" : "bg-slate-200/60 dark:bg-slate-700/60"}`}>
           <div
             className="h-full bg-gradient-to-r from-orange-500 to-rose-500 transition-[width] duration-150"
             style={{ width: `${progress * 100}%` }}
@@ -265,7 +267,7 @@ export default function ReadingPassage({
                     className={`absolute -left-5 top-1.5 opacity-0 group-hover/para:opacity-100 transition-opacity text-xs ${
                       focusMode ? "text-slate-500" : "text-slate-400"
                     }`}
-                    title={isCollapsed ? "Ochish" : "Yig'ish"}
+                    title={isCollapsed ? t("read.expand") : t("read.collapse")}
                   >
                     {isCollapsed ? "▸" : "▾"}
                   </button>
@@ -279,7 +281,7 @@ export default function ReadingPassage({
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                       className={`overflow-hidden leading-relaxed whitespace-pre-line mb-5 ${
-                        focusMode ? "text-slate-200" : "text-slate-800"
+                        focusMode ? "text-slate-200" : "text-slate-800 dark:text-slate-200"
                       }`}
                       style={{ fontSize, fontFamily }}
                     >
@@ -292,7 +294,7 @@ export default function ReadingPassage({
                       exit={{ opacity: 0 }}
                       className={`text-xs italic mb-5 ${focusMode ? "text-slate-600" : "text-slate-400"}`}
                     >
-                      Paragraph {i + 1} collapsed…
+                      {t("read.collapsed", { n: i + 1 })}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -319,21 +321,21 @@ export default function ReadingPassage({
                 onClick={() => applyHighlight(c.value)}
                 className="w-6 h-6 rounded-full border-2 border-white/20 hover:scale-110 transition-transform"
                 style={{ backgroundColor: c.value }}
-                title={`${c.name} marker`}
+                title={t("read.marker", { c: t(`read.color.${c.name}`) })}
               />
             ))}
             <div className="w-px h-5 bg-white/10 mx-0.5" />
             <button
               onClick={() => openDictionary(toolbar.text, toolbar.x, toolbar.y + 52)}
               className="text-sm px-1.5 hover:scale-110 transition-transform"
-              title="Lug'at"
+              title={t("read.dictionary")}
             >
               📖
             </button>
             <button
               onClick={() => speak(toolbar.text)}
               className="text-sm px-1.5 hover:scale-110 transition-transform"
-              title="Talaffuz"
+              title={t("read.pronounce")}
             >
               🔊
             </button>
@@ -371,7 +373,7 @@ export default function ReadingPassage({
             </div>
 
             {dict.loading ? (
-              <div className="text-sm text-slate-400 animate-pulse">Loading…</div>
+              <div className="text-sm text-slate-400 animate-pulse">{t("common.loading")}</div>
             ) : dict.data?.meanings?.length ? (
               <div className="space-y-2 max-h-40 overflow-y-auto reading-scroll">
                 {dict.data.meanings.slice(0, 2).map((m: any, i: number) => (
@@ -384,7 +386,7 @@ export default function ReadingPassage({
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-400">Lug'atda topilmadi.</p>
+              <p className="text-sm text-slate-400">{t("read.not_found")}</p>
             )}
           </motion.div>
         )}

@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { authFetch } from '@/lib/auth';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -83,7 +84,7 @@ export default function CreateExamPage() {
         return;
       }
 
-      const res = await fetch(`${API_URL}/api/v2/exam/admin/exams`, {
+      const res = await authFetch(`${API_URL}/api/v2/exam/admin/exams`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

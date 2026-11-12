@@ -1,3 +1,4 @@
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Backendga so'rov yuboramiz (JWTsiz, to'g'ridan-to'g'ri)
-    const backendResp = await fetch(`${API_BASE_URL}/broadcast/send`, {
+    const backendResp = await backendFetch(`${API_BASE_URL}/broadcast/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

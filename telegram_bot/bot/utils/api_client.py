@@ -5,6 +5,7 @@ Backend API bilan bog'lanish uchun utility funksiyalar.
 
 import os
 import httpx
+from bot.utils.backend_http import BackendClient
 import logging
 from typing import Optional, List, Dict, Any
 
@@ -30,7 +31,7 @@ async def fetch_public_tests(
         Testlar ro'yxati: [{"id": 1, "title": "...", "cefr_level": "A1", ...}, ...]
     """
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with BackendClient(timeout=10.0) as client:
             response = await client.get(
                 f"{API_BASE_URL}/tests",
                 params={
@@ -69,7 +70,7 @@ async def fetch_test_questions(test_id: int) -> Optional[Dict[str, Any]]:
         }
     """
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with BackendClient(timeout=15.0) as client:
             response = await client.get(
                 f"{API_BASE_URL}/tests/{test_id}/questions"
             )
@@ -99,7 +100,7 @@ async def submit_test_attempt(
             "passed": passed
         }
         
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with BackendClient(timeout=10.0) as client:
             response = await client.post(
                 f"{API_BASE_URL}/tests/attempts",  # ← BU YER: /api/test_attempts emas, /api/tests/attempts
                 json=payload

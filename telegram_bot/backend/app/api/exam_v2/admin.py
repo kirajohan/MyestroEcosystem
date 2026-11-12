@@ -997,9 +997,6 @@ async def bulk_import_exam(
 class ExamPublishUpdate(BaseModel):
     is_published: bool
 
-router = APIRouter(prefix="/admin", tags=["exam-admin"])
-
-# ... boshqa endpointlar ...
 
 @router.patch("/exams/{exam_id}/publish")
 async def update_exam_publish_status(

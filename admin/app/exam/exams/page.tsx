@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { authFetch } from '@/lib/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -66,7 +67,7 @@ export default function ExamsListPage() {
       setError('');
 
       try {
-        const res = await fetch(`${API_URL}/api/v2/exam/admin/exams`, {
+        const res = await authFetch(`${API_URL}/api/v2/exam/admin/exams`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -107,7 +108,7 @@ export default function ExamsListPage() {
 
   async function handleDelete(examId: number) {
     try {
-      const res = await fetch(`${API_URL}/api/v2/exam/admin/exams/${examId}`, {
+      const res = await authFetch(`${API_URL}/api/v2/exam/admin/exams/${examId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -214,8 +215,8 @@ export default function ExamsListPage() {
       ) : (
         <>
           {/* Desktop Table */}
-          <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <table className="w-full">
+          <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+            <table className="w-full min-w-[720px]">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
@@ -399,7 +400,7 @@ export default function ExamsListPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed inset-x-4 top-[20%] md:inset-auto md:left-1/2 md:top-[25%] md:-translate-x-1/2 w-full md:max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden"
+              className="fixed inset-x-4 top-[10%] max-h-[85vh] overflow-y-auto md:inset-auto md:left-1/2 md:top-[25%] md:-translate-x-1/2 w-full md:max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 z-50"
             >
               <div className="p-5 border-b border-slate-100">
                 <div className="flex items-center gap-3">

@@ -1,3 +1,4 @@
+import { backendFetch } from '@/lib/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
@@ -17,7 +18,7 @@ export async function GET(
     }
 
     // Backend status endpoint'iga proxy
-    const response = await fetch(
+    const response = await backendFetch(
       `${BACKEND_URL}/broadcast/status/${broadcastId}`,
       {
         method: 'GET',

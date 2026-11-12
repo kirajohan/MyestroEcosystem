@@ -5,6 +5,7 @@ Diskga saqlanmaydi.
 """
 
 import io
+from app.core.deps import require_admin, require_service_or_admin
 import httpx
 from fastapi import APIRouter, Depends, Query, File, UploadFile, Form
 from typing import List, Optional
@@ -28,7 +29,7 @@ def get_public_content(id: int, db: DBSession = Depends(get_db)):
     return item
 
 
-@router.get("", response_model=List[ContentItemResponse])
+@router.get("", response_model=List[ContentItemResponse], dependencies=[Depends(require_admin)])
 def list_content(
     content_type: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
@@ -43,7 +44,7 @@ def list_content(
     return query.order_by(ContentItem.id.desc()).all()
 
 
-@router.post("", response_model=ContentItemResponse)
+@router.post("", response_model=ContentItemResponse, dependencies=[Depends(require_admin)])
 async def upload_content(
     title: str = Form(...),
     description: Optional[str] = Form(None),
@@ -131,7 +132,7 @@ async def upload_content(
     return item
 
 
-@router.put("/{id}", response_model=ContentItemResponse)
+@router.put("/{id}", response_model=ContentItemResponse, dependencies=[Depends(require_admin)])
 def update_content(
     id: int,
     data: ContentItemUpdate,
@@ -148,7 +149,7 @@ def update_content(
     return item
 
 
-@router.patch("/{id}", response_model=ContentItemResponse)
+@router.patch("/{id}", response_model=ContentItemResponse, dependencies=[Depends(require_admin)])
 async def patch_content(
     id: int,
     title: Optional[str] = Form(None),
@@ -228,7 +229,7 @@ async def patch_content(
     return item
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", dependencies=[Depends(require_admin)])
 def delete_content(
     id: int,
     db: DBSession = Depends(get_db),
@@ -262,7 +263,7 @@ def list_public_content(
     )
 
 
-@router.post("/{id}/set-telegram-file-id")
+@router.post("/{id}/set-telegram-file-id", dependencies=[Depends(require_service_or_admin)])
 def set_telegram_file_id(
     id: int,
     telegram_file_id: str,

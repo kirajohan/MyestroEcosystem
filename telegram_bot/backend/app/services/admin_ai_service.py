@@ -32,6 +32,7 @@ from app.models.broadcast import BroadcastJob, BroadcastHistory
 from app.models.inbox import InboxMessage, InboxMessageHistory
 from app.models.logs import ErrorLog, AuditLog, ApiLog
 from app.models.settings import SystemSetting
+from app.services.ai_extra_tools import AIExtraToolsMixin, EXTRA_ADMIN_TOOLS, EXTRA_USER_TOOLS
 
 logger = logging.getLogger(__name__)
 
@@ -107,16 +108,58 @@ def _calculate_next_due_reminder(
 
     return datetime.now(timezone.utc)
 
-class AIToolsService:
+MAX_ACTIVE_REMINDERS = 20
+MAX_ACTIVE_AI_REMINDERS = 5
+MAX_AI_PROMPT_CHARS = 500
+
+
+class AIToolsService(AIExtraToolsMixin):
     """
     Universal AI tool'lar to'plami.
     Har bir tool — bu DB'ga so'rov yuboruvchi funksiya.
     """
 
-    def __init__(self, db: AsyncSession, current_user_id: int, is_admin: bool):
+    def __init__(
+        self,
+        db: AsyncSession,
+        current_user_id: int,
+        is_admin: bool,
+        pending_store=None,
+        redis=None,
+    ):
         self.db = db
         self.current_user_id = current_user_id
         self.is_admin = is_admin
+        self.pending_store = pending_store  # yozish amallari uchun tasdiqlash ombori (faqat chat)
+        self.redis = redis
+
+    @staticmethod
+    def _mask_phone(phone: Optional[str]) -> Optional[str]:
+        """Telefonni LLM ga to'liq yubormaslik: +998 ** *** 12 34."""
+        if not phone:
+            return phone
+        digits = re.sub(r"\D", "", str(phone))
+        if len(digits) < 6:
+            return "***"
+        return f"+{digits[:3]} ** *** {digits[-4:-2]} {digits[-2:]}"
+
+    async def _audit(self, action: str, resource: Optional[str] = None, details: Optional[Dict] = None) -> None:
+        """Admin PII o'qish/yozish amallarini AuditLog'ga yozish (xato bo'lsa jimgina o'tadi)."""
+        try:
+            self.db.add(AuditLog(
+                user_id=self.current_user_id,
+                action=f"ai_agent.{action}",
+                resource=resource,
+                details=details or {},
+                severity="info",
+            ))
+            await self.db.commit()
+        except Exception as e:
+            logger.warning(f"[AUDIT] yozib bo'lmadi: {type(e).__name__}")
+            try:
+                await self.db.rollback()
+            except Exception:
+                pass
 
     # ═══════════════════════════════════════════════════════════
     # DATABASE OVERVIEW — Butun baza ko'rinishi
@@ -156,7 +199,9 @@ class AIToolsService:
                 count = await self.db.scalar(select(func.count(model.id)))
                 overview[table_name] = count or 0
             except Exception as e:
-                overview[table_name] = f"error: {str(e)}"
+                logger.warning(f"[overview] {table_name}: {type(e).__name__}")
+                await self.db.rollback()
+                overview[table_name] = "error"
 
         return {
             "database_overview": overview,
@@ -215,7 +260,7 @@ class AIToolsService:
             query = query.where(
                 or_(
                     User.full_name.ilike(search_pattern),
-                    User.username.ilike(search_pattern),
+                    User.telegram_username.ilike(search_pattern),
                     User.phone.ilike(search_pattern),
                 )
             )
@@ -225,6 +270,7 @@ class AIToolsService:
         query = query.offset(offset).limit(limit)
         result = await self.db.execute(query)
         users = result.scalars().all()
+        await self._audit("list_users", "users", {"search": search, "role": role, "limit": limit, "offset": offset, "returned": len(users)})
 
         return {
             "users": [
@@ -233,7 +279,7 @@ class AIToolsService:
                     "telegram_id": u.telegram_id,
                     "full_name": u.full_name,
                     "username": u.telegram_username,                    
-                    "phone": u.phone,
+                    "phone": self._mask_phone(u.phone),
                     "role": u.role,
                     "cefr_level": u.cefr_level,
                     "ai_enabled": u.ai_enabled,
@@ -257,6 +303,8 @@ class AIToolsService:
         user = result.scalar_one_or_none()
         if not user:
             return {"error": "User topilmadi"}
+        if self.is_admin and user_id != self.current_user_id:
+            await self._audit("get_user_details", f"user:{user_id}")
 
         attempts_result = await self.db.execute(
             select(ExamAttempt)
@@ -311,13 +359,14 @@ class AIToolsService:
             .where(
                 or_(
                     User.full_name.ilike(pattern),
-                    User.username.ilike(pattern),
+                    User.telegram_username.ilike(pattern),
                     User.phone.ilike(pattern),
                 )
             )
             .limit(limit)
         )
         users = result.scalars().all()
+        await self._audit("search_users", "users", {"query_len": len(query), "returned": len(users)})
 
         return {
             "results": [
@@ -411,7 +460,7 @@ class AIToolsService:
                 .selectinload(ExamBlock.items)
                 .selectinload(ExamItem.options)
             )
-            .where(Exam.id == exam_id)
+            .where(Exam.id == exam_id, *([] if self.is_admin else [Exam.is_published == True]))
         )
         exam = result.scalar_one_or_none()
         if not exam:
@@ -653,6 +702,25 @@ class AIToolsService:
         else:
             due_at = _calculate_next_due_reminder(reminder_type, hour, minute, day_of_week)
 
+        # Cheklovlar: har bir AI-eslatma har safar LLM chaqiradi — nazoratsiz ko'paymasin
+        if ai_prompt and len(ai_prompt) > MAX_AI_PROMPT_CHARS:
+            return {"error": f"AI prompt juda uzun (max {MAX_AI_PROMPT_CHARS} belgi)."}
+        active_total = await self.db.scalar(
+            select(func.count(Reminder.id)).where(Reminder.user_id == self.current_user_id, Reminder.is_active == True)
+        ) or 0
+        if active_total >= MAX_ACTIVE_REMINDERS:
+            return {"error": f"Aktiv eslatmalar limiti ({MAX_ACTIVE_REMINDERS}) to'lgan. Avval ba'zilarini o'chiring."}
+        if is_ai_generated:
+            active_ai = await self.db.scalar(
+                select(func.count(Reminder.id)).where(
+                    Reminder.user_id == self.current_user_id,
+                    Reminder.is_active == True,
+                    Reminder.is_ai_generated == True,
+                )
+            ) or 0
+            if active_ai >= MAX_ACTIVE_AI_REMINDERS:
+                return {"error": f"AI eslatmalar limiti ({MAX_ACTIVE_AI_REMINDERS}) to'lgan."}
+
         reminder = Reminder(
             user_id=self.current_user_id,
             text=display_text,
@@ -796,6 +864,7 @@ class AIToolsService:
 
         result = await self.db.execute(query.limit(limit))
         messages = result.scalars().all()
+        await self._audit("list_inbox", "inbox", {"status": status, "returned": len(messages)})
 
         return {
             "messages": [
@@ -850,7 +919,9 @@ class AIToolsService:
             "errors": [
                 {
                     "id": l.id,
-                    "message": str(l.message)[:300] if hasattr(l, 'message') else str(l)[:300],
+                    "message": str(l.error_message)[:300] if l.error_message else None,
+                    "service": l.service,
+                    "error_type": l.error_type,
                     "is_fixed": l.is_fixed if hasattr(l, 'is_fixed') else None,
                     "created_at": l.created_at.isoformat() if l.created_at else None,
                 }
@@ -970,20 +1041,21 @@ class AIToolsService:
 
         pattern = f"%{query}%"
         results = {"users": [], "exams": [], "messages": []}
+        await self._audit("search_everywhere", "global", {"query_len": len(query)})
 
         user_result = await self.db.execute(
             select(User)
             .where(
                 or_(
                     User.full_name.ilike(pattern),
-                    User.username.ilike(pattern),
+                    User.telegram_username.ilike(pattern),
                     User.phone.ilike(pattern),
                 )
             )
             .limit(10)
         )
         results["users"] = [
-            {"id": u.id, "full_name": u.full_name, "username": u.username}
+            {"id": u.id, "full_name": u.full_name, "username": u.telegram_username}
             for u in user_result.scalars().all()
         ]
 
@@ -1474,5 +1546,5 @@ REMINDER_TOOL_SCHEMAS = [
 ]
 
 # ✅ Ikkala ro'yxatga ham qo'shish (admin va user ikkalasi ham foydalanishi mumkin)
-ADMIN_TOOLS = ADMIN_TOOLS + REMINDER_TOOL_SCHEMAS
-USER_TOOLS = USER_TOOLS + REMINDER_TOOL_SCHEMAS
+ADMIN_TOOLS = ADMIN_TOOLS + REMINDER_TOOL_SCHEMAS + EXTRA_ADMIN_TOOLS
+USER_TOOLS = USER_TOOLS + REMINDER_TOOL_SCHEMAS + EXTRA_USER_TOOLS
